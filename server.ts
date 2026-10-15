@@ -86,6 +86,80 @@ app.get('/api/image-proxy', async (req, res) => {
 });
 
 // =========================================================================
+// ۱.۱ پروکسی CORS برای فراخوانی APIهای عمومی (مانند کامنت‌های آپارات بدون فیلتر و محدودیت)
+// =========================================================================
+app.get('/api/cors-proxy', async (req, res) => {
+  try {
+    const targetUrl = req.query.url as string;
+    if (!targetUrl) {
+      return res.status(400).json({ error: 'آدرس مقصد ارسال نشده است.' });
+    }
+
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
+        'Accept-Language': 'fa,en;q=0.9',
+      },
+    });
+
+    const contentType = response.headers.get('content-type') || 'application/json';
+    const text = await response.text();
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.status(response.status);
+
+    try {
+      const json = JSON.parse(text);
+      return res.json(json);
+    } catch {
+      return res.send(text);
+    }
+  } catch (err: any) {
+    console.error('CORS proxy error:', err);
+    return res.status(500).json({ error: 'خطا در پروکسی CORS: ' + err.message });
+  }
+});
+
+// اندپوینت مستقیم دریافت خودکار کامنت‌های ویدیوی آپارات با videohash (uid)
+app.get('/api/aparat-comments/:uid', async (req, res) => {
+  try {
+    const { uid } = req.params;
+    if (!uid) {
+      return res.status(400).json({ error: 'شناسه ویدیو (videohash) الزامی است.' });
+    }
+
+    const targetUrl = `https://www.aparat.com/api/fa/v1/video/comment/list/videohash/${uid}`;
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        Accept: 'application/json, text/plain, */*',
+        'Accept-Language': 'fa,en;q=0.9',
+      },
+    });
+
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'application/json');
+
+    if (!response.ok) {
+      return res.status(response.status).json({
+        error: `خطا در دریافت از آپارات: کد وضعیت ${response.status}`,
+        data: [],
+      });
+    }
+
+    const data = await response.json();
+    return res.json(data);
+  } catch (err: any) {
+    console.error('Aparat comments API error:', err);
+    return res.status(500).json({ error: 'خطا در وب‌سرویس کامنت‌های آپارات: ' + err.message, data: [] });
+  }
+});
+
+// =========================================================================
 // ۲. آپلود محلی و ذخیره دائمی تصویر روی سرور (جایگزین مستقل و امن برای Supabase)
 // =========================================================================
 app.post('/api/upload-local', (req, res) => {
@@ -448,6 +522,49 @@ app.post('/api/analytics/send-telegram-report', async (req, res) => {
   }
 });
 
+// ارسال خودکار گزارش روزانه به تلگرام شخصی سینا ضرغامی در پایان هر شب
+let lastReportDate = '';
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const currentHour = now.getUTCHours();
+    // ساعت ۲۰ به وقت UTC معادل ساعت ۲۳:۳۰ شب به وقت ایران
+    if (currentHour >= 20 && lastReportDate !== today) {
+      lastReportDate = today;
+      const events = readAnalyticsEvents();
+      const todayEvents = events.filter((e) => (e.clientTimestamp || '').startsWith(today));
+      const abandonedEvents = events.filter((e) => e.eventType === 'abandon_checkout');
+      const completedOrders = events.filter((e) => e.eventType === 'complete_order');
+      const photoViews = events.filter((e) => e.eventType === 'photo_view').length;
+
+      const edgeVisitors = events.filter((e) => (e.browser || '').includes('Edge')).length;
+      const chromeVisitors = events.filter((e) => (e.browser || '').includes('Chrome')).length;
+
+      const dailyReport = `
+📊 <b>گزارش روزانه وب‌سایت سینا ضرغامی (sinazarghami.ir)</b>
+📅 <i>تاریخ: ${new Date().toLocaleDateString('fa-IR')}</i>
+
+• <b>کل بازدیدهای امروز:</b> ${todayEvents.length}
+• <b>مشاهده آثار در گالری:</b> ${photoViews}
+• <b>سفارشات قطعی ثبت‌شده:</b> ${completedOrders.length}
+• <b>خریدهای در دست اقدام / رها شده:</b> ${abandonedEvents.length}
+
+🌐 <b>تفکیک مرورگرها:</b>
+• Microsoft Edge: ${edgeVisitors} کاربر
+• Google Chrome: ${chromeVisitors} کاربر
+
+✨ گزارش خودکار شبانه ربات هوشمند استودیو سینا ضرغامی
+`.trim();
+
+      await sendTelegramMessage(dailyReport);
+      console.log('Daily analytics digest auto-dispatched to Telegram.');
+    }
+  } catch (err) {
+    console.warn('Auto daily report interval error:', err);
+  }
+}, 30 * 60 * 1000);
+
 // =========================================================================
 // ۶. مدیریت ذخیره و همگام‌سازی ابری داده‌های سایت (Mobile & Desktop Sync)
 // =========================================================================
@@ -486,11 +603,11 @@ app.post('/api/site-data', (req, res) => {
 });
 
 // =========================================================================
-// ۶.۱. همگام‌سازی مستقیم و خودکار با مخزن گیت‌هاب (szarghami/sinazarghami.ir)
+// ۶.۱. همگام‌سازی مستقیم و خودکار با مخزن اصلی گیت‌هاب
 // =========================================================================
 app.post('/api/github/sync', async (req, res) => {
   try {
-    const { token, repo = 'szarghami/sinazarghami.ir', path: targetPath = 'site-data.json', content } = req.body;
+    const { token, repo = 'szarghami/sinazarghami-aistudio-site', path: targetPath = 'site-data.json', content } = req.body;
     const githubToken = token || process.env.GITHUB_TOKEN;
 
     if (!githubToken) {

@@ -312,6 +312,12 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
                       alt={photoTitle}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        if (photo.imageUrl && target.src !== photo.imageUrl) {
+                          target.src = photo.imageUrl;
+                        }
+                      }}
                     />
                   </div>
 

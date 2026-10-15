@@ -160,20 +160,25 @@ export async function smartUploadImage(
 }
 
 /**
- * تبدیل آدرس تصاویر به آدرس قابل دسترس در مرورگر Edge و اینترنت ایران
+ * تبدیل آدرس تصاویر به آدرس قابل دسترس در مرورگر و اینترنت ایران
+ * در هاست استاتیک نظیر GitHub Pages و sinazarghami.ir مستقیماً از URL استفاده می‌شود تا خطای 404 رخ ندهد.
  */
 export function getReliableImageUrl(url?: string): string {
   if (!url) return '';
   if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/uploads/') || url.startsWith('/')) {
     return url;
   }
-  // برای دامنه‌های خارجی نظیر Unsplash یا Supabase که ممکن است در ایران یا Edge با محدودیت مواجه شوند:
-  if (
-    url.includes('images.unsplash.com') ||
-    url.includes('unsplash.com') ||
-    url.includes('supabase.co')
-  ) {
+
+  // بررسی وجود سرور بک‌اند (پراکسی تنها در محیط دارای Express/Cloud Run در دسترس است)
+  const hasBackendServer = typeof window !== 'undefined' &&
+    (window.location.port === '3000' ||
+      window.location.hostname.includes('run.app') ||
+      window.location.hostname.includes('localhost') ||
+      window.location.hostname.includes('127.0.0.1'));
+
+  if (hasBackendServer && (url.includes('images.unsplash.com') || url.includes('unsplash.com') || url.includes('supabase.co'))) {
     return `/api/image-proxy?url=${encodeURIComponent(url)}`;
   }
+
   return url;
 }

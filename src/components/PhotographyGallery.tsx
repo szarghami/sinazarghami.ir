@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Language, PhotoCategory, PhotoItem } from '../types';
 import {
   Camera,
@@ -14,9 +14,20 @@ import {
   Tag,
   CheckCircle,
   Eye,
+  Play,
+  Film,
+  ExternalLink,
+  Server,
+  MessageSquare,
+  ThumbsUp,
+  ShieldAlert,
+  Radio,
+  Lock,
+  Zap,
 } from 'lucide-react';
 import { getReliableImageUrl } from '../utils/supabase';
 import { trackEvent } from '../utils/analytics';
+import { parseAparatUrl, parseYoutubeUrl } from '../utils/githubMediaService';
 
 interface PhotographyGalleryProps {
   photos: PhotoItem[];
@@ -35,28 +46,86 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
 
+  // سرور فعال پخش ویدیو در لایت‌باکس (گیت‌هاب / آپارات / یوتیوب)
+  const [activeVideoServer, setActiveVideoServer] = useState<'github' | 'aparat' | 'youtube'>('github');
+  const [autoSwitchedToAparat, setAutoSwitchedToAparat] = useState<boolean>(false);
+  const videoTimeoutRef = useRef<any>(null);
+  const videoPlayerRef = useRef<HTMLVideoElement | null>(null);
+
+  // دسته‌بندی‌های غنی و صنعتی گالری
   const categories = [
     { id: 'all', labelFa: 'همه آثار', labelEn: 'All Works' },
+    { id: 'commercial-shoes', labelFa: 'عکاسی صنعتی کفش', labelEn: 'Footwear & Shoes' },
+    { id: 'commercial-jewelry', labelFa: 'عکاسی صنعتی جواهرات', labelEn: 'Jewelry & Gems' },
+    { id: 'commercial-video', labelFa: 'تیزر و ویدیوی صنعتی', labelEn: 'Industrial Video' },
+    { id: 'video', labelFa: 'ویدیو و تیزر سینمایی', labelEn: 'Cinematography & Video' },
     { id: 'landscape', labelFa: 'طبیعت و کویر', labelEn: 'Landscape & Desert' },
     { id: 'aerial', labelFa: 'دید ۳۶۰ و هوایی', labelEn: '360° & Aerial' },
     { id: 'portrait', labelFa: 'هایپرمکرو و چهره', labelEn: 'Macro & Portrait' },
-    { id: 'architecture', labelFa: 'صنعتی و معماری', labelEn: 'Industrial & Architecture' },
+    { id: 'architecture', labelFa: 'صنعتی و معماری', labelEn: 'Architecture' },
     { id: 'documentary', labelFa: 'مستند سفر', labelEn: 'Expedition Documentary' },
   ];
 
   const filteredPhotos = selectedCategory === 'all'
     ? photos
+    : selectedCategory === 'video'
+    ? photos.filter((p) => p.category === 'video' || p.category === 'commercial-video' || p.isVideo)
+    : selectedCategory === 'commercial-video'
+    ? photos.filter((p) => p.category === 'commercial-video' || (p.isVideo && p.titleFa.includes('صنعتی')))
+    : selectedCategory === 'commercial-shoes'
+    ? photos.filter((p) => p.category === 'commercial-shoes')
+    : selectedCategory === 'commercial-jewelry'
+    ? photos.filter((p) => p.category === 'commercial-jewelry')
     : photos.filter((p) => p.category === selectedCategory);
 
   const openLightbox = (photo: PhotoItem) => {
     setActivePhoto(photo);
     setActiveImageIndex(0);
+    setAutoSwitchedToAparat(false);
+
+    // تعیین سرور اولیه پخش ویدیو
+    if (photo.defaultServer) {
+      setActiveVideoServer(photo.defaultServer);
+    } else if (photo.githubVideoUrl || photo.videoUrl) {
+      setActiveVideoServer('github');
+    } else if (photo.aparatUrl) {
+      setActiveVideoServer('aparat');
+    } else if (photo.youtubeUrl) {
+      setActiveVideoServer('youtube');
+    } else {
+      setActiveVideoServer('github');
+    }
+
     trackEvent('photo_view', {
       photoId: photo.id,
       photoTitle: photo.titleFa,
       selectedFormat: photo.isAlbum ? 'digital' : 'print',
     });
   };
+
+  // بررسی سوییچ خودکار در ۴ ثانیه به آپارات در صورت تاخیر سرور اصلی
+  useEffect(() => {
+    if (!activePhoto) return;
+    const isVideo = activePhoto.isVideo || activePhoto.category === 'video' || activePhoto.category === 'commercial-video';
+    if (!isVideo) return;
+
+    if (activeVideoServer === 'github' && activePhoto.aparatUrl) {
+      if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+      videoTimeoutRef.current = setTimeout(() => {
+        // اگر ویدیو تا ۴ ثانیه آماده نشد، خودکار به آپارات سوییچ کن
+        if (videoPlayerRef.current && (videoPlayerRef.current.readyState < 2 || videoPlayerRef.current.paused)) {
+          setActiveVideoServer('aparat');
+          setAutoSwitchedToAparat(true);
+        }
+      }, 4000);
+    }
+
+    return () => {
+      if (videoTimeoutRef.current) {
+        clearTimeout(videoTimeoutRef.current);
+      }
+    };
+  }, [activePhoto, activeVideoServer]);
 
   const handleSelectPrint = (photo: PhotoItem) => {
     trackEvent('open_buy_modal', {
@@ -128,25 +197,77 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
               >
                 {/* Upper Section (Image + Info) */}
                 <div>
-                  {/* Image Container */}
+                  {/* Image/Video Container */}
                   <div
-                    className="relative aspect-16/10 sm:aspect-16/9 overflow-hidden cursor-pointer bg-stone-900"
+                    className="relative aspect-16/10 sm:aspect-16/9 overflow-hidden cursor-pointer bg-stone-900 select-none"
                     onClick={() => openLightbox(photo)}
+                    onContextMenu={(e) => e.preventDefault()}
+                    draggable={false}
                   >
                     {!isFailed ? (
-                      <img
-                        src={displayUrl}
-                        alt={isFa ? photo.titleFa : photo.titleEn}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        onError={() => {
-                          setFailedImages((prev) => ({ ...prev, [photo.id]: true }));
-                        }}
-                      />
+                      (() => {
+                        const isVideoFile = Boolean(
+                          photo.isVideo ||
+                          photo.category === 'video' ||
+                          photo.category === 'commercial-video' ||
+                          /\.(mp4|webm|mov|m4v)($|\?)/i.test(photo.videoUrl || '') ||
+                          /\.(mp4|webm|mov|m4v)($|\?)/i.test(photo.imageUrl || '')
+                        );
+                        const mediaSrc = photo.videoUrl || photo.imageUrl;
+
+                        // اگر ویدیو است و تصویر بندانگشتی جداگانه ندارد، از المنت ویدیو استفاده می‌کنیم
+                        if (isVideoFile && (!photo.thumbnailUrl || /\.(mp4|webm|mov|m4v)($|\?)/i.test(photo.thumbnailUrl))) {
+                          return (
+                            <video
+                              src={mediaSrc}
+                              preload="metadata"
+                              muted
+                              loop
+                              playsInline
+                              controlsList="nodownload"
+                              disablePictureInPicture
+                              onContextMenu={(e) => e.preventDefault()}
+                              onMouseEnter={(e) => {
+                                try {
+                                  e.currentTarget.play();
+                                } catch (_) {}
+                              }}
+                              onMouseLeave={(e) => {
+                                try {
+                                  e.currentTarget.pause();
+                                  e.currentTarget.currentTime = 0;
+                                } catch (_) {}
+                              }}
+                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104 bg-black select-none pointer-events-auto"
+                            />
+                          );
+                        }
+
+                        // نمایش تصویر با قفل دانلود و قفل کلیک راست
+                        return (
+                          <img
+                            src={displayUrl}
+                            alt={isFa ? photo.titleFa : photo.titleEn}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104 select-none pointer-events-auto"
+                            loading="lazy"
+                            draggable={false}
+                            onDragStart={(e) => e.preventDefault()}
+                            onContextMenu={(e) => e.preventDefault()}
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (photo.imageUrl && target.src !== photo.imageUrl) {
+                                target.src = photo.imageUrl;
+                              } else {
+                                setFailedImages((prev) => ({ ...prev, [photo.id]: true }));
+                              }
+                            }}
+                          />
+                        );
+                      })()
                     ) : (
                       /* کارت زیبای جایگزین عکاسی فاین‌آرت در صورت عدم دسترسی شبکه */
-                      <div className="absolute inset-0 bg-gradient-to-br from-stone-850 via-stone-900 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-white">
+                      <div className="absolute inset-0 bg-gradient-to-br from-stone-850 via-stone-900 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-white select-none">
                         <div className="p-3 bg-amber-600/20 text-amber-400 rounded-full mb-3 ring-1 ring-amber-500/30">
                           <Camera className="w-8 h-8" />
                         </div>
@@ -164,17 +285,48 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
 
                     {/* نشانگر گالری چندعکسی (آلبوم) */}
                     {hasMultiple && (
-                      <div className="absolute top-3 right-3 bg-stone-900/85 backdrop-blur-md text-white text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 font-mono shadow-md z-10">
+                      <div className="absolute top-3 right-3 bg-stone-900/85 backdrop-blur-md text-white text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 font-mono shadow-md z-10 select-none">
                         <Images className="w-3.5 h-3.5 text-amber-400" />
                         <span>{isFa ? `${totalCount} تصویر` : `${totalCount} Photos`}</span>
                       </div>
                     )}
 
-                    {/* نشانگر قابلیت فروش */}
-                    {photo.printAvailable && (
-                      <div className="absolute top-3 left-3 bg-amber-600/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-md z-10">
+                    {/* نشانگرهای دسته‌بندی صنعتی، ویدیو یا قابلیت فروش */}
+                    {photo.category === 'commercial-shoes' ? (
+                      <div className="absolute top-3 left-3 bg-amber-950/90 border border-amber-700/60 backdrop-blur-md text-amber-300 text-[10.5px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-md z-10 select-none font-mono">
+                        <span>👞</span>
+                        <span>{isFa ? 'صنعتی کفش' : 'Footwear'}</span>
+                      </div>
+                    ) : photo.category === 'commercial-jewelry' ? (
+                      <div className="absolute top-3 left-3 bg-emerald-950/90 border border-emerald-700/60 backdrop-blur-md text-emerald-300 text-[10.5px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-md z-10 select-none font-mono">
+                        <span>💎</span>
+                        <span>{isFa ? 'صنعتی جواهرات' : 'Jewelry'}</span>
+                      </div>
+                    ) : (photo.category === 'commercial-video' || (photo.isVideo && photo.category !== 'video')) ? (
+                      <div className="absolute top-3 left-3 bg-red-900/90 border border-red-700/60 backdrop-blur-md text-white text-[10.5px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-md z-10 select-none font-mono">
+                        <Film className="w-3 h-3 text-red-300" />
+                        <span>{isFa ? 'تیزر صنعتی' : 'Industrial'}</span>
+                        {photo.videoDuration && <span className="opacity-80">· {photo.videoDuration}</span>}
+                      </div>
+                    ) : (photo.isVideo || photo.category === 'video') ? (
+                      <div className="absolute top-3 left-3 bg-red-600/95 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1.5 shadow-md z-10 font-mono select-none">
+                        <Play className="w-3 h-3 fill-white" />
+                        <span>{photo.videoQuality || '4K CINEMA'}</span>
+                        {photo.videoDuration && <span className="opacity-80">· {photo.videoDuration}</span>}
+                      </div>
+                    ) : photo.printAvailable ? (
+                      <div className="absolute top-3 left-3 bg-amber-600/90 backdrop-blur-md text-white text-[11px] font-bold px-2.5 py-1 rounded-md flex items-center gap-1 shadow-md z-10 select-none">
                         <Tag className="w-3 h-3" />
                         <span>{isFa ? 'فروش نسخه چاپ و دیجیتال' : 'Print & License'}</span>
+                      </div>
+                    ) : null}
+
+                    {/* دکمه Play مرکزی برای ویدیوها */}
+                    {(photo.isVideo || photo.category === 'video' || photo.category === 'commercial-video') && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
+                        <div className="w-12 h-12 rounded-full bg-stone-950/75 border border-white/50 backdrop-blur-xs flex items-center justify-center text-white shadow-2xl group-hover:scale-115 group-hover:bg-red-600/90 transition-all duration-300">
+                          <Play className="w-5 h-5 fill-white translate-x-0.5" />
+                        </div>
                       </div>
                     )}
 
@@ -293,17 +445,191 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
             {/* Modal Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 max-h-[90vh] overflow-y-auto">
               {/* Media Container with Previous / Next if Album */}
-              <div className="lg:col-span-8 bg-black flex flex-col items-center justify-center min-h-[340px] sm:min-h-[480px] p-2 relative group">
-                <img
-                  src={getReliableImageUrl(currentPhotoImages[activeImageIndex] || activePhoto.imageUrl)}
-                  alt={isFa ? activePhoto.titleFa : activePhoto.titleEn}
-                  className="max-h-[70vh] w-auto max-w-full object-contain"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    const t = e.currentTarget as HTMLImageElement;
-                    t.style.display = 'none';
-                  }}
-                />
+              <div
+                className="lg:col-span-8 bg-black flex flex-col items-center justify-center min-h-[340px] sm:min-h-[480px] p-2 relative group select-none"
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                {(() => {
+                  const isVideoMedia = Boolean(
+                    activePhoto.isVideo ||
+                    activePhoto.category === 'video' ||
+                    activePhoto.category === 'commercial-video' ||
+                    /\.(mp4|webm|mov|m4v)($|\?)/i.test(activePhoto.videoUrl || '') ||
+                    /\.(mp4|webm|mov|m4v)($|\?)/i.test(activePhoto.imageUrl || '')
+                  );
+                  const videoSrc = activePhoto.githubVideoUrl || activePhoto.videoUrl || activePhoto.imageUrl;
+
+                  if (isVideoMedia) {
+                    return (
+                      <div className="w-full flex flex-col items-center justify-center p-2">
+                        {/* پخش‌کننده چندسروره (گیت‌هاب / آپارات / یوتیوب) */}
+                        <div className="w-full flex flex-col items-center justify-center">
+                          {activeVideoServer === 'github' && (
+                            <video
+                              key={`github-${videoSrc}`}
+                              ref={videoPlayerRef}
+                              src={videoSrc}
+                              controls
+                              autoPlay
+                              playsInline
+                              controlsList="nodownload"
+                              disablePictureInPicture
+                              onContextMenu={(e) => e.preventDefault()}
+                              onPlay={() => {
+                                if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+                              }}
+                              onCanPlay={() => {
+                                if (videoTimeoutRef.current) clearTimeout(videoTimeoutRef.current);
+                              }}
+                              onError={() => {
+                                if (activePhoto.aparatUrl) {
+                                  setActiveVideoServer('aparat');
+                                  setAutoSwitchedToAparat(true);
+                                }
+                              }}
+                              className="max-h-[65vh] w-auto max-w-full rounded-xl shadow-2xl bg-black border border-stone-800"
+                            >
+                              <source src={videoSrc} type="video/mp4" />
+                              مرورگر شما از پخش مستقیم ویدیو پشتیبانی نمی‌کند.
+                            </video>
+                          )}
+
+                          {activeVideoServer === 'aparat' && activePhoto.aparatUrl && (
+                            <div className="relative w-full aspect-video max-w-3xl rounded-xl overflow-hidden shadow-2xl border border-stone-800 bg-black">
+                              <iframe
+                                src={parseAparatUrl(activePhoto.aparatUrl).embedUrl}
+                                allowFullScreen
+                                className="w-full h-full border-0"
+                                title="Aparat Video Player"
+                              />
+                            </div>
+                          )}
+
+                          {activeVideoServer === 'youtube' && activePhoto.youtubeUrl && (
+                            <div className="relative w-full aspect-video max-w-3xl rounded-xl overflow-hidden shadow-2xl border border-stone-800 bg-black">
+                              <iframe
+                                src={parseYoutubeUrl(activePhoto.youtubeUrl).embedUrl}
+                                allowFullScreen
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                className="w-full h-full border-0"
+                                title="YouTube Video Player"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* اعلان سوییچ خودکار به سرور ایران در صورت کندی */}
+                        {autoSwitchedToAparat && (
+                          <div className="mt-2 w-full max-w-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs px-3 py-1.5 rounded-lg flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span>{isFa ? 'سرور ویدیو به دلیل اختلال اینترنت بین‌الملل، خودکار به سرور پرسرعت آپارات (ایران) متصل شد.' : 'Auto-switched to Aparat Iran server.'}</span>
+                            </div>
+                            <button
+                              onClick={() => setAutoSwitchedToAparat(false)}
+                              className="text-amber-400 hover:text-white text-xs px-1 cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+
+                        {/* نوار تغییر سرور هوشمند */}
+                        <div className="mt-3 flex flex-wrap items-center justify-center gap-2 bg-stone-950/90 p-2 rounded-xl border border-stone-800/80 w-full max-w-xl">
+                          <span className="text-[11px] text-stone-400 font-bold ml-1 flex items-center gap-1">
+                            <Server className="w-3.5 h-3.5 text-stone-400" />
+                            <span>{isFa ? 'سرور پخش:' : 'Server:'}</span>
+                          </span>
+
+                          {/* سرور اصلی (GitHub CDN) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveVideoServer('github');
+                              setAutoSwitchedToAparat(false);
+                            }}
+                            className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                              activeVideoServer === 'github'
+                                ? 'bg-amber-600 text-white shadow-md'
+                                : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                            }`}
+                          >
+                            <Radio className={`w-3 h-3 ${activeVideoServer === 'github' ? 'animate-pulse text-white' : 'text-stone-400'}`} />
+                            <span>{isFa ? 'سرور اصلی (GitHub)' : 'Primary (GitHub)'}</span>
+                          </button>
+
+                          {/* سرور ایران (آپارات) */}
+                          {activePhoto.aparatUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveVideoServer('aparat');
+                                setAutoSwitchedToAparat(false);
+                              }}
+                              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                activeVideoServer === 'aparat'
+                                  ? 'bg-pink-600 text-white shadow-md'
+                                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                              }`}
+                            >
+                              <span>🇮🇷</span>
+                              <span>{isFa ? 'سرور ایران (آپارات)' : 'Iran (Aparat)'}</span>
+                            </button>
+                          )}
+
+                          {/* سرور یوتیوب */}
+                          {activePhoto.youtubeUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveVideoServer('youtube');
+                                setAutoSwitchedToAparat(false);
+                              }}
+                              className={`px-3 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                activeVideoServer === 'youtube'
+                                  ? 'bg-red-600 text-white shadow-md'
+                                  : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                              }`}
+                            >
+                              <Play className="w-3 h-3 fill-white" />
+                              <span>{isFa ? 'یوتیوب (4K)' : 'YouTube (4K)'}</span>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* اطلاعات کیفیت و لینک مستقیم */}
+                        <div className="mt-2 flex items-center justify-between w-full max-w-xl px-2 text-[11px] text-stone-400 font-mono">
+                          <span className="text-red-400 font-bold">{activePhoto.videoQuality || '4K Cinema 60fps'}</span>
+                          <a
+                            href={videoSrc}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-amber-500 hover:text-amber-400 underline flex items-center gap-1"
+                          >
+                            <span>{isFa ? 'پخش مستقیم در برگه جدید' : 'Open direct link'}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <img
+                      src={getReliableImageUrl(currentPhotoImages[activeImageIndex] || activePhoto.imageUrl)}
+                      alt={isFa ? activePhoto.titleFa : activePhoto.titleEn}
+                      className="max-h-[70vh] w-auto max-w-full object-contain select-none pointer-events-auto"
+                      draggable={false}
+                      onDragStart={(e) => e.preventDefault()}
+                      onContextMenu={(e) => e.preventDefault()}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const t = e.currentTarget as HTMLImageElement;
+                        t.style.display = 'none';
+                      }}
+                    />
+                  );
+                })()}
 
                 {/* دکمه‌های اسلاید برای آلبوم‌های چندعکسی */}
                 {currentPhotoImages.length > 1 && (
@@ -334,7 +660,13 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                             activeImageIndex === i ? 'border-amber-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
                           }`}
                         >
-                          <img src={getReliableImageUrl(imgUrl)} alt="" className="w-full h-full object-cover" />
+                          <img
+                            src={getReliableImageUrl(imgUrl)}
+                            alt=""
+                            className="w-full h-full object-cover select-none"
+                            draggable={false}
+                            onContextMenu={(e) => e.preventDefault()}
+                          />
                         </button>
                       ))}
                     </div>
@@ -342,7 +674,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                 )}
               </div>
 
-              {/* Sidebar with Metadata & Purchase Actions */}
+              {/* Sidebar with Metadata, EXIF, Synced Comments & Actions */}
               <div className="lg:col-span-4 p-6 sm:p-8 flex flex-col justify-between space-y-6 bg-stone-900 border-t lg:border-t-0 lg:border-l border-stone-800">
                 <div className="space-y-5">
                   <div className="space-y-2">
@@ -406,10 +738,94 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                       </div>
                     </div>
                   </div>
+
+                  {/* نظرات و بازخورد مخاطبان همگام‌سازی‌شده از یوتیوب و آپارات */}
+                  <div className="p-4 bg-stone-950/80 rounded-xl border border-stone-800 space-y-3">
+                    <div className="flex items-center justify-between border-b border-stone-800 pb-2">
+                      <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-stone-300">
+                        <MessageSquare className="w-3.5 h-3.5 text-amber-500" />
+                        <span>{isFa ? 'نظرات یوتیوب و آپارات' : 'Synced Community Comments'}</span>
+                      </div>
+                      {activePhoto.syncedComments && activePhoto.syncedComments.length > 0 && (
+                        <span className="text-[10px] bg-stone-800 text-amber-400 px-2 py-0.5 rounded-full font-mono">
+                          {activePhoto.syncedComments.length} {isFa ? 'نظر' : 'comments'}
+                        </span>
+                      )}
+                    </div>
+
+                    {activePhoto.syncedComments && activePhoto.syncedComments.length > 0 ? (
+                      <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                        {activePhoto.syncedComments.map((comment) => (
+                          <div key={comment.id} className="p-2.5 rounded-lg bg-stone-900/90 border border-stone-800 text-xs space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 font-bold text-stone-200">
+                                <div className="w-5 h-5 rounded-full bg-stone-800 flex items-center justify-center text-[10px] text-amber-400 font-mono">
+                                  {comment.authorName.charAt(0)}
+                                </div>
+                                <span className="text-[11px] truncate max-w-[140px]">{comment.authorName}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                {comment.platform === 'youtube' ? (
+                                  <span className="text-[9px] bg-red-950 text-red-400 border border-red-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
+                                    YouTube
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] bg-pink-950 text-pink-400 border border-pink-800/60 px-1.5 py-0.5 rounded font-mono font-bold">
+                                    آپارات
+                                  </span>
+                                )}
+                                <span className="text-[10px] text-stone-500 font-mono">{comment.date}</span>
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-stone-300 leading-relaxed font-sans">{comment.text}</p>
+                            {comment.likesCount !== undefined && comment.likesCount > 0 && (
+                              <div className="flex items-center gap-1 text-[10px] text-stone-400 pt-0.5">
+                                <ThumbsUp className="w-2.5 h-2.5 text-amber-500" />
+                                <span>{comment.likesCount}</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-stone-400 text-center py-2">
+                        {isFa
+                          ? 'هنوز کامنتی برای این اثر همگام نشده است. از پنل استودیو می‌توانید کامنت‌ها را دریافت کنید.'
+                          : 'No synced comments yet. Sync via Admin Studio.'}
+                      </p>
+                    )}
+                    <p className="text-[10px] text-stone-500 text-center font-mono">
+                      {isFa ? 'بدون نیاز به فیلترشکن مستقیم از وب‌سایت سینا ضرغامی' : 'Accessible directly without VPN'}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Purchase Call-to-Action inside Lightbox */}
-                {activePhoto.printAvailable && (
+                {/* Purchase or Video Commission Call-to-Action inside Lightbox */}
+                {activePhoto.isVideo || activePhoto.category === 'video' || activePhoto.category === 'commercial-video' ? (
+                  <div className="pt-4 border-t border-stone-800 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-stone-400">{isFa ? 'کیفیت و رزولوشن ضبط:' : 'Capture Quality:'}</span>
+                      <span className="text-sm font-bold text-red-400 font-mono">
+                        {activePhoto.videoQuality || '4K 60fps C-Log3'}
+                      </span>
+                    </div>
+
+                    <a
+                      href="#services"
+                      onClick={() => setActivePhoto(null)}
+                      className="w-full py-3 bg-red-600 hover:bg-red-500 text-white text-xs sm:text-sm font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Film className="w-4 h-4" />
+                      <span>{isFa ? 'سفارش فیلمبرداری و تیزر تبلیغاتی' : 'Book Cinematography Project'}</span>
+                    </a>
+
+                    <p className="text-[11px] text-stone-500 text-center">
+                      {isFa
+                        ? 'تولید تیزر نمایشگاهی، معرفی محصول، تصویربرداری هوایی ۳۶۰ و ریلز اینستاگرام'
+                        : 'Commercial teasers, product launch, 360° aerial & social reels.'}
+                    </p>
+                  </div>
+                ) : activePhoto.printAvailable ? (
                   <div className="pt-4 border-t border-stone-800 space-y-3">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-stone-400">{isFa ? 'برآورد شروع قیمت:' : 'Starts at:'}</span>
@@ -438,7 +854,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                         : 'Includes invoice, archival certificate and direct support.'}
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

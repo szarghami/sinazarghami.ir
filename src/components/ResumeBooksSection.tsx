@@ -172,6 +172,10 @@ export const ResumeBooksSection: React.FC<ResumeBooksSectionProps> = ({
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const target = e.currentTarget as HTMLImageElement;
+                      if (book.coverImage && target.src !== book.coverImage) {
+                        target.src = book.coverImage;
+                        return;
+                      }
                       target.style.display = 'none';
                       const parent = target.parentElement;
                       if (parent) {

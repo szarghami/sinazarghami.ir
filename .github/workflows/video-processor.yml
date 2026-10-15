@@ -1,0 +1,71 @@
+name: Automated Chunked Video Processor (FFmpeg HLS & MP4)
+
+on:
+  push:
+    paths:
+      - 'temp_raw/**/READY_TO_PROCESS.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  process-videos:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Merge Chunks and Transcode via FFmpeg
+        run: |
+          set -e
+          echo "Scanning temp_raw for ready manifests..."
+          
+          if [ ! -d "temp_raw" ]; then
+            echo "No temp_raw directory found. Exiting gracefully."
+            exit 0
+          fi
+
+          find temp_raw -name "READY_TO_PROCESS.json" | while read manifest; do
+            dir=$(dirname "$manifest")
+            echo "Processing folder: $dir"
+            
+            SAN_NAME=$(python3 -c "import json; d=json.load(open('$manifest')); print(d.get('sanitizedName', 'output.mp4'))")
+            SLUG=$(python3 -c "import json; d=json.load(open('$manifest')); print(d.get('videoSlug', 'video'))")
+            
+            echo "Merging chunk files in $dir..."
+            cat "$dir"/part_*.bin > merged_raw.tmp
+            
+            mkdir -p videos
+            mkdir -p "videos/$SLUG"
+            
+            echo "Generating web-optimized MP4 with faststart..."
+            ffmpeg -y -i merged_raw.tmp -vcodec libx264 -crf 22 -preset fast -acodec aac -b:a 192k -movflags +faststart "videos/$SAN_NAME"
+            
+            echo "Generating HLS multi-segment stream (<10MB chunks)..."
+            ffmpeg -y -i merged_raw.tmp -profile:v baseline -level 3.0 -s 1920x1080 -start_number 0 -hls_time 6 -hls_list_size 0 -f hls "videos/$SLUG/index.m3u8"
+            
+            echo "Cleaning up temp files for $dir..."
+            rm -f merged_raw.tmp
+            rm -rf "$dir"
+          done
+
+      - name: Commit and Push Processed Videos & Clean Temp
+        run: |
+          git config user.name "Sina Zarghami Video Engine"
+          git config user.email "bot@sinazarghami.ir"
+          git add videos/
+          git rm -rf temp_raw/ 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Transcode processed videos & cleanup temp_raw [skip ci]"
+            git push origin main
+          fi

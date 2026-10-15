@@ -72,7 +72,9 @@ export const ExpeditionsSection: React.FC<ExpeditionsSectionProps> = ({
                     referrerPolicy="no-referrer"
                     onError={(e) => {
                       const t = e.currentTarget as HTMLImageElement;
-                      t.style.display = 'none';
+                      if (exp.coverImage && t.src !== exp.coverImage) {
+                        t.src = exp.coverImage;
+                      }
                     }}
                   />
                   <div className="absolute top-3 left-3 bg-stone-900/80 backdrop-blur-md text-white text-xs px-3 py-1 rounded-md font-mono">

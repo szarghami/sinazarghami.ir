@@ -247,6 +247,95 @@ export function parseGoogleDriveLink(rawUrl: string): { isDrive: boolean; embedU
   return { isDrive: false, embedUrl: trimmed };
 }
 
+const WATERMARK_IMAGE_KEY = 'sina_watermark_image';
+const WATERMARK_OPACITY_KEY = 'sina_watermark_opacity';
+const WATERMARK_POSITION_KEY = 'sina_watermark_position';
+
+export const DEFAULT_WATERMARK_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="90" viewBox="0 0 320 90"><filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="1.5" stdDeviation="2.5" flood-color="%23000000" flood-opacity="0.85"/></filter><g filter="url(%23glow)"><path d="M 20 65 Q 40 10, 60 45 T 100 35 T 135 55" fill="none" stroke="%23FFFFFF" stroke-width="2.5" stroke-linecap="round"/><text x="25" y="76" font-family="'Cinzel', 'Playfair Display', Georgia, serif" font-size="14" font-weight="bold" fill="%23FFFFFF" letter-spacing="2">SINA ZARGHAMI</text><text x="180" y="76" font-family="sans-serif" font-size="9" font-weight="600" fill="%23F3F4F6" letter-spacing="1.5">STUDIO</text></g></svg>`;
+
+export interface WatermarkConfig {
+  imageDataUrl?: string;
+  opacity?: number; // 0 to 1
+  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
+}
+
+export function getSavedWatermarkImage(): string {
+  if (typeof window === 'undefined') return DEFAULT_WATERMARK_SVG;
+  return localStorage.getItem(WATERMARK_IMAGE_KEY) || DEFAULT_WATERMARK_SVG;
+}
+
+export function saveWatermarkImage(img: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(WATERMARK_IMAGE_KEY, img);
+}
+
+export function getSavedWatermarkOpacity(): number {
+  if (typeof window === 'undefined') return 0.15;
+  const val = parseFloat(localStorage.getItem(WATERMARK_OPACITY_KEY) || '');
+  return isNaN(val) ? 0.15 : val;
+}
+
+export function saveWatermarkOpacity(opacity: number): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(WATERMARK_OPACITY_KEY, String(opacity));
+}
+
+export function getSavedWatermarkPosition(): 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center' {
+  if (typeof window === 'undefined') return 'bottom-right';
+  const pos = localStorage.getItem(WATERMARK_POSITION_KEY) as any;
+  return pos || 'bottom-right';
+}
+
+export function saveWatermarkPosition(position: string): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(WATERMARK_POSITION_KEY, position);
+}
+
+/**
+ * ترسیم امضای کاری روی Canvas
+ */
+export function drawWatermarkOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  wmImg: HTMLImageElement,
+  opacity: number = 0.15,
+  position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center' = 'bottom-right'
+): void {
+  if (opacity <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, Math.max(0, opacity));
+
+  const targetWidth = Math.max(100, Math.round(canvasWidth * 0.18));
+  const targetHeight = wmImg.width > 0 ? Math.round((wmImg.height / wmImg.width) * targetWidth) : Math.round(targetWidth * 0.3);
+  const margin = Math.round(Math.min(canvasWidth, canvasHeight) * 0.035);
+
+  let x = canvasWidth - targetWidth - margin;
+  let y = canvasHeight - targetHeight - margin;
+
+  if (position === 'bottom-left') {
+    x = margin;
+    y = canvasHeight - targetHeight - margin;
+  } else if (position === 'top-right') {
+    x = canvasWidth - targetWidth - margin;
+    y = margin;
+  } else if (position === 'top-left') {
+    x = margin;
+    y = margin;
+  } else if (position === 'center') {
+    x = Math.round((canvasWidth - targetWidth) / 2);
+    y = Math.round((canvasHeight - targetHeight) / 2);
+  }
+
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  ctx.shadowBlur = 5;
+  ctx.shadowOffsetX = 1;
+  ctx.shadowOffsetY = 1;
+
+  ctx.drawImage(wmImg, x, y, targetWidth, targetHeight);
+  ctx.restore();
+}
+
 export interface CompressedImageResult {
   name: string;
   dataUrl: string;
@@ -256,12 +345,13 @@ export interface CompressedImageResult {
 }
 
 /**
- * فشرده‌سازی یک عکس منفرد با فرمت WebP
+ * فشرده‌سازی یک عکس منفرد با فرمت WebP و اعمال اختیاری امضای کاری
  */
 export function compressImageToWebP(
   file: File,
   maxDimension = 1400,
-  quality = 0.70
+  quality = 0.70,
+  watermark?: WatermarkConfig
 ): Promise<CompressedImageResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -294,18 +384,47 @@ export function compressImageToWebP(
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const dataUrl = canvas.toDataURL('image/webp', quality);
-        const compressedSize = Math.round((dataUrl.length * 3) / 4);
-        const originalSize = file.size;
-        const reductionPercent = Math.max(0, Math.round(((originalSize - compressedSize) / originalSize) * 100));
+        const finishExport = () => {
+          const dataUrl = canvas.toDataURL('image/webp', quality);
+          const compressedSize = Math.round((dataUrl.length * 3) / 4);
+          const originalSize = file.size;
+          const reductionPercent = Math.max(0, Math.round(((originalSize - compressedSize) / originalSize) * 100));
 
-        resolve({
-          name: file.name,
-          dataUrl,
-          originalSize,
-          compressedSize,
-          reductionPercent,
-        });
+          resolve({
+            name: file.name,
+            dataUrl,
+            originalSize,
+            compressedSize,
+            reductionPercent,
+          });
+        };
+
+        // اعمال امضای کاری در صورت فعال بودن
+        const wmOpacity = watermark?.opacity !== undefined ? watermark.opacity : getSavedWatermarkOpacity();
+        const wmImgSrc = watermark?.imageDataUrl || getSavedWatermarkImage();
+
+        if (wmOpacity > 0 && wmImgSrc) {
+          const wm = new Image();
+          wm.crossOrigin = 'anonymous';
+          wm.onload = () => {
+            drawWatermarkOnCanvas(
+              ctx,
+              width,
+              height,
+              wm,
+              wmOpacity,
+              watermark?.position || getSavedWatermarkPosition()
+            );
+            finishExport();
+          };
+          wm.onerror = () => {
+            // در صورت خطا در لود امضا، تصویر اصلی ذخیره می‌شود
+            finishExport();
+          };
+          wm.src = wmImgSrc;
+        } else {
+          finishExport();
+        }
       };
       img.onerror = (err) => reject(err);
       img.src = e.target?.result as string;
@@ -321,14 +440,15 @@ export function compressImageToWebP(
 export async function compressMultipleImagesToWebP(
   files: File[],
   maxDimension = 1400,
-  quality = 0.70
+  quality = 0.70,
+  watermark?: WatermarkConfig
 ): Promise<{
   results: CompressedImageResult[];
   totalOriginalKB: number;
   totalCompressedKB: number;
   overallReductionPercent: number;
 }> {
-  const promises = files.map((f) => compressImageToWebP(f, maxDimension, quality));
+  const promises = files.map((f) => compressImageToWebP(f, maxDimension, quality, watermark));
   const results = await Promise.all(promises);
 
   const totalOrigBytes = results.reduce((sum, r) => sum + r.originalSize, 0);

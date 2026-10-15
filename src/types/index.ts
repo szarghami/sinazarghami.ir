@@ -6,14 +6,37 @@
 export type Language = 'fa' | 'en';
 
 // دسته‌بندی‌های تصاویر گالری
-export type PhotoCategory = 'all' | 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
+export type PhotoCategory =
+  | 'all'
+  | 'landscape'
+  | 'commercial-shoes'
+  | 'commercial-jewelry'
+  | 'commercial-video'
+  | 'video'
+  | 'aerial'
+  | 'architecture'
+  | 'documentary'
+  | 'portrait';
+
+export type SpecificPhotoCategory = Exclude<PhotoCategory, 'all'>;
+
+// کامنت‌های همگام‌سازی‌شده از یوتیوب و آپارات
+export interface SyncedComment {
+  id: string;
+  authorName: string;
+  authorAvatar?: string;
+  text: string;
+  platform: 'youtube' | 'aparat';
+  date: string;
+  likesCount?: number;
+}
 
 // ساختار اطلاعات هر قطعه عکس یا ویدیو
 export interface PhotoItem {
   id: string;
   titleFa: string; // عنوان فارسی اثر
   titleEn: string; // عنوان انگلیسی اثر
-  category: 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
+  category: SpecificPhotoCategory;
   locationFa: string; // موقعیت مکانی به فارسی (مثلاً: کویر لوت)
   locationEn: string; // موقعیت مکانی به انگلیسی
   year: string; // سال ثبت (مثلاً: 2024 یا 1403)
@@ -41,6 +64,14 @@ export interface PhotoItem {
   isVideo?: boolean;
   videoDuration?: string;
   videoQuality?: string; // مثلاً 4K / 60fps
+  videoUrl?: string; // لینک مستقیم فایل ویدیو (مثلاً در szarghami.github.io/video-portfolio)
+  // پلیر هوشمند چندسروره (گیت‌هاب + آپارات + یوتیوب)
+  githubVideoUrl?: string;
+  aparatUrl?: string;
+  youtubeUrl?: string;
+  defaultServer?: 'github' | 'aparat' | 'youtube';
+  // کامنت‌های همگام‌سازی‌شده از شبکه‌های اجتماعی
+  syncedComments?: SyncedComment[];
   featured?: boolean;
   galleryImages?: string[]; // تصاویر آلبوم (برای پست کردن چند عکس به صورت یک گالری)
   isAlbum?: boolean; // آیا این پست یک آلبوم چندعکسی است؟

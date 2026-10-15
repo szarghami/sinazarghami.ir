@@ -156,7 +156,10 @@ export const Hero: React.FC<HeroProps> = ({
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   const target = e.currentTarget as HTMLImageElement;
-                  target.style.display = 'none';
+                  const fallback = content.photos[0]?.imageUrl || "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=85";
+                  if (target.src !== fallback) {
+                    target.src = fallback;
+                  }
                 }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent pointer-events-none" />
