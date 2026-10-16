@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Language, PhotoItem, SiteContent } from './types';
-import { loadSiteContent, saveSiteContent, fetchRemoteSiteData, syncPasscodeFromServer } from './utils/storage';
+import { loadSiteContent, saveSiteContent, fetchRemoteSiteData, syncPasscodeFromServer, syncStudioSettingsFromServer } from './utils/storage';
 import { trackEvent } from './utils/analytics';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
@@ -37,6 +37,7 @@ export default function App() {
       }
     });
     syncPasscodeFromServer();
+    syncStudioSettingsFromServer();
     trackEvent('page_view');
   }, []);
 
@@ -75,7 +76,10 @@ export default function App() {
 
   const openFirstPrintPhoto = () => {
     if (content.photos.length > 0) {
-      setSelectedPrintPhoto(content.photos[0]);
+      const printable = content.photos.find(
+        (p) => !p.isVideo && p.category !== 'video' && p.category !== 'commercial-video' && p.printAvailable
+      ) || content.photos.find((p) => !p.isVideo && p.category !== 'video') || content.photos[0];
+      setSelectedPrintPhoto(printable);
     }
   };
 

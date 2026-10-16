@@ -45,6 +45,8 @@ import {
   drawWatermarkOnCanvas,
   WatermarkConfig,
   compressImageToWebP,
+  saveStudioSettingsToServer,
+  syncStudioSettingsFromServer,
 } from '../utils/storage';
 import {
   getMainRepo,
@@ -207,6 +209,16 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [isDeployingWorkflow, setIsDeployingWorkflow] = useState<boolean>(false);
   const [showWorkflowCodeModal, setShowWorkflowCodeModal] = useState<boolean>(false);
   const [workflowDeployMsg, setWorkflowDeployMsg] = useState<string | null>(null);
+
+  // استیت‌های اختصاصی حالت‌های کاری استودیو: کالکشن ورق‌خور / آپلود تکی / آپلود دسته‌ای مجزا
+  const [studioMode, setStudioMode] = useState<'collection' | 'single' | 'bulk'>('collection');
+  const [cleanBasePreviewUrl, setCleanBasePreviewUrl] = useState<string>('');
+  const [collectionTitleFa, setCollectionTitleFa] = useState<string>('');
+  const [collectionTitleEn, setCollectionTitleEn] = useState<string>('');
+  const [collectionDescFa, setCollectionDescFa] = useState<string>('');
+  const [collectionDescEn, setCollectionDescEn] = useState<string>('');
+  const [isAiSuggestingCollection, setIsAiSuggestingCollection] = useState<boolean>(false);
+  const [isProcessingCollection, setIsProcessingCollection] = useState<boolean>(false);
 
   // استیت‌های آپلود دسته‌جمعی (Bulk Upload) بدون مصرف توکن هوش مصنوعی
   const [isBulkMode, setIsBulkMode] = useState<boolean>(false);
@@ -392,12 +404,27 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     }
   };
 
-  // بازفشرده‌سازی در صورت تغییر اسلایدرهای کیفیت، حداکثر اندازه یا تنظیمات واترمارک
+  // بارگذاری و هماهنگ‌سازی دائمی تنظیمات استودیو (توکن گیت‌هاب، آپارات، یوتیوب، واترمارک) از سرور
+  useEffect(() => {
+    syncStudioSettingsFromServer().then((st) => {
+      if (st.githubToken) setGithubToken(st.githubToken);
+      if (st.mainRepo) setMainRepoState(st.mainRepo);
+      if (st.videoRepo) setVideoRepoState(st.videoRepo);
+      if (st.videoBaseUrl) setVideoBaseUrlState(st.videoBaseUrl);
+      if (st.youtubeApiKey) setYoutubeApiKey(st.youtubeApiKey);
+      if (st.aparatApiKey) setAparatApiKey(st.aparatApiKey);
+      if (st.watermarkImg) setWatermarkImg(st.watermarkImg);
+      if (st.watermarkOpacity !== undefined) setWatermarkOpacity(st.watermarkOpacity);
+      if (st.watermarkPosition) setWatermarkPosition(st.watermarkPosition);
+    });
+  }, []);
+
+  // بازفشرده‌سازی در صورت تغییر اسلایدرهای کیفیت یا حداکثر اندازه
   useEffect(() => {
     if (rawFiles.length > 0) {
       processSelectedFiles(rawFiles);
     }
-  }, [compressQuality, compressMaxDim, watermarkImg, watermarkOpacity, watermarkPosition]);
+  }, [compressQuality, compressMaxDim]);
 
   /**
    * رندر زنده امضای کاری روی Canvas برای مشاهده آنی تغییرات شفافیت
@@ -408,12 +435,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const sampleSrc = compressedResults[0]?.dataUrl || photoImageUrl || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80';
+    const sampleSrc = cleanBasePreviewUrl || photoImageUrl || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80';
     const baseImg = new window.Image();
     baseImg.crossOrigin = 'anonymous';
     baseImg.onload = () => {
       canvas.width = 480;
       canvas.height = Math.round((baseImg.height / baseImg.width) * 480) || 300;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
 
       if (watermarkOpacity > 0 && watermarkImg) {
@@ -426,7 +454,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       }
     };
     baseImg.src = sampleSrc;
-  }, [watermarkImg, watermarkOpacity, watermarkPosition, compressedResults, photoImageUrl]);
+  }, [watermarkImg, watermarkOpacity, watermarkPosition, cleanBasePreviewUrl, photoImageUrl]);
 
   /**
    * تابع فشرده‌سازی خودکار و سریع عکس‌ها به فرمت مدرن WebP با Canvas و اعمال واترمارک
@@ -712,11 +740,25 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     if (imageFiles.length > 0) {
       setRawFiles(imageFiles);
       processSelectedFiles(imageFiles);
+
+      // خواندن تصویر تمیز اولیه جهت پیش‌نمایش کاملاً دقیق و بدون لایه‌گذاری مکرر امضا
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        if (ev.target?.result) {
+          setCleanBasePreviewUrl(ev.target.result as string);
+        }
+      };
+      reader.readAsDataURL(imageFiles[0]);
+
       if (!photoTitleFa && !video) {
         const { titleFa, titleEn, category } = inferTitlesFromFilename(imageFiles[0].name);
         setPhotoTitleFa(titleFa);
         setPhotoTitleEn(titleEn);
         setPhotoCategory(category);
+        if (!collectionTitleFa) {
+          setCollectionTitleFa(imageFiles.length > 1 ? `کالکشن ${titleFa}` : titleFa);
+          setCollectionTitleEn(imageFiles.length > 1 ? `${titleEn} Collection` : titleEn);
+        }
       }
     }
   };
@@ -839,13 +881,183 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     alert(isFa ? 'پیشنهادات هوش مصنوعی جمینای در فرم اعمال شدند!' : 'AI suggestions applied to form!');
   };
 
+  /**
+   * پیشنهاد هوشمند عنوان و داستان کالکشن با هوش مصنوعی جمینای
+   */
+  const handleAiSuggestCollection = async () => {
+    const currentImage = cleanBasePreviewUrl || (compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl);
+    if (!currentImage) {
+      alert(isFa ? 'لطفاً ابتدا حداقل یک تصویر برای کالکشن انتخاب نمایید.' : 'Please choose at least one photo for the collection.');
+      return;
+    }
+
+    try {
+      setIsAiSuggestingCollection(true);
+      const res = await fetch('/api/gemini/suggest-photo-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: currentImage.startsWith('data:') ? currentImage : undefined,
+          imageUrl: currentImage.startsWith('http') ? currentImage : undefined,
+          titleHint: collectionTitleFa ? `کالکشن: ${collectionTitleFa}` : 'کالکشن مجموعه تصاویر مرتبط استودیویی یا صنعتی',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'خطا در ارتباط با هوش مصنوعی');
+      }
+
+      const s = data.suggestion;
+      if (s.titleFa) setCollectionTitleFa(`کالکشن ${s.titleFa}`);
+      if (s.titleEn) setCollectionTitleEn(`${s.titleEn} Monograph`);
+      if (s.category) setBulkCategory(s.category);
+      if (s.locationFa) setBulkLocationFa(s.locationFa);
+      if (s.locationEn) setBulkLocationEn(s.locationEn);
+      if (s.descriptionFa) setCollectionDescFa(s.descriptionFa);
+      if (s.descriptionEn) setCollectionDescEn(s.descriptionEn);
+
+      alert(isFa ? '✨ عنوان و داستان جامع برای کالکشن پیشنهاد و در فرم قرار گرفت!' : 'Collection title and narrative generated!');
+    } catch (err: any) {
+      alert((isFa ? 'خطا در پیشنهاد هوش مصنوعی: ' : 'AI error: ') + err.message);
+    } finally {
+      setIsAiSuggestingCollection(false);
+    }
+  };
+
+  /**
+   * ثبت و انتشار مستقیم کالکشن چندعکسی به صورت یک آلبوم اسلایدی ورق‌خور
+   */
+  const handleSaveCollection = async () => {
+    if (rawFiles.length === 0) {
+      alert(isFa ? 'لطفاً حداقل ۲ تصویر برای ایجاد کالکشن انتخاب کنید.' : 'Please select images for the collection.');
+      return;
+    }
+
+    try {
+      setIsProcessingCollection(true);
+      setBulkUploadStatus(isFa ? `در حال آماده‌سازی و بهینه‌سازی ${rawFiles.length} تصویر برای کالکشن...` : `Optimizing ${rawFiles.length} photos...`);
+
+      // فشرده‌سازی با واترمارک دلخواه
+      const compRes = await compressMultipleImagesToWebP(rawFiles, compressMaxDim, compressQuality, {
+        imageDataUrl: watermarkImg,
+        opacity: watermarkOpacity,
+        position: watermarkPosition,
+      });
+
+      let mainImageUrl = '';
+      const additionalImages: string[] = [];
+
+      if (uploadToGitHubOption && githubToken.trim()) {
+        setBulkUploadStatus(isFa ? `در حال ارسال تصویر اصلی کالکشن به گیت‌هاب...` : 'Uploading cover to GitHub...');
+        const upMain = await uploadMediaToGitHub({
+          file: rawFiles[0],
+          token: githubToken.trim(),
+          mainRepo: mainRepo.trim(),
+          videoRepo: videoRepo.trim(),
+          maxDimension: compressMaxDim,
+          quality: compressQuality,
+          watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
+        });
+        mainImageUrl = upMain.url;
+
+        for (let i = 1; i < rawFiles.length; i++) {
+          setBulkUploadStatus(isFa ? `در حال آپلود اسلاید ${i + 1} از ${rawFiles.length} در گیت‌هاب...` : `Uploading slide ${i + 1}/${rawFiles.length}...`);
+          const upSub = await uploadMediaToGitHub({
+            file: rawFiles[i],
+            token: githubToken.trim(),
+            mainRepo: mainRepo.trim(),
+            videoRepo: videoRepo.trim(),
+            maxDimension: compressMaxDim,
+            quality: compressQuality,
+            watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
+          });
+          additionalImages.push(upSub.url);
+        }
+      } else {
+        mainImageUrl = compRes.results[0].dataUrl;
+        for (let i = 1; i < compRes.results.length; i++) {
+          additionalImages.push(compRes.results[i].dataUrl);
+        }
+      }
+
+      const inferred = inferTitlesFromFilename(rawFiles[0].name);
+      const titleFa = collectionTitleFa.trim() || (bulkTitlePrefix ? `${bulkTitlePrefix} - ${inferred.titleFa}` : `کالکشن تصویری ${inferred.titleFa}`);
+      const titleEn = collectionTitleEn.trim() || (bulkTitlePrefix ? `${bulkTitlePrefix} ${inferred.titleEn}` : `${inferred.titleEn} Monograph`);
+      const descFa = collectionDescFa.trim() || `کالکشن و مونوگراف اختصاصی شامل ${rawFiles.length} فریم عکاسی با نورپردازی و ترکیب‌بندی استودیویی سینا ضرغامی.`;
+      const descEn = collectionDescEn.trim() || `Monograph series featuring ${rawFiles.length} curated fine-art frames by Sina Zarghami Studio.`;
+
+      const collectionItem: PhotoItem = {
+        id: `collection-${Date.now()}`,
+        titleFa,
+        titleEn,
+        category: bulkCategory,
+        locationFa: bulkLocationFa || 'تهران، استودیو',
+        locationEn: bulkLocationEn || 'Tehran Studio',
+        year: photoYear || '1403',
+        camera: photoCamera || 'Canon R8',
+        lens: photoLens || 'Canon EF 50mm f/1.8',
+        imageUrl: mainImageUrl,
+        galleryImages: additionalImages,
+        isAlbum: true,
+        exif: {
+          focalLength: '50mm',
+          aperture: 'f/4.0',
+          shutter: '1/200s',
+          iso: '100',
+        },
+        descriptionFa: descFa,
+        descriptionEn: descEn,
+        printAvailable: photoPrintAvail,
+        printPriceToman: photoPriceToman,
+        printPriceUsd: photoPriceUsd,
+        digitalAvailable: true,
+        digitalPriceToman: 1800000,
+        digitalPriceUsd: 35,
+      };
+
+      const updatedContent = {
+        ...content,
+        photos: [collectionItem, ...content.photos],
+      };
+
+      onUpdateContent(updatedContent);
+      saveSiteContent(updatedContent);
+
+      // ارسال مستقیم به سرور تا در تمام دستگاه‌ها فوراً لود شود
+      try {
+        await fetch('/api/site-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedContent),
+        });
+      } catch {}
+
+      setRawFiles([]);
+      setCompressedResults([]);
+      setCleanBasePreviewUrl('');
+      setCollectionTitleFa('');
+      setCollectionTitleEn('');
+      setCollectionDescFa('');
+      setCollectionDescEn('');
+
+      alert(isFa
+        ? `🎉 کالکشن «${titleFa}» با موفقیت شامل ${1 + additionalImages.length} عکس به عنوان یک آلبوم ورق‌خور در سایت منتشر شد!`
+        : `Collection "${titleEn}" published successfully as a sliding gallery monograph!`
+      );
+    } catch (err: any) {
+      alert((isFa ? 'خطا در ثبت کالکشن: ' : 'Error: ') + err.message);
+    } finally {
+      setIsProcessingCollection(false);
+      setBulkUploadStatus(null);
+      setGithubUploadProgress(null);
+    }
+  };
+
   // =========================================================================
   // ۱. مدیریت گالری و آثار عکاسی (Photography & Albums)
   // =========================================================================
 
-  /**
-   * آماده‌سازی فرم برای ویرایش یک عکس موجود
-   */
   /**
    * آماده‌سازی فرم برای ویرایش یک عکس موجود
    */
@@ -1084,7 +1296,19 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         const newContent = { ...content, photos: [newPhoto, ...content.photos] };
         onUpdateContent(newContent);
         saveSiteContent(newContent);
-        alert(isFa ? (isVideoMedia ? 'ویدیو سینمایی با موفقیت در گالری ثبت شد!' : isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس منتشر شد!` : 'اثر در گالری ثبت گردید!') : 'Published!');
+
+        // ذخیره قطعی در سرور اختصاصی جهت عدم پاک شدن در رفرش
+        try {
+          await fetch('/api/site-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newContent),
+          });
+        } catch (serverErr) {
+          console.warn('عدم امکان ارسال به سرور:', serverErr);
+        }
+
+        alert(isFa ? (isVideoMedia ? 'ویدیو سینمایی با موفقیت در گالری ثبت و در سرور ذخیره شد!' : isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس در گالری ثبت و در سرور منتشر شد!` : 'اثر با موفقیت در گالری ثبت و در سرور ذخیره شد!') : 'Published!');
       }
 
       handleCancelEditPhoto();
@@ -2404,55 +2628,234 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 </div>
 
                 {/* ============================================================== */}
-                {/* سوئیچ حالت کاری استودیو: آپلود تکی با پیشنهاد هوش مصنوعی یا آپلود دسته‌جمعی بدون مصرف توکن */}
+                {/* سوئیچ حالت کاری استودیو: کالکشن ورق‌خور / آپلود تکی اثر / انتشار دسته‌جمعی */}
                 {/* ============================================================== */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-stone-100 rounded-xl border border-stone-200 gap-3">
                   <div className="flex items-center gap-2">
                     <Layers className="w-4 h-4 text-amber-700" />
                     <div>
                       <span className="text-xs font-bold text-stone-800 block">
-                        {isFa ? 'حالت کاری انتشار آثار استودیو:' : 'Publishing Mode:'}
+                        {isFa ? 'حالت کاری استودیو و انتشار آثار:' : 'Publishing Mode:'}
                       </span>
                       <span className="text-[10px] text-stone-500">
-                        {isFa ? 'امکان آپلود سریع دسته‌ای بدون مصرف توکن یا بررسی تکی با هوش مصنوعی' : 'Switch between single curation or bulk token-free uploads'}
+                        {isFa ? 'انتخاب کنید آثار به صورت آلبوم ورق‌خور، تک‌اثر یا دسته‌جمعی ثبت شوند.' : 'Choose collection slider, single masterpiece, or bulk separate posts.'}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-stone-200 text-xs">
                     <button
                       type="button"
-                      onClick={() => setIsBulkMode(false)}
-                      className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                        !isBulkMode ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                      onClick={() => {
+                        setStudioMode('collection');
+                        setIsBulkMode(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                        studioMode === 'collection' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
-                      {isFa ? 'آپلود تک‌اثر (همراه با پیشنهاد هوش مصنوعی)' : 'Single Photo + AI'}
+                      <Images className="w-3.5 h-3.5" />
+                      <span>{isFa ? 'کالکشن / آلبوم ورق‌خور (پیشنهادی)' : 'Collection Slider'}</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsBulkMode(true)}
+                      onClick={() => {
+                        setStudioMode('single');
+                        setIsBulkMode(false);
+                      }}
+                      className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+                        studioMode === 'single' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      {isFa ? 'آپلود تک‌اثر' : 'Single Photo'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStudioMode('bulk');
+                        setIsBulkMode(true);
+                      }}
                       className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                        isBulkMode ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
+                        studioMode === 'bulk' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
                       <span>⚡</span>
-                      <span>{isFa ? 'آپلود دسته‌جمعی (Bulk - بدون توکن هوش مصنوعی)' : 'Bulk Upload (Zero AI)'}</span>
+                      <span>{isFa ? 'آثار جداگانه (Zero AI)' : 'Bulk Separate'}</span>
                     </button>
                   </div>
                 </div>
 
-                {/* پنل آپلود دسته‌جمعی بدون مصرف توکن هوش مصنوعی */}
-                {isBulkMode && (
+                {/* ۱. پنل استودیو کالکشن و آلبوم تصویری ورق‌خور (اسلایدر چندعکسی با متن و داستان واحد) */}
+                {studioMode === 'collection' && (
+                  <div className="p-5 bg-gradient-to-r from-amber-50/80 via-stone-50 to-orange-50/60 rounded-2xl border-2 border-amber-400 shadow-sm space-y-4 text-xs animate-in fade-in">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
+                      <div>
+                        <h4 className="font-bold text-stone-900 text-sm flex items-center gap-2">
+                          <Images className="w-4 h-4 text-amber-700" />
+                          <span>{isFa ? 'استودیو کالکشن و مونوگراف اسلایدی (ورق‌خور در یک پست)' : 'Collection & Monograph Slider Studio'}</span>
+                        </h4>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          {isFa
+                            ? 'تمام تصاویر انتخاب‌شده به عنوان یک مجموعه واحد ثبت می‌شوند و کاربر در سایت می‌تواند عکس‌ها را به صورت اسلایدی ورق بزند.'
+                            : 'All selected photos will be published as ONE unified monograph post with an interactive slide viewer.'}
+                        </p>
+                      </div>
+                      <div className="text-left font-mono text-amber-800 font-bold bg-white px-3 py-1.5 rounded-lg border border-amber-300">
+                        {rawFiles.length > 0
+                          ? (isFa ? `${rawFiles.length} عکس برای این کالکشن انتخاب شده` : `${rawFiles.length} photos ready`)
+                          : (isFa ? 'هنوز عکسی انتخاب نشده' : 'No photos selected')}
+                      </div>
+                    </div>
+
+                    {/* دکمه پیشنهاد هوش مصنوعی برای کل کالکشن */}
+                    <div className="p-3 bg-white/90 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span className="text-xs text-stone-700">
+                          {isFa
+                            ? 'هوش مصنوعی جمینای می‌تواند با بررسی تصویر اول، بهترین عنوان و داستان هنری را برای کل این کالکشن پیشنهاد دهد.'
+                            : 'Gemini AI can propose a fine-art monograph title and story for the entire collection.'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAiSuggestCollection}
+                        disabled={isAiSuggestingCollection || (rawFiles.length === 0 && !cleanBasePreviewUrl)}
+                        className="px-4 py-2 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+                      >
+                        {isAiSuggestingCollection ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{isFa ? 'در حال نگارش داستان کالکشن...' : 'Analyzing...'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{isFa ? '✨ پیشنهاد عنوان و داستان کالکشن با جمینای' : 'Suggest Title & Story'}</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* فرم مشخصات کالکشن */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان فارسی کالکشن:' : 'Collection Title (FA):'}</label>
+                        <input
+                          type="text"
+                          value={collectionTitleFa}
+                          onChange={(e) => setCollectionTitleFa(e.target.value)}
+                          placeholder="مثال: کالکشن کفش چرم طبیعی دست‌دوز تبریز"
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium text-stone-900"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی کالکشن:' : 'Collection Title (EN):'}</label>
+                        <input
+                          type="text"
+                          value={collectionTitleEn}
+                          onChange={(e) => setCollectionTitleEn(e.target.value)}
+                          placeholder="e.g. Tabriz Handcrafted Leather Footwear Series"
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium text-stone-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'دسته‌بندی کالکشن:' : 'Category:'}</label>
+                        <select
+                          value={bulkCategory}
+                          onChange={(e) => setBulkCategory(e.target.value as any)}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium text-stone-900"
+                        >
+                          <option value="commercial-shoes">{isFa ? 'عکاسی صنعتی کفش (Footwear & Shoes)' : 'Commercial Shoes'}</option>
+                          <option value="commercial-jewelry">{isFa ? 'عکاسی صنعتی جواهرات (Jewelry & Gems)' : 'Commercial Jewelry'}</option>
+                          <option value="commercial-video">{isFa ? 'تیزر و ویدیوی صنعتی (Industrial Video)' : 'Commercial Video'}</option>
+                          <option value="landscape">{isFa ? 'چشم‌انداز و کویر (Landscape)' : 'Landscape'}</option>
+                          <option value="aerial">{isFa ? 'دید ۳۶۰ و هوایی (Aerial)' : 'Aerial'}</option>
+                          <option value="portrait">{isFa ? 'هایپرمکرو و چهره (Macro & Portrait)' : 'Macro & Portrait'}</option>
+                          <option value="architecture">{isFa ? 'صنعتی و معماری (Architecture)' : 'Architecture'}</option>
+                          <option value="documentary">{isFa ? 'مستند سفر (Documentary)' : 'Documentary'}</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'موقعیت مکانی:' : 'Location:'}</label>
+                        <input
+                          type="text"
+                          value={bulkLocationFa}
+                          onChange={(e) => setBulkLocationFa(e.target.value)}
+                          placeholder="تهران، استودیو صنعتی"
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'سال ثبت:' : 'Year:'}</label>
+                        <input
+                          type="text"
+                          value={photoYear}
+                          onChange={(e) => setPhotoYear(e.target.value)}
+                          placeholder="1403"
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'توضیحات و داستان کلی این مجموعه:' : 'Collection Story / Narrative:'}</label>
+                      <textarea
+                        rows={2}
+                        value={collectionDescFa}
+                        onChange={(e) => setCollectionDescFa(e.target.value)}
+                        placeholder="توضیحاتی در مورد متریال، زاویه نورپردازی، اهداف تبلیغاتی یا حس و حال این کالکشن..."
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white leading-relaxed"
+                      />
+                    </div>
+
+                    {bulkUploadStatus && (
+                      <div className="p-3 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-mono flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
+                        <span>{bulkUploadStatus}</span>
+                      </div>
+                    )}
+
+                    {/* دکمه ثبت و انتشار مستقیم کالکشن در زیر فرم */}
+                    <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-amber-200/80">
+                      <div className="text-[11px] text-stone-500">
+                        {isFa
+                          ? 'با کلیک روی دکمه زیر، کالکشن فوراً در دیتابیس ثبت، به سرور ارسال و در سایت منتشر می‌شود.'
+                          : 'Instantly packs and deploys the monograph collection to the site.'}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveCollection}
+                        disabled={isProcessingCollection || rawFiles.length === 0}
+                        className="px-6 py-3 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer text-sm"
+                      >
+                        <Images className="w-4 h-4" />
+                        <span>
+                          {isProcessingCollection
+                            ? (isFa ? 'در حال ثبت و انتشار کالکشن...' : 'Publishing Collection...')
+                            : (isFa
+                              ? `🚀 ثبت کالکشن (${rawFiles.length} عکس در یک آلبوم ورق‌خور) و انتشار فوری`
+                              : `Deploy Collection (${rawFiles.length} Photos Slider)`)}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ۲. پنل آپلود دسته‌جمعی به صورت آثار مجزا (Bulk Upload - Zero AI) */}
+                {studioMode === 'bulk' && (
                   <div className="p-5 bg-gradient-to-r from-amber-50/70 via-stone-50 to-orange-50/60 rounded-2xl border border-amber-300 shadow-xs space-y-4 text-xs animate-in fade-in">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
                       <div>
                         <h4 className="font-bold text-stone-900 text-sm flex items-center gap-2">
                           <Layers className="w-4 h-4 text-amber-700" />
-                          <span>{isFa ? 'انتشار دسته‌جمعی و سریع آثار بدون فراخوانی Gemini Vision' : 'Zero-Token Bulk Upload Studio'}</span>
+                          <span>{isFa ? 'انتشار دسته‌جمعی به صورت آثار جداگانه بدون مصرف توکن' : 'Zero-Token Bulk Upload Studio'}</span>
                         </h4>
                         <p className="text-[11px] text-stone-600 mt-0.5">
                           {isFa
-                            ? 'برای حفظ توکن‌های رایگان هوش مصنوعی و انتشار همزمان ده‌ها تصویر، دسته‌بندی و پیشوند عنوان را مشخص کرده و با یک کلیک منتشر نمایید.'
+                            ? 'هر فایل به عنوان یک پست مجزا در گالری ثبت می‌شود.'
                             : 'Upload multiple assets at once with no AI API consumption.'}
                         </p>
                       </div>
@@ -2520,7 +2923,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <span>
                           {isBulkProcessing
                             ? (isFa ? 'در حال انتشار دسته‌جمعی...' : 'Processing Bulk Upload...')
-                            : (isFa ? `انتشار دسته‌جمعی ${rawFiles.length} اثر بدون مصرف هوش مصنوعی` : `Publish ${rawFiles.length} Items (Zero AI)`)}
+                            : (isFa ? `انتشار دسته‌جمعی ${rawFiles.length} اثر به صورت مجزا` : `Publish ${rawFiles.length} Items (Zero AI)`)}
                         </span>
                       </button>
                     </div>
@@ -3151,8 +3554,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           ? (isFa ? 'ذخیره تغییرات اثر' : 'Update Photo')
                           : (isFa
                               ? compressedResults.length > 1
-                                ? `ثبت و انتشار آلبوم گالری (${compressedResults.length} عکس)`
-                                : 'ثبت و انتشار اثر در گالری'
+                                ? `🚀 ثبت و انتشار آلبوم گالری (${compressedResults.length} عکس)`
+                                : '💾 ثبت در گالری و انتشار فوری در سایت'
                               : 'Publish to Gallery')}
                       </span>
                     </button>

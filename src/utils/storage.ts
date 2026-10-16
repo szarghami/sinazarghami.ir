@@ -16,17 +16,31 @@ const GITHUB_TOKEN_KEY = 'sina_github_token_saved';
 const DEFAULT_PASSCODE = 'sina2026';
 
 /**
- * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
+ * دریافت اطلاعات سایت با اولویت ادغام هوشمند داده‌های سرور و محلی تا هیچ عکسی با رفرش پاک نشود
  */
 export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
+  const localData = loadSiteContent();
+
   // ۱. تلاش برای خواندن از API سرور فعال
   try {
     const res = await fetch(`/api/site-data?t=${Date.now()}`);
     if (res.ok) {
-      const data = await res.json();
-      if (data && data.profile) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        return data;
+      const remote = await res.json();
+      if (remote && remote.profile) {
+        // ادغام هوشمند عکس‌ها: عکس‌های محلی که شاید هنوز به سرور نرسیده‌اند حفظ شوند
+        const remotePhotos: any[] = remote.photos || [];
+        const localPhotos: any[] = localData.photos || [];
+        const remoteIds = new Set(remotePhotos.map((p) => p.id));
+        const missingLocal = localPhotos.filter((p) => !remoteIds.has(p.id));
+
+        const merged: SiteContent = {
+          ...remote,
+          profile: { ...remote.profile, ...(localData.profile || {}) },
+          photos: [...missingLocal, ...remotePhotos],
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        return merged;
       }
     }
   } catch (e) {
@@ -37,17 +51,27 @@ export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
   try {
     const res = await fetch(`/site-data.json?t=${Date.now()}`);
     if (res.ok) {
-      const data = await res.json();
-      if (data && data.profile) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        return data;
+      const remote = await res.json();
+      if (remote && remote.profile) {
+        const remotePhotos: any[] = remote.photos || [];
+        const localPhotos: any[] = localData.photos || [];
+        const remoteIds = new Set(remotePhotos.map((p) => p.id));
+        const missingLocal = localPhotos.filter((p) => !remoteIds.has(p.id));
+
+        const merged: SiteContent = {
+          ...remote,
+          photos: [...missingLocal, ...remotePhotos],
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        return merged;
       }
     }
   } catch (e) {
     // ادامه با حافظه محلی
   }
 
-  return null;
+  return localData;
 }
 
 /**
@@ -291,8 +315,107 @@ export function saveWatermarkPosition(position: string): void {
   localStorage.setItem(WATERMARK_POSITION_KEY, position);
 }
 
+const SETTINGS_API_URL = '/api/studio-settings';
+const STORAGE_KEY_MAIN_REPO = 'sina_github_main_repo';
+const STORAGE_KEY_VIDEO_REPO = 'sina_github_video_repo';
+const STORAGE_KEY_VIDEO_BASE_URL = 'sina_github_video_base_url';
+const STORAGE_KEY_FORCE_ALL_VIDEOS = 'sina_github_force_all_videos_to_video_repo';
+const DEFAULT_MAIN_REPO = 'szarghami/sinazarghami-aistudio-site';
+const DEFAULT_VIDEO_REPO = 'szarghami/video-portfolio';
+const DEFAULT_VIDEO_BASE_URL = 'https://szarghami.github.io/video-portfolio/';
+
+export interface StudioSettings {
+  githubToken?: string;
+  mainRepo?: string;
+  videoRepo?: string;
+  videoBaseUrl?: string;
+  forceAllVideos?: boolean;
+  youtubeApiKey?: string;
+  aparatApiKey?: string;
+  watermarkImg?: string;
+  watermarkOpacity?: number;
+  watermarkPosition?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
+}
+
 /**
- * ترسیم امضای کاری روی Canvas
+ * همگام‌سازی و خواندن تنظیمات استودیو از سرور جهت ماندگاری دائمی حتی پس از رفرش یا تعویض مرورگر
+ */
+export async function syncStudioSettingsFromServer(): Promise<StudioSettings> {
+  try {
+    const res = await fetch(`${SETTINGS_API_URL}?t=${Date.now()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && typeof data === 'object') {
+        if (data.githubToken) saveGitHubToken(data.githubToken);
+        if (data.mainRepo && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_MAIN_REPO, data.mainRepo);
+        if (data.videoRepo && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_VIDEO_REPO, data.videoRepo);
+        if (data.videoBaseUrl && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_VIDEO_BASE_URL, data.videoBaseUrl);
+        if (data.youtubeApiKey && typeof window !== 'undefined') {
+          localStorage.setItem('sina_youtube_api_key', data.youtubeApiKey);
+        }
+        if (data.aparatApiKey && typeof window !== 'undefined') {
+          localStorage.setItem('sina_aparat_api_key', data.aparatApiKey);
+        }
+        if (data.watermarkImg) saveWatermarkImage(data.watermarkImg);
+        if (data.watermarkOpacity !== undefined) saveWatermarkOpacity(data.watermarkOpacity);
+        if (data.watermarkPosition) saveWatermarkPosition(data.watermarkPosition);
+        return data;
+      }
+    }
+  } catch (err) {
+    console.warn('عدم امکان خواندن تنظیمات از سرور:', err);
+  }
+  return {
+    githubToken: getSavedGitHubToken(),
+    mainRepo: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_MAIN_REPO) || DEFAULT_MAIN_REPO : DEFAULT_MAIN_REPO,
+    videoRepo: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_VIDEO_REPO) || DEFAULT_VIDEO_REPO : DEFAULT_VIDEO_REPO,
+    videoBaseUrl: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_VIDEO_BASE_URL) || DEFAULT_VIDEO_BASE_URL : DEFAULT_VIDEO_BASE_URL,
+    forceAllVideos: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_FORCE_ALL_VIDEOS) === 'true' : true,
+    youtubeApiKey: typeof window !== 'undefined' ? localStorage.getItem('sina_youtube_api_key') || '' : '',
+    aparatApiKey: typeof window !== 'undefined' ? localStorage.getItem('sina_aparat_api_key') || '' : '',
+    watermarkImg: getSavedWatermarkImage(),
+    watermarkOpacity: getSavedWatermarkOpacity(),
+    watermarkPosition: getSavedWatermarkPosition(),
+  };
+}
+
+/**
+ * ذخیره تنظیمات استودیو هم در لوکال‌استوریج و هم در سرور ابری جهت حفظ همیشگی
+ */
+export async function saveStudioSettingsToServer(settings: Partial<StudioSettings>): Promise<void> {
+  if (settings.githubToken !== undefined) saveGitHubToken(settings.githubToken);
+  if (settings.mainRepo !== undefined && typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY_MAIN_REPO, settings.mainRepo);
+  }
+  if (settings.videoRepo !== undefined && typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY_VIDEO_REPO, settings.videoRepo);
+  }
+  if (settings.videoBaseUrl !== undefined && typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY_VIDEO_BASE_URL, settings.videoBaseUrl);
+  }
+  if (settings.youtubeApiKey !== undefined && typeof window !== 'undefined') {
+    localStorage.setItem('sina_youtube_api_key', settings.youtubeApiKey);
+  }
+  if (settings.aparatApiKey !== undefined && typeof window !== 'undefined') {
+    localStorage.setItem('sina_aparat_api_key', settings.aparatApiKey);
+  }
+  if (settings.watermarkImg !== undefined) saveWatermarkImage(settings.watermarkImg);
+  if (settings.watermarkOpacity !== undefined) saveWatermarkOpacity(settings.watermarkOpacity);
+  if (settings.watermarkPosition !== undefined) saveWatermarkPosition(settings.watermarkPosition);
+
+  try {
+    await fetch(SETTINGS_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+  } catch (err) {
+    console.warn('عدم امکان ذخیره تنظیمات استودیو در سرور:', err);
+  }
+}
+
+/**
+ * ترسیم امضای کاری روی Canvas بدون هیچ‌گونه سایه مشکی یا ضخیم‌شدن ناخواسته
  */
 export function drawWatermarkOnCanvas(
   ctx: CanvasRenderingContext2D,
@@ -327,10 +450,11 @@ export function drawWatermarkOnCanvas(
     y = Math.round((canvasHeight - targetHeight) / 2);
   }
 
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-  ctx.shadowBlur = 5;
-  ctx.shadowOffsetX = 1;
-  ctx.shadowOffsetY = 1;
+  // حذف سایه تیره که باعث ایجاد هاله دوتایی و حالت بولد ناخواسته می‌شد
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
 
   ctx.drawImage(wmImg, x, y, targetWidth, targetHeight);
   ctx.restore();

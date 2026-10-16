@@ -338,11 +338,22 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                           openLightbox(photo);
                         }}
                         className="p-3 bg-white/95 hover:bg-white text-stone-900 rounded-full shadow-lg transition-transform hover:scale-110 cursor-pointer"
-                        title={isFa ? 'مشاهده بزرگ‌نمایی و آلبوم' : 'Inspect Details'}
+                        title={isFa ? 'مشاهده بزرگ‌نمایی و پلیر' : 'Inspect Details'}
                       >
                         <Maximize2 className="w-4 h-4" />
                       </button>
-                      {photo.printAvailable && (
+
+                      {/* اگر اثر ویدیو باشد دکمه سفارش تیزر یا لایسنس 4K نمایش می‌یابد، نه چاپ! */}
+                      {photo.isVideo || photo.category === 'video' || photo.category === 'commercial-video' ? (
+                        <a
+                          href="#services"
+                          onClick={(e) => e.stopPropagation()}
+                          className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-full shadow-lg transition-transform hover:scale-105 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Film className="w-4 h-4" />
+                          <span>{isFa ? 'سفارش تیزر' : 'Order Video'}</span>
+                        </a>
+                      ) : photo.printAvailable ? (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -353,7 +364,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                           <ShoppingBag className="w-4 h-4" />
                           <span>{isFa ? 'خرید این اثر' : 'Purchase Work'}</span>
                         </button>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -389,7 +400,16 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                 {/* Bottom Action Footer */}
                 <div className="p-4 sm:p-5 pt-3 border-t border-stone-100 bg-stone-50/50 flex items-center justify-between mt-2">
                   <div>
-                    {photo.printAvailable && (
+                    {photo.isVideo || photo.category === 'video' || photo.category === 'commercial-video' ? (
+                      <div className="space-y-0.5">
+                        <span className="text-[10px] uppercase tracking-wider text-stone-500 block">
+                          {isFa ? 'کیفیت و کدک:' : 'Format:'}
+                        </span>
+                        <div className="text-xs font-black text-red-600 font-mono">
+                          {photo.videoQuality || '4K 60fps C-Log3'}
+                        </div>
+                      </div>
+                    ) : photo.printAvailable ? (
                       <div className="space-y-0.5">
                         <span className="text-[10px] uppercase tracking-wider text-stone-600 block">
                           {isFa ? 'شروع قیمت از:' : 'Starts at:'}
@@ -400,7 +420,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                             : `$${photo.digitalPriceUsd || photo.printPriceUsd}`}
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -409,10 +429,18 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                       className="px-3 py-1.5 text-xs text-stone-700 hover:text-stone-900 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>{isFa ? 'مشاهده' : 'View'}</span>
+                      <span>{isFa ? (photo.isVideo ? 'پخش ویدیو' : 'مشاهده') : (photo.isVideo ? 'Play Video' : 'View')}</span>
                     </button>
 
-                    {photo.printAvailable && (
+                    {photo.isVideo || photo.category === 'video' || photo.category === 'commercial-video' ? (
+                      <a
+                        href="#services"
+                        className="px-3.5 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Film className="w-3.5 h-3.5" />
+                        <span>{isFa ? 'سفارش تیزر' : 'Book Video'}</span>
+                      </a>
+                    ) : photo.printAvailable ? (
                       <button
                         onClick={() => handleSelectPrint(photo)}
                         className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
@@ -420,7 +448,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>{isFa ? 'سفارش اثر' : 'Order'}</span>
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>

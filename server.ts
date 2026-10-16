@@ -18,6 +18,7 @@ app.use(express.json({ limit: '50mb' }));
 // مسیرهای ذخیره‌سازی داده‌ها
 const DATA_FILE = path.join(__dirname, 'site-data.json');
 const PASSCODE_FILE = path.join(__dirname, 'admin-passcode.json');
+const SETTINGS_FILE = path.join(__dirname, 'studio-settings.json');
 const ANALYTICS_FILE = path.join(__dirname, 'analytics-data.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DEFAULT_PASSCODE = 'sina2026';
@@ -698,6 +699,34 @@ app.post('/api/passcode', (req, res) => {
       'utf-8'
     );
     return res.json({ success: true, passcode: cleanPass });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================================
+// ۷.۱. ذخیره و همگام‌سازی دائمی تنظیمات استودیو (توکن گیت‌هاب، آپارات، یوتیوب، واترمارک)
+// =========================================================================
+app.get('/api/studio-settings', (req, res) => {
+  try {
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
+      return res.json(data);
+    }
+    return res.json({});
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/studio-settings', (req, res) => {
+  try {
+    const existing = fs.existsSync(SETTINGS_FILE)
+      ? JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
+      : {};
+    const updated = { ...existing, ...req.body, updatedAt: new Date().toISOString() };
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf-8');
+    return res.json({ success: true, settings: updated });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
