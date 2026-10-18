@@ -21,10 +21,10 @@ import {
   AiPhotoSuggestion,
   SpecificPhotoCategory,
   PhotoCategory,
-  SyncedComment,
 } from '../types';
 import {
   checkAdminPasscode,
+  getCurrentPasscode,
   updateAdminPasscode,
   requestPasswordRecoveryToTelegram,
   exportSiteContentToJson,
@@ -42,6 +42,7 @@ import {
   getSavedWatermarkPosition,
   saveWatermarkPosition,
   DEFAULT_WATERMARK_SVG,
+  DEFAULT_DARK_PLACEHOLDER_SVG,
   drawWatermarkOnCanvas,
   WatermarkConfig,
   compressImageToWebP,
@@ -70,12 +71,26 @@ import {
   getVideoProcessorWorkflowYaml,
   parseAparatUrl,
   parseYoutubeUrl,
-  fetchAparatComments,
-  fetchYouTubeComments,
+  commitFileToGitHub,
+  publishSiteDataToGitHub,
+  uploadImageToGitHub,
 } from '../utils/githubMediaService';
-import { uploadToSupabaseStorage, smartUploadImage } from '../utils/supabase';
-import { translateToArtisticEnglish } from '../utils/aiTranslator';
+import {
+  translateToArtisticEnglish,
+  suggestPhotoDetailsDirect,
+  getActiveGeminiKey,
+  saveLocalGeminiKey,
+} from '../utils/aiTranslator';
+import {
+  encryptAdminSecrets,
+  decryptAdminSecrets,
+  saveSessionVault,
+  getSessionVault,
+  clearSessionVault,
+  AdminSecrets,
+} from '../utils/cryptoVault';
 import { sendTelegramNotification } from '../utils/telegram';
+import { syncAnalyticsToGitHub } from '../utils/analytics';
 import { VoiceDictationButton } from './VoiceDictationButton';
 import { AdminAnalyticsTab } from './AdminAnalyticsTab';
 import {
@@ -161,8 +176,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [rawFiles, setRawFiles] = useState<File[]>([]);
   const [compressedResults, setCompressedResults] = useState<CompressedImageResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadToCloud, setUploadToCloud] = useState(true);
-  const [supabaseUploadMsg, setSupabaseUploadMsg] = useState<string | null>(null);
   const [compressQuality, setCompressQuality] = useState<number>(0.68);
   const [compressMaxDim, setCompressMaxDim] = useState<number>(1400);
   const [overallStats, setOverallStats] = useState<{ origKB: number; compKB: number; percent: number } | null>(null);
@@ -196,6 +209,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [photoAparatUrl, setPhotoAparatUrl] = useState('');
   const [photoYoutubeUrl, setPhotoYoutubeUrl] = useState('');
   const [photoDefaultServer, setPhotoDefaultServer] = useState<'github' | 'aparat' | 'youtube'>('github');
+  // سیستم دوحالته ویدیو در پنل ادمین: نمونه‌کار اختصاصی (استریم گیت‌هاب) / ویدیوی طولانی (لینک آپارات / یوتیوب)
+  const [videoMode, setVideoMode] = useState<'github-chunked' | 'external-stream'>('github-chunked');
 
   // استیت‌های سیستم امضای کاری و واترمارک زنده با Canvas
   const [watermarkImg, setWatermarkImg] = useState<string>(() => getSavedWatermarkImage());
@@ -229,8 +244,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [isBulkProcessing, setIsBulkProcessing] = useState<boolean>(false);
   const [bulkUploadStatus, setBulkUploadStatus] = useState<string | null>(null);
 
-  // استیت‌های همگام‌سازی کامنت‌های یوتیوب و آپارات
-  const [isSyncingComments, setIsSyncingComments] = useState<boolean>(false);
+  // کلیدهای API سرویس‌ها
   const [youtubeApiKey, setYoutubeApiKey] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('sina_youtube_api_key') || '' : ''));
   const [aparatApiKey, setAparatApiKey] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('sina_aparat_api_key') || '' : ''));
 
@@ -311,6 +325,18 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
   const [showRepoSettings, setShowRepoSettings] = useState(false);
 
+  // استیت‌های کلید Gemini API و گاوصندوق رمزنگاری‌شده AES-256 (Web Crypto Vault)
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
+    const sessionSecrets = getSessionVault();
+    if (sessionSecrets && sessionSecrets.geminiApiKey) return sessionSecrets.geminiApiKey;
+    return getActiveGeminiKey();
+  });
+  const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
+  const [vaultPasscode, setVaultPasscode] = useState('');
+  const [isEncryptingVault, setIsEncryptingVault] = useState(false);
+  const [vaultStatus, setVaultStatus] = useState<{ success: boolean; msg: string } | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
@@ -328,27 +354,21 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       saveGitHubToken(githubToken.trim());
       saveMainRepo(mainRepo.trim());
 
-      const res = await fetch('/api/github/sync', {
+      // کامیت مستقیم داده‌ها در مخزن گیت‌هاب (Pure Static Git-CMS) از مرورگر
+      const res = await publishSiteDataToGitHub(content, githubToken.trim(), mainRepo.trim());
+
+      // ارسال فرعی به سرور توسعه اپلت
+      fetch('/api/site-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: githubToken.trim(),
-          repo: mainRepo.trim(),
-          path: 'site-data.json',
-          content: content,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'خطا در ارتباط با گیت‌هاب');
-      }
+        body: JSON.stringify(content),
+      }).catch(() => {});
 
       setGithubSyncStatus({
         success: true,
         msg: isFa
-          ? `فایل داده‌های وب‌سایت با موفقیت در مخزن ${mainRepo} کامیت و همگام‌سازی شد!`
-          : `Successfully committed to ${mainRepo}!`,
+          ? `فایل داده‌های وب‌سایت با موفقیت مستقیماً در مخزن ${mainRepo} کامیت و مستقر شد!`
+          : res.msg,
       });
     } catch (err: any) {
       setGithubSyncStatus({
@@ -357,6 +377,77 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       });
     } finally {
       setIsSyncingGithub(false);
+    }
+  };
+
+  /**
+   * رمزنگاری کلیدهای حساس (GitHub Token, Main Repo, Gemini API Key)
+   * با الگوریتم ۲۵۶ بیتی AES-256-GCM و مشتق‌سازی PBKDF2 با رمز عبور ثابت ادمین
+   * و کامیت مستقیم در مخزن گیت‌هاب (Pure Static Git-CMS Vault)
+   */
+  const handleSaveAndEncryptVault = async () => {
+    const passcode = (vaultPasscode || getCurrentPasscode() || pinInput).trim();
+    if (!passcode) {
+      alert(isFa ? 'لطفاً رمز عبور ادمین را وارد نمایید.' : 'Please enter admin password.');
+      return;
+    }
+    if (!githubToken.trim()) {
+      alert(isFa ? 'لطفاً ابتدا توکن شخصی گیت‌هاب (Personal Access Token) را وارد کنید.' : 'Please enter GitHub token first.');
+      return;
+    }
+
+    try {
+      setIsEncryptingVault(true);
+      setVaultStatus(null);
+
+      const secrets: AdminSecrets = {
+        githubToken: githubToken.trim(),
+        githubRepo: mainRepo.trim() || DEFAULT_MAIN_REPO,
+        geminiApiKey: geminiApiKey.trim(),
+      };
+
+      // ۱. رمزنگاری امن کلیدها بدون ارسال متن خام
+      const encryptedVaultBase64 = await encryptAdminSecrets(secrets, passcode);
+
+      // ۲. نگهداری کلیدها در sessionStorage و حافظه لوکال
+      saveSessionVault(secrets);
+      saveGitHubToken(githubToken.trim());
+      saveMainRepo(mainRepo.trim());
+      if (geminiApiKey.trim()) {
+        saveLocalGeminiKey(geminiApiKey.trim());
+      }
+
+      // ۳. ثبت رشته رمزنگاری‌شده در محتوای سایت
+      const updatedContent: SiteContent = {
+        ...content,
+        encryptedVault: encryptedVaultBase64,
+      };
+
+      onUpdateContent(updatedContent);
+      saveSiteContent(updatedContent);
+
+      // ۴. کامیت مستقیم روی گیت‌هاب
+      const gitRes = await publishSiteDataToGitHub(updatedContent, githubToken.trim(), mainRepo.trim());
+
+      if (gitRes.success) {
+        syncAnalyticsToGitHub(githubToken.trim(), mainRepo.trim()).catch(() => {});
+        setVaultStatus({
+          success: true,
+          msg: isFa
+            ? `🔒 گاوصندوق کلیدها با موفقیت رمزنگاری و در مخزن ${mainRepo} کامیت شد! اکنون در هر دستگاه دیگری (موبایل یا کافی‌نت) فقط با زدن رمز عبور ادمین، کلیدها خودکار بازگشایی خواهند شد.`
+            : 'Vault successfully encrypted and committed to GitHub!',
+        });
+        alert(isFa ? '🔒 گاوصندوق کلیدها با رمز عبور شما رمزنگاری و روی مخزن گیت‌هاب ثبت گردید!' : 'Vault saved and deployed to GitHub!');
+      } else {
+        throw new Error(gitRes.msg || 'خطا در کامیت گاوصندوق روی گیت‌هاب');
+      }
+    } catch (err: any) {
+      setVaultStatus({
+        success: false,
+        msg: isFa ? `خطا در رمزنگاری گاوصندوق: ${err.message}` : `Vault error: ${err.message}`,
+      });
+    } finally {
+      setIsEncryptingVault(false);
     }
   };
 
@@ -435,7 +526,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const sampleSrc = cleanBasePreviewUrl || photoImageUrl || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=800&q=80';
+    const sampleSrc = cleanBasePreviewUrl || photoImageUrl || DEFAULT_DARK_PLACEHOLDER_SVG;
     const baseImg = new window.Image();
     baseImg.crossOrigin = 'anonymous';
     baseImg.onload = () => {
@@ -530,97 +621,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     }
   };
 
-  /**
-   * همگام‌سازی و دریافت خودکار کامنت‌های آپارات (بدون نیاز به API Key از طریق پروکسی CORS)
-   * و ترکیب آن با کامنت‌های یوتیوب و ذخیره مستقیم در آرایه syncedComments دیتای سایت
-   */
-  const handleSyncSocialComments = async () => {
-    setIsSyncingComments(true);
-    try {
-      let totalAparatSynced = 0;
-      let totalYtSynced = 0;
-      let totalVideosScanned = 0;
 
-      const updatedPhotos = await Promise.all(
-        content.photos.map(async (p) => {
-          const hasAparat = Boolean(p.aparatUrl);
-          const hasYoutube = Boolean(p.youtubeUrl);
-          if (!hasAparat && !hasYoutube) return p;
-
-          totalVideosScanned++;
-          const existing = p.syncedComments || [];
-          let fetchedAparatComments: SyncedComment[] = [];
-          let fetchedYoutubeComments: SyncedComment[] = [];
-
-          // ۱. دریافت خودکار کامنت‌های آپارات با فراخوانی آدرس عمومی https://www.aparat.com/api/fa/v1/video/comment/list/videohash/[uid]
-          if (hasAparat) {
-            const aparatInfo = parseAparatUrl(p.aparatUrl || '');
-            const uid = aparatInfo.hash || p.aparatUrl?.trim();
-            if (uid) {
-              const resComments = await fetchAparatComments(uid);
-              if (resComments.length > 0) {
-                fetchedAparatComments = resComments;
-                totalAparatSynced += resComments.length;
-              }
-            }
-          }
-
-          // ۲. دریافت کامنت‌های یوتیوب (در صورت ثبت YouTube API Key)
-          if (hasYoutube && youtubeApiKey.trim()) {
-            const ytInfo = parseYoutubeUrl(p.youtubeUrl || '');
-            const ytId = ytInfo.videoId;
-            if (ytId) {
-              const resYt = await fetchYouTubeComments(ytId, youtubeApiKey.trim());
-              if (resYt.length > 0) {
-                fetchedYoutubeComments = resYt;
-                totalYtSynced += resYt.length;
-              }
-            }
-          }
-
-          // ۳. ترکیب هوشمند با کامنت‌های موجود و جلوگیری از تکرار
-          const existingAparat = existing.filter((c) => c.platform === 'aparat');
-          const existingYoutube = existing.filter((c) => c.platform === 'youtube');
-
-          // اگر کامنت‌های زنده‌ای از آپارات دریافت شد، جایگزین یا اضافه می‌کنیم؛ در غیر این صورت کامنت‌های ثبت‌شده قبلی را حفظ می‌کنیم
-          const finalAparat = fetchedAparatComments.length > 0 ? fetchedAparatComments : existingAparat;
-          const finalYoutube = fetchedYoutubeComments.length > 0 ? fetchedYoutubeComments : existingYoutube;
-
-          // ادغام و یکتاسازی بر اساس متن یا شناسه
-          const mergedMap = new Map<string, SyncedComment>();
-          [...finalYoutube, ...finalAparat].forEach((cmt) => {
-            const key = `${cmt.platform}_${cmt.text.trim().toLowerCase()}`;
-            if (!mergedMap.has(key)) {
-              mergedMap.set(key, cmt);
-            }
-          });
-
-          return {
-            ...p,
-            syncedComments: Array.from(mergedMap.values()),
-          };
-        })
-      );
-
-      const newContent = { ...content, photos: updatedPhotos };
-      onUpdateContent(newContent);
-      saveSiteContent(newContent);
-
-      const successMsg = isFa
-        ? `🎉 همگام‌سازی با موفقیت انجام شد!\n` +
-          `• تعداد ویدیوهای بررسی‌شده: ${totalVideosScanned}\n` +
-          `• نظرات دریافتی از آپارات (بدون API Key): ${totalAparatSynced} نظر\n` +
-          (totalYtSynced > 0 ? `• نظرات دریافتی از یوتیوب: ${totalYtSynced} نظر\n` : '') +
-          `تمامی نظرات در دیتای سایت ذخیره شدند و اکنون زیر ویدیوها در گالری قابل مشاهده هستند.`
-        : `Comments synced successfully!\nScanned ${totalVideosScanned} videos.\nAparat: ${totalAparatSynced} comments.\nYouTube: ${totalYtSynced} comments.`;
-
-      alert(successMsg);
-    } catch (err: any) {
-      alert((isFa ? 'خطا در همگام‌سازی کامنت‌ها: ' : 'Error: ') + err.message);
-    } finally {
-      setIsSyncingComments(false);
-    }
-  };
 
   /**
    * آپلود و انتشار دسته‌جمعی (Bulk Upload) بدون فراخوانی خودکار Gemini Vision
@@ -764,25 +765,78 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   /**
-   * بررسی رمز ورود
+   * بررسی رمز ورود و گشایش خودکار گاوصندوق رمزنگاری‌شده (AES-256-GCM Vault)
    */
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (checkAdminPasscode(pinInput)) {
-      setIsAuthenticated(true);
-      setSessionAuthenticated(true);
-      setPinError(false);
-    } else {
+    const enteredPin = pinInput.trim();
+    if (!enteredPin) {
       setPinError(true);
+      return;
+    }
+
+    setIsLoggingIn(true);
+    setPinError(false);
+
+    try {
+      // ۱. اگر گاوصندوق رمزنگاری‌شده AES-256 در دیتای سایت وجود دارد، رمزگشایی با رمز عبور
+      if (content.encryptedVault) {
+        try {
+          const secrets = await decryptAdminSecrets(content.encryptedVault, enteredPin);
+          if (secrets) {
+            // رمزگشایی با موفقیت انجام شد!
+            setIsAuthenticated(true);
+            setSessionAuthenticated(true);
+            setPinError(false);
+            saveSessionVault(secrets);
+
+            if (secrets.githubToken) {
+              setGithubToken(secrets.githubToken);
+              saveGitHubToken(secrets.githubToken);
+            }
+            if (secrets.githubRepo) {
+              setMainRepoState(secrets.githubRepo);
+              saveMainRepo(secrets.githubRepo);
+            }
+            if (secrets.geminiApiKey) {
+              setGeminiApiKey(secrets.geminiApiKey);
+              saveLocalGeminiKey(secrets.geminiApiKey);
+            }
+            return;
+          }
+        } catch (vaultErr) {
+          console.warn('Vault decryption attempt failed:', vaultErr);
+        }
+      }
+
+      // ۲. بررسی با رمز عبور ثابت
+      if (checkAdminPasscode(enteredPin)) {
+        setIsAuthenticated(true);
+        setSessionAuthenticated(true);
+        setPinError(false);
+
+        // بازیابی کلیدهای امن از سشن تب در صورت وجود
+        const sessionSecrets = getSessionVault();
+        if (sessionSecrets) {
+          if (sessionSecrets.githubToken) setGithubToken(sessionSecrets.githubToken);
+          if (sessionSecrets.githubRepo) setMainRepoState(sessionSecrets.githubRepo);
+          if (sessionSecrets.geminiApiKey) setGeminiApiKey(sessionSecrets.geminiApiKey);
+        }
+      } else {
+        setPinError(true);
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
   /**
-   * خروج از پنل مدیریت
+   * خروج از پنل مدیریت (پاکسازی سشن و گاوصندوق)
    */
   const handleLogout = () => {
     setIsAuthenticated(false);
     setSessionAuthenticated(false);
+    clearSessionVault();
     setPinInput('');
   };
 
@@ -800,11 +854,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   // =========================================================================
-  // توابع ترجمه هوشمند با هوش مصنوعی (AI Translation Helpers)
+  // توابع ترجمه هوشمند و کپشن‌نویسی مستقیم با هوش مصنوعی (Client-Side Gemini API)
   // =========================================================================
 
   /**
-   * ترجمه تک‌فیلدی به کمک هوش مصنوعی جمینای
+   * ترجمه تک‌فیلدی به کمک هوش مصنوعی جمینای مستقیم در مرورگر
    */
   const handleAiTranslate = async (
     persianText: string,
@@ -816,7 +870,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     if (!persianText.trim()) return;
     try {
       setTranslatingField(fieldId);
-      const res = await translateToArtisticEnglish(persianText, type, category);
+      const activeKey = geminiApiKey || getActiveGeminiKey();
+      const res = await translateToArtisticEnglish(persianText, type, category, activeKey);
       targetSetter(res);
     } finally {
       setTranslatingField(null);
@@ -824,7 +879,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   /**
-   * تحلیل بصری عکس توسط هوش مصنوعی جمینای و ارائه پیشنهادات موضوع، عنوان و داستان
+   * تحلیل بصری عکس توسط هوش مصنوعی جمینای (مستقیم در مرورگر بدون نیاز به سرور)
    */
   const handleAiSuggestPhoto = async () => {
     const currentImage = compressedResults.length > 0
@@ -836,27 +891,23 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       return;
     }
 
+    const activeKey = geminiApiKey || getActiveGeminiKey();
+    if (!activeKey) {
+      alert(
+        isFa
+          ? '🔑 کلید Gemini API تنظیم نشده است!\nلطفاً در تب «انتشار و پشتیبان»، در بخش گاوصندوق کلید اختصاصی Google Gemini API خود را وارد کنید تا هوش مصنوعی مستقیم فعال شود.'
+          : 'Please enter your Gemini API key in the Publish & Vault settings tab.'
+      );
+      return;
+    }
+
     try {
       setIsAiSuggesting(true);
       setAiSuggestError(null);
-      const res = await fetch('/api/gemini/suggest-photo-details', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: currentImage.startsWith('data:') ? currentImage : undefined,
-          imageUrl: currentImage.startsWith('http') ? currentImage : undefined,
-          titleHint: photoTitleFa || undefined,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'خطا در تحلیل عکس با جمینای');
-      }
-
-      setAiSuggestion(data.suggestion);
+      const suggestion = await suggestPhotoDetailsDirect(currentImage, activeKey);
+      setAiSuggestion(suggestion);
     } catch (err: any) {
-      setAiSuggestError(err.message || 'خطا در ارتباط با هوش مصنوعی');
+      setAiSuggestError(err.message || 'خطا در ارتباط با هوش مصنوعی جمینای');
     } finally {
       setIsAiSuggesting(false);
     }
@@ -882,7 +933,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   /**
-   * پیشنهاد هوشمند عنوان و داستان کالکشن با هوش مصنوعی جمینای
+   * پیشنهاد هوشمند عنوان و داستان کالکشن با هوش مصنوعی جمینای مستقیم در مرورگر
    */
   const handleAiSuggestCollection = async () => {
     const currentImage = cleanBasePreviewUrl || (compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl);
@@ -891,24 +942,19 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       return;
     }
 
+    const activeKey = geminiApiKey || getActiveGeminiKey();
+    if (!activeKey) {
+      alert(
+        isFa
+          ? '🔑 کلید Gemini API تنظیم نشده است!\nلطفاً در تب «انتشار و پشتیبان»، در بخش گاوصندوق کلید اختصاصی Google Gemini API خود را وارد کنید تا هوش مصنوعی فعال شود.'
+          : 'Please enter your Gemini API key in the Publish & Vault settings tab.'
+      );
+      return;
+    }
+
     try {
       setIsAiSuggestingCollection(true);
-      const res = await fetch('/api/gemini/suggest-photo-details', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageBase64: currentImage.startsWith('data:') ? currentImage : undefined,
-          imageUrl: currentImage.startsWith('http') ? currentImage : undefined,
-          titleHint: collectionTitleFa ? `کالکشن: ${collectionTitleFa}` : 'کالکشن مجموعه تصاویر مرتبط استودیویی یا صنعتی',
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'خطا در ارتباط با هوش مصنوعی');
-      }
-
-      const s = data.suggestion;
+      const s = await suggestPhotoDetailsDirect(currentImage, activeKey);
       if (s.titleFa) setCollectionTitleFa(`کالکشن ${s.titleFa}`);
       if (s.titleEn) setCollectionTitleEn(`${s.titleEn} Monograph`);
       if (s.category) setBulkCategory(s.category);
@@ -917,7 +963,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       if (s.descriptionFa) setCollectionDescFa(s.descriptionFa);
       if (s.descriptionEn) setCollectionDescEn(s.descriptionEn);
 
-      alert(isFa ? '✨ عنوان و داستان جامع برای کالکشن پیشنهاد و در فرم قرار گرفت!' : 'Collection title and narrative generated!');
+      alert(isFa ? '✨ عنوان و داستان جامع برای کالکشن با جمینای پیشنهاد و در فرم قرار گرفت!' : 'Collection title and narrative generated with Gemini!');
     } catch (err: any) {
       alert((isFa ? 'خطا در پیشنهاد هوش مصنوعی: ' : 'AI error: ') + err.message);
     } finally {
@@ -1165,47 +1211,30 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       }
       // ۲. اگر کاربر فایل عکس انتخاب کرده باشد
       else if (compressedResults.length > 0) {
-        if (uploadToGitHubOption && githubToken.trim()) {
-          setGithubUploadProgress(isFa ? 'در حال بهینه‌سازی WebP همراه با حک امضای کاری و آپلود در مخزن اصلی...' : 'Uploading WebP with watermark to GitHub...');
-          const uploadRes = await uploadMediaToGitHub({
-            file: rawFiles[0],
-            token: githubToken.trim(),
-            mainRepo: mainRepo.trim(),
-            videoRepo: videoRepo.trim(),
-            maxDimension: compressMaxDim,
-            quality: compressQuality,
-            watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
-            onProgress: (status) => setGithubUploadProgress(status),
-          });
-          mainImageUrl = uploadRes.url;
-
-          if (rawFiles.length > 1) {
-            for (let i = 1; i < rawFiles.length; i++) {
-              setGithubUploadProgress(`در حال بارگذاری تصویر ${i + 1} از ${rawFiles.length} در گیت‌هاب...`);
-              const subUpload = await uploadMediaToGitHub({
-                file: rawFiles[i],
-                token: githubToken.trim(),
-                mainRepo: mainRepo.trim(),
-                videoRepo: videoRepo.trim(),
-                maxDimension: compressMaxDim,
-                quality: compressQuality,
-                watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
-              });
-              additionalImages.push(subUpload.url);
-            }
-          }
-        } else if (uploadToCloud) {
-          setSupabaseUploadMsg('در حال بارگذاری هوشمند در Supabase Storage و سرور...');
-          const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
-          mainImageUrl = mainUpload.success && mainUpload.publicUrl ? mainUpload.publicUrl : compressedResults[0].dataUrl;
+        if (githubToken && githubToken.trim()) {
+          setGithubUploadProgress(isFa ? 'در حال ارسال تصویر فشرده WebP به مخزن گیت‌هاب (Pure Static Git-CMS)...' : 'Uploading WebP to GitHub...');
+          const uploadRes = await uploadImageToGitHub(
+            compressedResults[0].dataUrl,
+            rawFiles[0]?.name || `photo_${Date.now()}`,
+            githubToken.trim(),
+            mainRepo.trim()
+          );
+          mainImageUrl = uploadRes.publicUrl;
 
           if (compressedResults.length > 1) {
             for (let i = 1; i < compressedResults.length; i++) {
-              const subUpload = await smartUploadImage(compressedResults[i].dataUrl, `sub_${Date.now()}_${i}`);
-              additionalImages.push(subUpload.success && subUpload.publicUrl ? subUpload.publicUrl : compressedResults[i].dataUrl);
+              setGithubUploadProgress(isFa ? `در حال آپلود تصویر ${i + 1} از ${compressedResults.length} در گیت‌هاب...` : `Uploading image ${i + 1}/${compressedResults.length}...`);
+              const subUpload = await uploadImageToGitHub(
+                compressedResults[i].dataUrl,
+                rawFiles[i]?.name || `sub_${Date.now()}_${i}`,
+                githubToken.trim(),
+                mainRepo.trim()
+              );
+              additionalImages.push(subUpload.publicUrl);
             }
           }
         } else {
+          // در صورت عدم وارد شدن توکن، داده WebP فشرده‌شده به صورت محلی ذخیره می‌شود
           mainImageUrl = compressedResults[0].dataUrl;
           if (compressedResults.length > 1) {
             additionalImages = compressedResults.slice(1).map((r) => r.dataUrl);
@@ -1267,7 +1296,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           locationFa: photoLocationFa || 'ایران',
           locationEn: photoLocationEn || 'Iran',
           year: photoYear || '1403',
-          imageUrl: mainImageUrl || (isVideoMedia ? 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1600&q=80' : ''),
+          imageUrl: mainImageUrl || (isVideoMedia ? DEFAULT_DARK_PLACEHOLDER_SVG : ''),
           videoUrl: mainVideoUrl || photoGithubVideoUrl || (isVideoMedia ? mainImageUrl : undefined),
           githubVideoUrl: photoGithubVideoUrl || mainVideoUrl || undefined,
           aparatUrl: photoAparatUrl || undefined,
@@ -1527,7 +1556,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         durationEn: expDurationEn || expDurationFa,
         seasonFa: expSeasonFa,
         seasonEn: expSeasonEn || expSeasonFa,
-        coverImage: expImage || 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
+        coverImage: expImage || DEFAULT_DARK_PLACEHOLDER_SVG,
         descriptionFa: expDescFa || 'سفر اکتشافی و مسترکلاس میدانی عکاسی به سرپرستی سینا ضرغامی.',
         descriptionEn: expDescEn || 'Field photography expedition led by Sina Zarghami.',
         highlightsFa: ['پیمایش تخصصی با خودروهای آفرود مجهز', 'ورکشاپ عکاسی شب و رصد آسمان تاریک'],
@@ -1634,7 +1663,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         subtitleEn: bookSubtitleEn || 'Photographic Monograph & Visual Essay',
         statusFa: bookStatusFa,
         statusEn: bookStatusEn,
-        coverImage: bookCoverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1000&q=80',
+        coverImage: bookCoverImage || DEFAULT_DARK_PLACEHOLDER_SVG,
         descriptionFa: bookDescFa || 'کتاب فاین‌آرت و مستندنگاری زیست‌بوم‌های بکر ایران.',
         descriptionEn: bookDescEn || 'Fine art monograph capturing Iran untouched wilderness.',
         pages: bookPages,
@@ -1770,61 +1799,66 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       setPublishStatus(null);
       saveGitHubToken(githubToken);
 
-      // ۱. ذخیره فوری در کش لوکال استوریج
-      saveSiteContent(content);
-
-      // ۲. ذخیره قطعی در سرور اختصاصی جهت همگام‌سازی لحظه‌ای بین لپ‌تاپ و گوشی
-      const serverRes = await fetch('/api/site-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(content),
-      });
-
-      if (!serverRes.ok) {
-        throw new Error('سرور در ذخیره‌سازی داده با خطا مواجه شد.');
+      // در صورت وجود توکن و رمز ادمین، اطمینان از به‌روز بودن گاوصندوق رمزنگاری‌شده در فایل داده‌ها
+      let contentToPublish = { ...content };
+      const currentPass = (vaultPasscode || getCurrentPasscode() || pinInput).trim();
+      if (githubToken.trim() && currentPass) {
+        try {
+          const secrets: AdminSecrets = {
+            githubToken: githubToken.trim(),
+            githubRepo: mainRepo.trim() || DEFAULT_MAIN_REPO,
+            geminiApiKey: geminiApiKey.trim(),
+          };
+          const encryptedVault = await encryptAdminSecrets(secrets, currentPass);
+          contentToPublish.encryptedVault = encryptedVault;
+          saveSessionVault(secrets);
+          onUpdateContent(contentToPublish);
+        } catch (vErr) {
+          console.warn('Auto vault encryption before publish:', vErr);
+        }
       }
 
-      // ۳. ارسال اعلان انتشار به تلگرام سینا ضرغامی
-      await sendTelegramNotification(
-        `🚀 <b>انتشار فوری نسخه جدید وب‌سایت sinazarghami.ir</b>\n` +
-        `سینا جان، تمام تغییرات، آثار جدید، پروژه‌ها و متون در سرور ابری ذخیره شدند و اکنون در تمام گوشی‌ها و لپ‌تاپ‌ها به صورت هماهنگ نمایش داده می‌شوند.`
-      );
+      // ۱. ذخیره فوری در کش لوکال استوریج
+      saveSiteContent(contentToPublish);
 
-      // ۴. در صورتی که توکن گیت‌هاب وارد شده باشد، همگام‌سازی با مخزن szarghami/sinazarghami.ir انجام می‌شود
+      // ۲. در صورتی که توکن گیت‌هاب وارد شده باشد، انتشار و کامیت مستقیم در گیت‌هاب (Pure Static Git-CMS)
       let githubMsg = '';
       if (githubToken && githubToken.trim()) {
         try {
-          const syncRes = await fetch('/api/github/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token: githubToken.trim(),
-              repo: 'szarghami/sinazarghami.ir',
-              path: 'site-data.json',
-              content: content,
-            }),
-          });
-          const syncData = await syncRes.json();
-          if (syncRes.ok && syncData.success) {
+          const syncResult = await publishSiteDataToGitHub(contentToPublish, githubToken.trim(), mainRepo.trim());
+          if (syncResult.success) {
             githubMsg = isFa
-              ? ' همچنین همگام‌سازی با مخزن گیت‌هاب szarghami/sinazarghami.ir با موفقیت انجام شد.'
-              : ' and repository szarghami/sinazarghami.ir was successfully synchronized.';
-          } else if (syncData.error) {
-            githubMsg = isFa
-              ? ` (توجه: ذخیره در سرور انجام شد، اما گیت‌هاب: ${syncData.error})`
-              : ` (Server updated, GitHub notice: ${syncData.error})`;
+              ? ` و تغییرات مستقیماً در مخزن گیت‌هاب ${mainRepo} کامیت و مستقر شدند.`
+              : ` and successfully committed directly to ${mainRepo}.`;
+            syncAnalyticsToGitHub(githubToken.trim(), mainRepo.trim()).catch(() => {});
           }
-        } catch (gitErr) {
-          console.warn('GitHub sync optional warning:', gitErr);
+        } catch (gitErr: any) {
+          console.warn('Direct GitHub publish error:', gitErr);
+          githubMsg = isFa
+            ? ` (توجه گیت‌هاب: ${gitErr.message})`
+            : ` (GitHub notice: ${gitErr.message})`;
         }
       }
+
+      // ۳. ذخیره فرعی در /api/site-data با .catch() جهت هماهنگی محیط پیش‌نمایش محلی/AI Studio بدون خطا در هاست استاتیک
+      fetch('/api/site-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contentToPublish),
+      }).catch(() => {});
+
+      // ۴. ارسال اعلان انتشار به تلگرام سینا ضرغامی
+      sendTelegramNotification(
+        `🚀 <b>انتشار مستقیم نسخه جدید وب‌سایت sinazarghami.ir (Pure Static Git-CMS)</b>\n` +
+        `سینا جان، تمامی تغییرات و متون مستقیماً در مخزن گیت‌هاب ذخیره شدند و نسخه استاتیک با موفقیت منتشر شد.`
+      ).catch(() => {});
 
       setInstantPublishSuccess(true);
       setPublishStatus({
         success: true,
         msg: isFa
-          ? `انتشار فوری با موفقیت انجام شد! تمامی تغییرات در سرور ابری ثبت و بین گوشی و لپ‌تاپ یکپارچه شدند.${githubMsg}`
-          : `Universal Publish Succeeded! Live and synchronized across all devices.${githubMsg}`,
+          ? `انتشار با موفقیت انجام شد! تمامی تغییرات ذخیره شدند${githubMsg}`
+          : `Universal Publish Succeeded! Live and synchronized.${githubMsg}`,
       });
       setTimeout(() => setInstantPublishSuccess(false), 8000);
     } catch (err: any) {
@@ -1950,6 +1984,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   ? 'جهت مدیریت آثار، ترجمه هوشمند، تغییر پست‌ها و تنظیمات، رمز عبور اختصاصی خود را وارد نمایید:'
                   : 'Enter your studio password to unlock:'}
               </p>
+              {content.encryptedVault && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-[11px] font-medium mt-1">
+                  <Lock className="w-3 h-3 text-amber-700" />
+                  <span>{isFa ? 'گاوصندوق AES-256 فعال: بازگشایی خودکار توکن‌ها' : 'AES-256 Vault Active'}</span>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleLogin} className="space-y-3">
@@ -1958,6 +1998,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 placeholder={isFa ? 'رمز عبور' : 'Password'}
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
+                disabled={isLoggingIn}
                 className={`w-full px-4 py-2.5 text-center text-sm font-mono tracking-wider border rounded-lg focus:outline-none focus:ring-2 ${
                   pinError
                     ? 'border-red-500 focus:ring-red-300'
@@ -1973,9 +2014,17 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
+                disabled={isLoggingIn}
+                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-600 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
               >
-                {isFa ? 'ورود به پنل' : 'Unlock Studio'}
+                {isLoggingIn ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                    <span>{isFa ? 'در حال بازگشایی گاوصندوق...' : 'Unlocking Vault...'}</span>
+                  </>
+                ) : (
+                  <span>{isFa ? 'ورود به پنل' : 'Unlock Studio'}</span>
+                )}
               </button>
             </form>
 
@@ -2376,15 +2425,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             className="rounded text-amber-700 focus:ring-amber-600"
                           />
                           <span className="font-bold text-amber-900">{isFa ? 'آپلود مستقیم در گیت‌هاب' : 'GitHub Routing'}</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 text-xs text-stone-500 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={uploadToCloud}
-                            onChange={(e) => setUploadToCloud(e.target.checked)}
-                            className="rounded text-amber-700 focus:ring-amber-600"
-                          />
-                          <span>{isFa ? 'باکت پشتیبان' : 'Backup Bucket'}</span>
                         </label>
                       </div>
                     </div>
@@ -3110,81 +3150,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
 
-                {/* ============================================================== */}
-                {/* پنل زیرساخت نظرات یوتیوب و آپارات */}
-                {/* ============================================================== */}
-                <div className="p-5 bg-gradient-to-br from-stone-900 to-stone-950 text-white rounded-2xl border border-stone-800 shadow-md space-y-4 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-pink-600/20 text-pink-400 border border-pink-500/30 flex items-center justify-center shrink-0">
-                        <MessageSquare className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-                          <span>{isFa ? 'زیرساخت نظرات همگام‌سازی‌شده یوتیوب و آپارات' : 'YouTube & Aparat Synced Comments'}</span>
-                          <span className="text-[10px] bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono">
-                            بدون فیلترشکن
-                          </span>
-                        </h4>
-                        <p className="text-[11px] text-stone-400 mt-0.5">
-                          {isFa
-                            ? 'نظرات دریافتی در یوتیوب و آپارات به صورت مستقیم در دیتای سایت ذخیره شده و برای کاربران ایرانی بدون نیاز به فیلترشکن به نمایش درمی‌آیند.'
-                            : 'Sync comments to site storage for seamless viewing inside Iran.'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleSyncSocialComments}
-                      disabled={isSyncingComments}
-                      className="px-4 py-2 bg-gradient-to-r from-pink-700 via-red-600 to-amber-600 hover:opacity-90 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isSyncingComments ? 'animate-spin' : ''}`} />
-                      <span>{isSyncingComments ? (isFa ? 'در حال دریافت نظرات...' : 'Syncing...') : (isFa ? 'همگام‌سازی کامنت‌های یوتیوب و آپارات' : 'Sync Comments Now')}</span>
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 bg-stone-950/70 rounded-xl border border-stone-800 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-pink-400 flex items-center gap-1.5">
-                          <span>🇮🇷</span>
-                          <span>{isFa ? 'وب‌سرویس عمومی آپارات (بدون نیاز به API Key):' : 'Aparat Public API (No Key Needed):'}</span>
-                        </span>
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">
-                          خودکار با CORS Proxy ✓
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-stone-300 leading-relaxed">
-                        {isFa
-                          ? 'کامنت‌ها به صورت خودکار با شناسه ویدیو (uid) از آدرس عمومی aparat.com/api/fa/v1/video/comment/list/videohash/[uid] فراخوانی و ذخیره می‌شوند.'
-                          : 'Auto-fetched via CORS proxy using videohash [uid] with zero credentials.'}
-                      </p>
-                    </div>
-
-                    <div className="p-3 bg-stone-950/70 rounded-xl border border-stone-800 space-y-1.5">
-                      <label className="block text-[11px] font-bold text-red-400 mb-1 flex items-center gap-1.5">
-                        <Play className="w-3 h-3 text-red-500 fill-red-500" />
-                        <span>{isFa ? 'کلید API یوتیوب (اختیاری برای نظرات یوتیوب):' : 'YouTube Data API v3 Key (Optional):'}</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={youtubeApiKey}
-                        onChange={(e) => {
-                          setYoutubeApiKey(e.target.value);
-                          if (typeof window !== 'undefined') localStorage.setItem('sina_youtube_api_key', e.target.value);
-                        }}
-                        placeholder="AIzaSy... (اختیاری)"
-                        className="w-full px-3 py-1.5 bg-stone-900 border border-stone-700 rounded-lg text-white font-mono text-xs focus:border-amber-500 focus:outline-none"
-                      />
-                      <span className="text-[10px] text-stone-500 block">
-                        {isFa ? 'در صورت خالی بودن، نظرات قبلی یوتیوب حفظ می‌شوند.' : 'Existing YouTube comments are preserved if empty.'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
                 {/* فرم مشخصات اثر / آلبوم (همراه با دکمه‌های ترجمه Gemini AI) */}
                 <form onSubmit={handleSavePhoto} className="p-5 bg-white rounded-2xl border border-stone-200 space-y-4 text-xs">
                   <div className="flex items-center justify-between border-b border-stone-200 pb-3">
@@ -3300,96 +3265,187 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     </div>
                   </div>
 
-                  {/* تنظیمات پلیر چندسروره برای نمونه‌کار (گیت‌هاب + آپارات + یوتیوب) */}
-                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
-                    <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+                  {/* سیستم دوحالته ویدیو و تنظیمات پلیر چندسروره (گیت‌هاب + آپارات + یوتیوب) */}
+                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-3 gap-2">
                       <div className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
                         <Server className="w-3.5 h-3.5 text-amber-700" />
-                        <span>{isFa ? 'تنظیمات پلیر چندسروره هوشمند (گیت‌هاب + آپارات + یوتیوب):' : 'Smart Multi-Server Video Player:'}</span>
+                        <span>{isFa ? 'سیستم دوحالته ویدیو و پلیر هوشمند چندسروره:' : 'Dual-Mode Video Engine & Multi-Server Player:'}</span>
                       </div>
-                      <span className="text-[10px] text-stone-500 font-mono">سوییچ خودکار ۴ ثانیه‌ای در سایت</span>
+                      <span className="text-[10px] text-stone-500 font-mono">پشتیبانی کامل از HLS (.m3u8) + سوییچ خودکار ۴ ثانیه‌ای</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                          <Radio className="w-3 h-3 text-amber-600" />
-                          <span>{isFa ? 'سرور اصلی گیت‌هاب (Direct MP4 / HLS):' : 'GitHub Primary:'}</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={photoGithubVideoUrl}
-                          onChange={(e) => setPhotoGithubVideoUrl(e.target.value)}
-                          placeholder="https://szarghami.github.io/video-portfolio/video.mp4"
-                          className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                          <span>🇮🇷</span>
-                          <span>{isFa ? 'سرور ایران - آپارات (Aparat URL / Code):' : 'Iran Server (Aparat):'}</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={photoAparatUrl}
-                          onChange={(e) => setPhotoAparatUrl(e.target.value)}
-                          placeholder="https://www.aparat.com/v/XXXXX"
-                          className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                          <Play className="w-3 h-3 text-red-600 fill-red-600" />
-                          <span>{isFa ? 'سرور بین‌الملل - یوتیوب (YouTube 4K):' : 'YouTube (4K):'}</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={photoYoutubeUrl}
-                          onChange={(e) => setPhotoYoutubeUrl(e.target.value)}
-                          placeholder="https://youtu.be/XXXXX"
-                          className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                        />
-                      </div>
+                    {/* تب‌های انتخاب سیستم دوحالته */}
+                    <div className="flex rounded-lg bg-stone-200/80 p-1 text-xs">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoMode('github-chunked');
+                          setPhotoDefaultServer('github');
+                        }}
+                        className={`flex-1 py-1.5 px-3 rounded-md font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          videoMode === 'github-chunked'
+                            ? 'bg-white text-stone-900 shadow-sm'
+                            : 'text-stone-600 hover:text-stone-900'
+                        }`}
+                      >
+                        <Radio className="w-3.5 h-3.5 text-amber-600" />
+                        <span>{isFa ? '۱. نمونه‌کار اختصاصی (استریم HLS / گیت‌هاب)' : '1. Dedicated GitHub Stream (HLS)'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoMode('external-stream');
+                          if (!photoAparatUrl && !photoYoutubeUrl) {
+                            setPhotoDefaultServer('aparat');
+                          } else if (photoAparatUrl) {
+                            setPhotoDefaultServer('aparat');
+                          } else {
+                            setPhotoDefaultServer('youtube');
+                          }
+                        }}
+                        className={`flex-1 py-1.5 px-3 rounded-md font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                          videoMode === 'external-stream'
+                            ? 'bg-white text-stone-900 shadow-sm'
+                            : 'text-stone-600 hover:text-stone-900'
+                        }`}
+                      >
+                        <Play className="w-3.5 h-3.5 text-red-600 fill-red-600" />
+                        <span>{isFa ? '۲. ویدیوی پلتفرم‌ها (لینک مستقیم آپارات / یوتیوب)' : '2. External Platform Video (Aparat / YouTube)'}</span>
+                      </button>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
-                      <span className="text-[11px] font-bold text-stone-700">{isFa ? 'سرور پیش‌فرض برای پخش:' : 'Default Server:'}</span>
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="defaultServer"
-                            value="github"
-                            checked={photoDefaultServer === 'github'}
-                            onChange={() => setPhotoDefaultServer('github')}
-                            className="text-amber-700"
-                          />
-                          <span>{isFa ? 'گیت‌هاب (CDN اصلی)' : 'GitHub CDN'}</span>
-                        </label>
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="defaultServer"
-                            value="aparat"
-                            checked={photoDefaultServer === 'aparat'}
-                            onChange={() => setPhotoDefaultServer('aparat')}
-                            className="text-amber-700"
-                          />
-                          <span>{isFa ? 'آپارات (سرور سریع ایران)' : 'Aparat (Iran)'}</span>
-                        </label>
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input
-                            type="radio"
-                            name="defaultServer"
-                            value="youtube"
-                            checked={photoDefaultServer === 'youtube'}
-                            onChange={() => setPhotoDefaultServer('youtube')}
-                            className="text-amber-700"
-                          />
-                          <span>{isFa ? 'یوتیوب (4K)' : 'YouTube'}</span>
-                        </label>
+                    {videoMode === 'github-chunked' ? (
+                      <div className="space-y-3">
+                        <div className="p-2.5 bg-amber-50/60 border border-amber-200/70 rounded-lg text-xs text-amber-900 flex items-start gap-2">
+                          <Radio className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <div className="font-bold">{isFa ? 'حالت استریم اختصاصی گیت‌هاب (HLS / .m3u8 / MP4)' : 'GitHub Stream Mode:'}</div>
+                            <div className="text-[11px] text-stone-600">
+                              {isFa
+                                ? 'این ویدیوها با hls.js در اندروید و دسکتاپ و به شکل محلی در Safari آیفون پخش می‌شوند. جهت جلوگیری از فیلترینگ یا کندی، لینک آپارات را هم به عنوان بکاپ وارد کنید.'
+                                : 'Plays via hls.js on Chrome/Firefox and natively on iOS Safari. Add Aparat URL as automatic fallback.'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
+                              <Radio className="w-3 h-3 text-amber-600" />
+                              <span>{isFa ? 'آدرس استریم گیت‌هاب (Direct MP4 یا .m3u8):' : 'GitHub Stream URL (MP4 / HLS):'}</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={photoGithubVideoUrl}
+                              onChange={(e) => setPhotoGithubVideoUrl(e.target.value)}
+                              placeholder="https://szarghami.github.io/video-portfolio/master.m3u8"
+                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
+                              <span>🇮🇷</span>
+                              <span>{isFa ? 'سرور پشتیبان ایران - آپارات (در صورت تاخیر یا قطعی):' : 'Iran Fallback Server (Aparat):'}</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={photoAparatUrl}
+                              onChange={(e) => setPhotoAparatUrl(e.target.value)}
+                              placeholder="https://www.aparat.com/v/XXXXX"
+                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="p-2.5 bg-red-50/60 border border-red-200/70 rounded-lg text-xs text-red-900 flex items-start gap-2">
+                          <Play className="w-4 h-4 text-red-600 fill-red-600 shrink-0 mt-0.5" />
+                          <div className="space-y-0.5">
+                            <div className="font-bold">{isFa ? 'حالت پلتفرم‌های خارجی (آپارات و یوتیوب)' : 'External Platform Video Mode:'}</div>
+                            <div className="text-[11px] text-stone-600">
+                              {isFa
+                                ? 'مناسب ویدیوهای بلندمدت، مصاحبه‌ها یا مستندها. کاربر داخل کشور آپارات بدون فیلتر و کاربر خارج از کشور یوتیوب 4K را تماشا خواهد کرد.'
+                                : 'Optimized for long-form films, interviews or documentaries. Plays Aparat in Iran & YouTube 4K internationally.'}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
+                              <span>🇮🇷</span>
+                              <span>{isFa ? 'لینک ویدیو در آپارات (Aparat URL / Code):' : 'Aparat URL / Code:'}</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={photoAparatUrl}
+                              onChange={(e) => setPhotoAparatUrl(e.target.value)}
+                              placeholder="https://www.aparat.com/v/XXXXX"
+                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
+                              <Play className="w-3 h-3 text-red-600 fill-red-600" />
+                              <span>{isFa ? 'لینک ویدیو در یوتیوب (YouTube 4K):' : 'YouTube (4K):'}</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={photoYoutubeUrl}
+                              onChange={(e) => setPhotoYoutubeUrl(e.target.value)}
+                              placeholder="https://youtu.be/XXXXX"
+                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-200/80 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-stone-700">{isFa ? 'سرور پیش‌فرض برای پخش:' : 'Default Server:'}</span>
+                        <div className="flex items-center gap-3">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="defaultServer"
+                              value="github"
+                              checked={photoDefaultServer === 'github'}
+                              onChange={() => setPhotoDefaultServer('github')}
+                              className="text-amber-700"
+                            />
+                            <span>{isFa ? 'گیت‌هاب (CDN اصلی)' : 'GitHub CDN'}</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="defaultServer"
+                              value="aparat"
+                              checked={photoDefaultServer === 'aparat'}
+                              onChange={() => setPhotoDefaultServer('aparat')}
+                              className="text-amber-700"
+                            />
+                            <span>{isFa ? 'آپارات (سرور سریع ایران)' : 'Aparat (Iran)'}</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="defaultServer"
+                              value="youtube"
+                              checked={photoDefaultServer === 'youtube'}
+                              onChange={() => setPhotoDefaultServer('youtube')}
+                              className="text-amber-700"
+                            />
+                            <span>{isFa ? 'یوتیوب (4K)' : 'YouTube'}</span>
+                          </label>
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-stone-500">
+                        {isFa ? 'در صورت باز نشدن سرور اصلی، بعد از ۴ ثانیه سرور پشتیبان لود می‌شود' : 'Auto fallbacks after 4s'}
                       </div>
                     </div>
                   </div>
@@ -3536,11 +3592,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     </div>
                   </div>
 
-                  {supabaseUploadMsg && (
-                    <div className="p-2.5 bg-amber-50 text-amber-900 rounded-lg text-xs font-mono border border-amber-200">
-                      {supabaseUploadMsg}
-                    </div>
-                  )}
+
 
                   <div className="flex gap-2 pt-2">
                     <button
@@ -4835,33 +4887,33 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
 
-                {/* اتصال و همگام‌سازی مستقیم با گیت‌هاب */}
-                <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-3.5 text-stone-700">
+                {/* گاوصندوق رمزنگاری‌شده کلیدها (Web Crypto AES-256-GCM Vault) و اتصال مستقیم به GitHub و Gemini */}
+                <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-4 text-stone-700">
                   <div className="flex items-center justify-between">
                     <div className="font-bold flex items-center gap-2 text-stone-900">
-                      <Github className="w-4 h-4 text-stone-900" />
-                      <span>{isFa ? `همگام‌سازی با مخزن اصلی (${mainRepo})` : `Sync to ${mainRepo}`}</span>
+                      <Lock className="w-4 h-4 text-amber-700" />
+                      <span>{isFa ? 'گاوصندوق رمزنگاری‌شده کلیدها (AES-256 Vault)' : 'AES-256 Crypto Vault'}</span>
                     </div>
-                    <a
-                      href={`https://github.com/${mainRepo}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] text-amber-800 hover:underline flex items-center gap-1"
-                    >
-                      <span>{isFa ? 'مشاهده در گیت‌هاب' : 'View on GitHub'}</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
+                    {content.encryptedVault && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        {isFa ? '🔒 گاوصندوق فعال' : 'Vault Active'}
+                      </span>
+                    )}
                   </div>
 
                   <p className="text-[11px] text-stone-600 leading-relaxed">
                     {isFa
-                      ? `برای همگام‌سازی خودکار و کامیت داده‌های سایت در مخزن ${mainRepo}، توکن شخصی گیت‌هاب (Personal Access Token با دسترسی repo) را در کادر زیر وارد کنید:`
-                      : 'Enter your GitHub Personal Access Token with repo scope for automated commits:'}
+                      ? 'کلیدهای محرمانه شما (توکن گیت‌هاب و کلید Gemini API) با الگوریتم استاندارد و بومی مرورگر (AES-256-GCM و PBKDF2 با ۱۰۰,۰۰۰ دور تکرار) توسط رمز عبور ادمین رمزنگاری شده و داخل دیتای سایت ذخیره می‌شوند. بدین ترتیب در هر دستگاه جدیدی فقط با زدن رمز عبور ادمین، همه کلیدها در حافظه موقت (sessionStorage) بازگشایی می‌شوند و با بستن تب مرورگر محو خواهند شد.'
+                      : 'Your secrets are client-side encrypted with AES-256-GCM using your admin password.'}
                   </p>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
+                  <div className="space-y-3 pt-1">
+                    {/* فیلد توکن گیت‌هاب */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                        {isFa ? 'توکن شخصی گیت‌هاب (Personal Access Token با دسترسی repo):' : 'GitHub Token:'}
+                      </label>
+                      <div className="relative">
                         <input
                           type={showGithubToken ? 'text' : 'password'}
                           value={githubToken}
@@ -4881,12 +4933,103 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                       </div>
+                    </div>
+
+                    {/* فیلد مخزن اصلی گیت‌هاب */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                        {isFa ? 'نام ریپازیتوری اصلی گیت‌هاب (Owner/Repo):' : 'GitHub Repository:'}
+                      </label>
+                      <input
+                        type="text"
+                        value={mainRepo}
+                        onChange={(e) => {
+                          setMainRepoState(e.target.value);
+                          saveMainRepo(e.target.value);
+                        }}
+                        placeholder="szarghami/sinazarghami.ir"
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
+                      />
+                    </div>
+
+                    {/* فیلد کلید اختصاصی Google Gemini API */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-bold text-stone-800">
+                          {isFa ? 'کلید اختصاصی Google Gemini API (مدل gemini-2.5-flash مستقیم در کلاینت):' : 'Gemini API Key:'}
+                        </label>
+                        <a
+                          href="https://aistudio.google.com/app/apikey"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-amber-700 hover:underline flex items-center gap-1 font-medium"
+                        >
+                          <span>{isFa ? 'دریافت کلید رایگان از گوگل' : 'Get Free Key'}</span>
+                          <ExternalLink className="w-2.5 h-2.5" />
+                        </a>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type={showGeminiApiKey ? 'text' : 'password'}
+                          value={geminiApiKey}
+                          onChange={(e) => {
+                            setGeminiApiKey(e.target.value);
+                            saveLocalGeminiKey(e.target.value);
+                          }}
+                          placeholder="AIzaSyxxxxxxxxxxxxxxxxxxxx"
+                          className="w-full px-3 py-2 pr-9 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
+                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
+                          title={showGeminiApiKey ? 'پنهان‌سازی' : 'نمایش'}
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* فیلد رمز عبور ادمین برای قفل‌گذاری گاوصندوق */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
+                        {isFa ? 'رمز عبور ثابت ادمین جهت قفل‌گذاری AES-256 گاوصندوق:' : 'Admin Passcode for Encryption:'}
+                      </label>
+                      <input
+                        type="password"
+                        value={vaultPasscode}
+                        onChange={(e) => setVaultPasscode(e.target.value)}
+                        placeholder={isFa ? 'رمز عبور پنل خود را وارد کنید' : 'Enter admin passcode'}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
+                      />
+                    </div>
+
+                    {/* دکمه‌های عملیات گاوصندوق و کامیت */}
+                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={handleSaveAndEncryptVault}
+                        disabled={isEncryptingVault || !githubToken.trim()}
+                        className="flex-1 py-2.5 px-3 bg-amber-800 hover:bg-amber-900 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                      >
+                        {isEncryptingVault ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>{isFa ? 'در حال رمزنگاری و کامیت...' : 'Encrypting & Committing...'}</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-3.5 h-3.5 text-amber-200" />
+                            <span>{isFa ? '🔒 قفل‌گذاری در گاوصندوق و کامیت امن به گیت‌هاب' : 'Encrypt & Save to Vault'}</span>
+                          </>
+                        )}
+                      </button>
 
                       <button
                         type="button"
                         onClick={handleManualGithubSync}
                         disabled={isSyncingGithub || !githubToken.trim()}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                        className="py-2.5 px-4 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shadow-xs"
                       >
                         {isSyncingGithub ? (
                           <>
@@ -4896,11 +5039,23 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         ) : (
                           <>
                             <CloudUpload className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>{isFa ? 'کامیت به گیت‌هاب' : 'Sync to GitHub'}</span>
+                            <span>{isFa ? 'همگام‌سازی دستی داده‌ها' : 'Manual Sync'}</span>
                           </>
                         )}
                       </button>
                     </div>
+
+                    {vaultStatus && (
+                      <div
+                        className={`p-3 rounded-lg text-xs font-medium border leading-relaxed ${
+                          vaultStatus.success
+                            ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                            : 'bg-red-50 text-red-900 border-red-300'
+                        }`}
+                      >
+                        {vaultStatus.msg}
+                      </div>
+                    )}
 
                     {githubSyncStatus && (
                       <div
@@ -4945,11 +5100,29 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   <button
                     onClick={async () => {
                       if (newPin.trim().length >= 4) {
-                        await updateAdminPasscode(newPin.trim());
+                        const updatedPin = newPin.trim();
+                        await updateAdminPasscode(updatedPin);
+                        if (githubToken.trim()) {
+                          try {
+                            const secrets: AdminSecrets = {
+                              githubToken: githubToken.trim(),
+                              githubRepo: mainRepo.trim() || DEFAULT_MAIN_REPO,
+                              geminiApiKey: geminiApiKey.trim(),
+                            };
+                            const newVault = await encryptAdminSecrets(secrets, updatedPin);
+                            saveSessionVault(secrets);
+                            const updatedContent = { ...content, encryptedVault: newVault };
+                            onUpdateContent(updatedContent);
+                            saveSiteContent(updatedContent);
+                            publishSiteDataToGitHub(updatedContent, githubToken.trim(), mainRepo.trim()).catch(() => {});
+                          } catch (e) {
+                            console.warn('Vault re-encryption failed:', e);
+                          }
+                        }
                         alert(
                           isFa
-                            ? 'رمز عبور جدید با موفقیت ذخیره شد و به تلگرام شما ارسال گردید.'
-                            : 'Password updated & sent to Telegram.'
+                            ? 'رمز عبور جدید با موفقیت ذخیره شد، گاوصندوق کلیدها با رمز جدید قفل‌گذاری گردید و به تلگرام ارسال شد.'
+                            : 'Password updated, vault re-encrypted & sent to Telegram.'
                         );
                         setNewPin('');
                       } else {
@@ -4958,7 +5131,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     }}
                     className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
                   >
-                    {isFa ? 'ذخیره رمز جدید و ارسال به تلگرام' : 'Update & Send to Telegram'}
+                    {isFa ? 'ذخیره رمز جدید، قفل‌گذاری مجدد گاوصندوق و ارسال به تلگرام' : 'Update, Re-encrypt Vault & Send'}
                   </button>
                 </div>
 

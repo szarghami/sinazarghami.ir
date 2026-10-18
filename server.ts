@@ -124,42 +124,6 @@ app.get('/api/cors-proxy', async (req, res) => {
   }
 });
 
-// اندپوینت مستقیم دریافت خودکار کامنت‌های ویدیوی آپارات با videohash (uid)
-app.get('/api/aparat-comments/:uid', async (req, res) => {
-  try {
-    const { uid } = req.params;
-    if (!uid) {
-      return res.status(400).json({ error: 'شناسه ویدیو (videohash) الزامی است.' });
-    }
-
-    const targetUrl = `https://www.aparat.com/api/fa/v1/video/comment/list/videohash/${uid}`;
-    const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'application/json, text/plain, */*',
-        'Accept-Language': 'fa,en;q=0.9',
-      },
-    });
-
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'application/json');
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: `خطا در دریافت از آپارات: کد وضعیت ${response.status}`,
-        data: [],
-      });
-    }
-
-    const data = await response.json();
-    return res.json(data);
-  } catch (err: any) {
-    console.error('Aparat comments API error:', err);
-    return res.status(500).json({ error: 'خطا در وب‌سرویس کامنت‌های آپارات: ' + err.message, data: [] });
-  }
-});
-
 // =========================================================================
 // ۲. آپلود محلی و ذخیره دائمی تصویر روی سرور (جایگزین مستقل و امن برای Supabase)
 // =========================================================================
@@ -724,7 +688,12 @@ app.post('/api/studio-settings', (req, res) => {
     const existing = fs.existsSync(SETTINGS_FILE)
       ? JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'))
       : {};
-    const updated = { ...existing, ...req.body, updatedAt: new Date().toISOString() };
+    // پاکسازی امنیتی: پیشگیری از ذخیره توکن‌ها و کلیدهای خام در فایل‌های سرور
+    const safeBody = { ...req.body };
+    delete safeBody.githubToken;
+    delete safeBody.geminiApiKey;
+    delete safeBody.passcode;
+    const updated = { ...existing, ...safeBody, updatedAt: new Date().toISOString() };
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf-8');
     return res.json({ success: true, settings: updated });
   } catch (err: any) {

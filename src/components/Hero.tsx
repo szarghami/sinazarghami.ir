@@ -149,18 +149,11 @@ export const Hero: React.FC<HeroProps> = ({
           <div className="lg:col-span-5 relative flex flex-col justify-center">
             <div className="relative group rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80 shadow-md">
               <img
-                src={getReliableImageUrl(content.photos[0]?.imageUrl || "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=85")}
+                src={getReliableImageUrl(content.photos[0]?.imageUrl || '')}
                 alt="Sina Zarghami Photography Showcase"
                 className="w-full h-84 sm:h-96 lg:h-[430px] object-cover transition-transform duration-700 group-hover:scale-102"
                 loading="eager"
                 referrerPolicy="no-referrer"
-                onError={(e) => {
-                  const target = e.currentTarget as HTMLImageElement;
-                  const fallback = content.photos[0]?.imageUrl || "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=85";
-                  if (target.src !== fallback) {
-                    target.src = fallback;
-                  }
-                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent pointer-events-none" />
 

@@ -16,62 +16,50 @@ const GITHUB_TOKEN_KEY = 'sina_github_token_saved';
 const DEFAULT_PASSCODE = 'sina2026';
 
 /**
- * دریافت اطلاعات سایت با اولویت ادغام هوشمند داده‌های سرور و محلی تا هیچ عکسی با رفرش پاک نشود
+ * دریافت مستقیم و زنده داده‌های وب‌سایت از /site-data.json
+ * با اولویت قطعی فایل سرور/گیت‌هاب تا کش قدیمی LocalStorage هرگز مانع انتشار محتوای جدید نشود
  */
 export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
-  const localData = loadSiteContent();
+  const timestamp = Date.now();
 
-  // ۱. تلاش برای خواندن از API سرور فعال
+  // ۱. دریافت مستقیم فایل استاتیک /site-data.json با هدرهای ضدکش
   try {
-    const res = await fetch(`/api/site-data?t=${Date.now()}`);
+    const res = await fetch(`/site-data.json?t=${timestamp}`, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
     if (res.ok) {
-      const remote = await res.json();
-      if (remote && remote.profile) {
-        // ادغام هوشمند عکس‌ها: عکس‌های محلی که شاید هنوز به سرور نرسیده‌اند حفظ شوند
-        const remotePhotos: any[] = remote.photos || [];
-        const localPhotos: any[] = localData.photos || [];
-        const remoteIds = new Set(remotePhotos.map((p) => p.id));
-        const missingLocal = localPhotos.filter((p) => !remoteIds.has(p.id));
-
-        const merged: SiteContent = {
-          ...remote,
-          profile: { ...remote.profile, ...(localData.profile || {}) },
-          photos: [...missingLocal, ...remotePhotos],
-        };
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        return merged;
+      const freshData: SiteContent = await res.json();
+      if (freshData && freshData.profile && Array.isArray(freshData.photos)) {
+        // به‌روزرسانی کامل کش LocalStorage با دیتای تازه سرور
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
+        } catch (_) {}
+        return freshData;
       }
     }
   } catch (e) {
-    // خطا در دسترسی به API سرور
+    console.warn('Direct fetch of /site-data.json failed:', e);
   }
 
-  // ۲. تلاش برای خواندن از فایل استاتیک site-data.json
+  // ۲. تلاش کمکی از /api/site-data در محیط سرور لوکال یا AI Studio
   try {
-    const res = await fetch(`/site-data.json?t=${Date.now()}`);
+    const res = await fetch(`/api/site-data?t=${timestamp}`);
     if (res.ok) {
-      const remote = await res.json();
-      if (remote && remote.profile) {
-        const remotePhotos: any[] = remote.photos || [];
-        const localPhotos: any[] = localData.photos || [];
-        const remoteIds = new Set(remotePhotos.map((p) => p.id));
-        const missingLocal = localPhotos.filter((p) => !remoteIds.has(p.id));
-
-        const merged: SiteContent = {
-          ...remote,
-          photos: [...missingLocal, ...remotePhotos],
-        };
-
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        return merged;
+      const freshData: SiteContent = await res.json();
+      if (freshData && freshData.profile && Array.isArray(freshData.photos)) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
+        } catch (_) {}
+        return freshData;
       }
     }
-  } catch (e) {
-    // ادامه با حافظه محلی
-  }
+  } catch (_) {}
 
-  return localData;
+  // در صورت عدم دسترسی به شبکه، کش قبلی برگردانده می‌شود
+  return loadSiteContent();
 }
 
 /**
@@ -117,13 +105,67 @@ export function loadSiteContent(): SiteContent {
 }
 
 /**
+ * پاکسازی رشته‌های حجیم Base64 از اشیاء جهت جلوگیری از پر شدن حافظه ۵ مگابایتی LocalStorage در Safari آیفون
+ */
+function sanitizeContentForLocalStorage(content: SiteContent): SiteContent {
+  const cleanPhotos = (content.photos || []).map((p) => {
+    const isBase64Img = p.imageUrl && p.imageUrl.startsWith('data:image/');
+    const isLargeBase64 = isBase64Img && p.imageUrl.length > 50000;
+
+    const cleanGallery = (p.galleryImages || [])
+      .map((g) => {
+        if (g && g.startsWith('data:image/') && g.length > 50000) {
+          return '';
+        }
+        return g;
+      })
+      .filter(Boolean);
+
+    if (isLargeBase64) {
+      return {
+        ...p,
+        imageUrl: p.thumbnailUrl && !p.thumbnailUrl.startsWith('data:image/') ? p.thumbnailUrl : '',
+        galleryImages: cleanGallery,
+      };
+    }
+
+    return {
+      ...p,
+      galleryImages: cleanGallery,
+    };
+  });
+
+  return {
+    ...content,
+    photos: cleanPhotos,
+  };
+}
+
+/**
  * تابع ذخیره اطلاعات در حافظه محلی و ارسال به سرور جهت همگام‌سازی تمام دستگاه‌ها
+ * مجهز به بررسی ایمنی Base64 و سقف حافظه Safari آیفون (QuotaExceededError)
  */
 export function saveSiteContent(content: SiteContent): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
-  } catch (err) {
-    console.error('خطا در ذخیره محلی:', err);
+    const rawJson = JSON.stringify(content);
+    // اگر حجم کل فراتر از ۲.۵ مگابایت بود یا داده حاوی عکس‌های Base64 بود، متادیتا را بدون کرش ذخیره می‌کنیم
+    if (rawJson.length > 2.5 * 1024 * 1024 || rawJson.includes('data:image/')) {
+      const sanitized = sanitizeContentForLocalStorage(content);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    } else {
+      localStorage.setItem(STORAGE_KEY, rawJson);
+    }
+  } catch (err: any) {
+    console.warn('هشدار خطای ذخیره‌سازی در LocalStorage مرورگر (احتمال سقف QuotaExceeded در Safari آیفون)، تلاش با پاکسازی کش قبلی...', err);
+    try {
+      // پاک کردن کش قبلی در صورت پر شدن سهمیه ذخیره‌سازی
+      localStorage.removeItem(STORAGE_KEY);
+      const minimal = sanitizeContentForLocalStorage(content);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
+    } catch (fallbackErr) {
+      // نادیده گرفتن خطا تا اپلیکیشن در آیفون هرگز کرش نکند
+      console.warn('امکان نوشتن در LocalStorage دستگاه وجود ندارد، دیتای سرور مرجع خواهد بود:', fallbackErr);
+    }
   }
 
   // ارسال پس‌زمینه به سرور برای اینکه گوشی و لپ‌تاپ هر دو به‌روز شوند
@@ -276,6 +318,10 @@ const WATERMARK_OPACITY_KEY = 'sina_watermark_opacity';
 const WATERMARK_POSITION_KEY = 'sina_watermark_position';
 
 export const DEFAULT_WATERMARK_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="90" viewBox="0 0 320 90"><filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="1.5" stdDeviation="2.5" flood-color="%23000000" flood-opacity="0.85"/></filter><g filter="url(%23glow)"><path d="M 20 65 Q 40 10, 60 45 T 100 35 T 135 55" fill="none" stroke="%23FFFFFF" stroke-width="2.5" stroke-linecap="round"/><text x="25" y="76" font-family="'Cinzel', 'Playfair Display', Georgia, serif" font-size="14" font-weight="bold" fill="%23FFFFFF" letter-spacing="2">SINA ZARGHAMI</text><text x="180" y="76" font-family="sans-serif" font-size="9" font-weight="600" fill="%23F3F4F6" letter-spacing="1.5">STUDIO</text></g></svg>`;
+
+export const DEFAULT_DARK_PLACEHOLDER_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="100%" height="100%" fill="#1c1917"/><circle cx="600" cy="360" r="90" fill="none" stroke="#d97706" stroke-width="2"/><text x="600" y="520" font-family="system-ui, sans-serif" font-size="24" font-weight="700" fill="#f5f5f4" text-anchor="middle">SINA ZARGHAMI STUDIO</text><text x="600" y="560" font-family="monospace" font-size="14" fill="#a8a29e" text-anchor="middle">PURE STATIC ARCHIVAL · SINAZARGHAMI.IR</text></svg>`
+)}`;
 
 export interface WatermarkConfig {
   imageDataUrl?: string;

@@ -217,6 +217,7 @@ export interface SiteContent {
   resume: ResumeEntry[];
   books: BookItem[];
   equipment: EquipmentItem[];
+  encryptedVault?: string; // گاوصندوق رمزنگاری‌شده AES-256 کلیدها با رمز ثابت ادمین
 }
 
 // ساختار رویدادهای رفتار و آمار بازدیدکنندگان وب‌سایت
@@ -230,17 +231,26 @@ export interface AnalyticsEvent {
     | 'select_format'
     | 'abandon_checkout'
     | 'complete_order'
+    | 'service_inquiry'
     | 'contact_inquiry'
     | 'download_resume'
+    | 'section_view'
     | 'gear_view';
   path?: string;
   referrer?: string;
   browser?: string;
   os?: string;
   device?: 'mobile' | 'desktop' | 'tablet';
+  deviceModel?: string;
+  exactBrowser?: string;
   screenResolution?: string;
   photoId?: string;
   photoTitle?: string;
+  serviceType?: string;
+  clientName?: string;
+  contact?: string;
+  brief?: string;
+  sectionName?: string;
   selectedFormat?: 'print' | 'digital';
   priceToman?: number;
   priceUsd?: number;
@@ -261,7 +271,23 @@ export interface AnalyticsSummary {
   abandonmentRate: number;
   topBrowsers: { name: string; count: number; percent: number }[];
   topDevices: { name: string; count: number; percent: number }[];
+  topDeviceModels: { name: string; count: number; percent: number }[];
   topReferrers: { name: string; count: number; percent: number }[];
+  topSections: { name: string; count: number; percent: number }[];
+  completedOrdersList: {
+    id: string;
+    type: 'print_shop' | 'service_commission' | 'contact_inquiry';
+    title: string;
+    priceToman?: number;
+    priceUsd?: number;
+    clientName?: string;
+    contact?: string;
+    device?: string;
+    browser?: string;
+    timestamp: string;
+    persianDate: string;
+    details?: string;
+  }[];
   abandonedCartList: {
     photoTitle: string;
     photoId?: string;

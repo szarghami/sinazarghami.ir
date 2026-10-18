@@ -7,3 +7,6 @@ coverage/
 .env*
 !.env.example
 .aistudio/
+studio-settings.json
+admin-passcode.json
+*.local

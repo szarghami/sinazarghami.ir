@@ -3,7 +3,7 @@
 // وب‌سایت سینا ضرغامی (sinazarghami.ir)
 // =====================================================================
 
-import { PhotoItem, PhotoCategory, SpecificPhotoCategory, SyncedComment } from '../types';
+import { SiteContent, PhotoItem, PhotoCategory, SpecificPhotoCategory, SyncedComment } from '../types';
 import { compressImageToWebP, WatermarkConfig } from './storage';
 
 export const DEFAULT_MAIN_REPO = 'szarghami/sinazarghami-aistudio-site';
@@ -483,8 +483,8 @@ export async function uploadMediaToGitHub(options: UploadMediaOptions): Promise<
     const finalFilename = `${baseName}_${Date.now()}.webp`;
 
     targetRepo = mainRepo;
-    targetPath = `public/portfolio/${finalFilename}`;
-    finalUrl = `/portfolio/${finalFilename}`;
+    targetPath = `public/uploads/${finalFilename}`;
+    finalUrl = `/uploads/${finalFilename}`;
   } else {
     // -----------------------------------------------------------------------
     // فایل ویدیو: بررسی حجم و مسیردهی هوشمند
@@ -1094,3 +1094,171 @@ export async function deployVideoProcessorWorkflowToGitHub(
     msg: `ورک‌فلو پردازش خودکار ویدیوها با موفقیت در ریپازیتوری ${repo} در برنچ main مستقر شد!`,
   };
 }
+
+/**
+ * کامیت مستقیم و امن هر فایلی در مخزن گیت‌هاب از داخل مرورگر
+ * دریافت مقدار sha قبلی فایل در صورت وجود تا خطای 409/422 رخ ندهد
+ */
+export async function commitFileToGitHub(
+  repoFullName: string,
+  filePath: string,
+  contentBase64: string,
+  commitMessage: string,
+  token: string,
+  branch: string = 'main'
+): Promise<{ success: boolean; sha?: string; content?: any; error?: string }> {
+  if (!token || !token.trim()) {
+    throw new Error('توکن دسترسی گیت‌هاب (Personal Access Token) الزامی است.');
+  }
+  const cleanToken = token.trim();
+  const cleanRepo = repoFullName.trim();
+  const cleanPath = filePath.replace(/^\/+/, '');
+
+  let existingSha: string | undefined;
+
+  // الف) بررسی وجود فایل و استخراج sha فعلی
+  try {
+    const checkRes = await fetch(
+      `https://api.github.com/repos/${cleanRepo}/contents/${cleanPath}?ref=${encodeURIComponent(branch)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${cleanToken}`,
+          Accept: 'application/vnd.github+json',
+        },
+      }
+    );
+    if (checkRes.ok) {
+      const data = await checkRes.json();
+      existingSha = data.sha;
+    }
+  } catch (err) {
+    console.warn(`[GitHub] Checking ${cleanPath} failed, attempting clean commit:`, err);
+  }
+
+  // ب) ارسال درخواست PUT با هدرهای استاندارد گیت‌هاب
+  const putRes = await fetch(`https://api.github.com/repos/${cleanRepo}/contents/${cleanPath}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${cleanToken}`,
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      message: commitMessage,
+      content: contentBase64,
+      branch,
+      ...(existingSha ? { sha: existingSha } : {}),
+    }),
+  });
+
+  const putData = await putRes.json().catch(() => ({}));
+
+  if (!putRes.ok) {
+    const errorMsg = putData.message || `خطای گیت‌هاب (کد وضعیت ${putRes.status})`;
+    throw new Error(errorMsg);
+  }
+
+  return {
+    success: true,
+    sha: putData.content?.sha,
+    content: putData.content,
+  };
+}
+
+/**
+ * انتشار و همگام‌سازی مستقیم داده‌های سایت (site-data.json) با مخزن گیت‌هاب
+ * پشتیبانی کامل از UTF-8 Safe Base64 برای حفظ متون فارسی
+ * کامیت همزمان در دو مسیر: public/site-data.json و ریشه site-data.json
+ */
+export async function publishSiteDataToGitHub(
+  siteData: SiteContent,
+  token?: string,
+  repoFullName?: string
+): Promise<{ success: boolean; msg: string }> {
+  const ghToken = token || getSavedGitHubToken();
+  if (!ghToken) {
+    throw new Error('توکن دسترسی گیت‌هاب برای انتشار مستقیم الزامی است.');
+  }
+  const targetRepo = repoFullName || getMainRepo();
+
+  const jsonString = JSON.stringify(siteData, null, 2);
+
+  // تبدیل امن UTF-8 به Base64 با TextEncoder جهت حفظ دقیق حروف فارسی
+  const utf8Bytes = new TextEncoder().encode(jsonString);
+  let binary = '';
+  for (let i = 0; i < utf8Bytes.length; i++) {
+    binary += String.fromCharCode(utf8Bytes[i]);
+  }
+  const contentBase64 = btoa(binary);
+
+  const commitMsg = `Update site-data.json via Sina Zarghami Pure Static Git-CMS [${new Date().toISOString()}]`;
+
+  // ۱. کامیت در public/site-data.json جهت دسترسی کلاینت
+  await commitFileToGitHub(targetRepo, 'public/site-data.json', contentBase64, commitMsg, ghToken, 'main');
+
+  // ۲. کامیت در ریشه site-data.json
+  await commitFileToGitHub(targetRepo, 'site-data.json', contentBase64, commitMsg, ghToken, 'main');
+
+  return {
+    success: true,
+    msg: `داده‌های وب‌سایت با موفقیت در مخزن ${targetRepo} کامیت و مستقر شدند.`,
+  };
+}
+
+/**
+ * آپلود تصویر به صورت مستقیم در پوشه public/uploads/ مخزن گیت‌هاب
+ * و بازگرداندن آدرس نسبی و بدون فیلتر /uploads/...
+ */
+export async function uploadImageToGitHub(
+  blobOrFile: Blob | File | string,
+  fileName: string,
+  token?: string,
+  repoFullName?: string
+): Promise<{ success: boolean; publicUrl: string; path: string }> {
+  const ghToken = token || getSavedGitHubToken();
+  if (!ghToken) {
+    throw new Error('توکن دسترسی گیت‌هاب برای بارگذاری تصویر الزامی است.');
+  }
+  const targetRepo = repoFullName || getMainRepo();
+
+  let base64Content = '';
+
+  if (typeof blobOrFile === 'string') {
+    const commaIdx = blobOrFile.indexOf(',');
+    base64Content = commaIdx >= 0 ? blobOrFile.slice(commaIdx + 1) : blobOrFile;
+  } else {
+    base64Content = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const res = reader.result as string;
+        const commaIdx = res.indexOf(',');
+        resolve(commaIdx >= 0 ? res.slice(commaIdx + 1) : res);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blobOrFile);
+    });
+  }
+
+  const baseClean = sanitizeFilename(fileName).replace(/\.[^/.]+$/, '');
+  const cleanFileName = `${baseClean || 'photo'}_${Date.now()}.webp`;
+  const filePath = `public/uploads/${cleanFileName}`;
+
+  await commitFileToGitHub(
+    targetRepo,
+    filePath,
+    base64Content,
+    `Upload image ${cleanFileName} via Sina Zarghami Studio`,
+    ghToken,
+    'main'
+  );
+
+  // آدرس کاملاً نسبی و تمیز در دسترس مرورگر بدون نیاز به دامنه فیلترشده raw.githubusercontent
+  const publicUrl = `/uploads/${cleanFileName}`;
+
+  return {
+    success: true,
+    publicUrl,
+    path: filePath,
+  };
+}
+

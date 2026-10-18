@@ -158,8 +158,10 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
       photoTitle: photo.titleFa,
       priceToman: activeFinalToman,
       priceUsd: activeFinalUsd,
+      clientName: customerName || 'خریدار آنلاین',
+      contact: customerContact,
       selectedFormat: purchaseType,
-      details: `خریدار: ${customerName || 'ناشناس'} | تماس: ${customerContact}`,
+      details: `چاپ: ${selectedSize} ${paperName} | خریدار: ${customerName || 'ناشناس'} (${customerCity || 'ایران'})`,
     });
 
     // ارسال اعلان آنی به ربات تلگرام سینا ضرغامی
