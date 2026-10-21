@@ -16,56 +16,56 @@ const GITHUB_TOKEN_KEY = 'sina_github_token_saved';
 const DEFAULT_PASSCODE = 'sina2026';
 
 /**
- * دریافت مستقیم و زنده داده‌های وب‌سایت از /site-data.json
- * با اولویت قطعی فایل سرور/گیت‌هاب تا کش قدیمی LocalStorage هرگز مانع انتشار محتوای جدید نشود
+ * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
  */
 export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
-  const timestamp = Date.now();
-
-  // ۱. دریافت مستقیم فایل استاتیک /site-data.json با هدرهای ضدکش
+  // ۱. تلاش برای خواندن از API سرور فعال
   try {
-    const res = await fetch(`/site-data.json?t=${timestamp}`, {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
-      },
-    });
+    const res = await fetch(`/api/site-data?t=${Date.now()}`);
     if (res.ok) {
-      const freshData: SiteContent = await res.json();
-      if (freshData && freshData.profile && Array.isArray(freshData.photos)) {
-        // به‌روزرسانی کامل کش LocalStorage با دیتای تازه سرور
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
-        } catch (_) {}
-        return freshData;
+      const data = await res.json();
+      if (data && data.profile) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        return data;
       }
     }
   } catch (e) {
-    console.warn('Direct fetch of /site-data.json failed:', e);
+    // خطا در دسترسی به API سرور
   }
 
-  // ۲. تلاش کمکی از /api/site-data در محیط سرور لوکال یا AI Studio
+  // ۲. تلاش برای خواندن از فایل استاتیک site-data.json
   try {
-    const res = await fetch(`/api/site-data?t=${timestamp}`);
+    const res = await fetch(`/site-data.json?t=${Date.now()}`);
     if (res.ok) {
-      const freshData: SiteContent = await res.json();
-      if (freshData && freshData.profile && Array.isArray(freshData.photos)) {
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(freshData));
-        } catch (_) {}
-        return freshData;
+      const data = await res.json();
+      if (data && data.profile) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        return data;
       }
     }
-  } catch (_) {}
+  } catch (e) {
+    // ادامه با حافظه محلی
+  }
 
-  // در صورت عدم دسترسی به شبکه، کش قبلی برگردانده می‌شود
-  return loadSiteContent();
+  return null;
 }
 
 /**
- * بازیابی رمز عبور امن پنل استودیو
+ * همگام‌سازی رمز عبور از سرور به منظور یکسان بودن در گوشی و لپ‌تاپ
  */
 export async function syncPasscodeFromServer(): Promise<string> {
+  try {
+    const res = await fetch(`/api/passcode?t=${Date.now()}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.passcode && typeof data.passcode === 'string') {
+        localStorage.setItem(PASSCODE_KEY, data.passcode);
+        return data.passcode;
+      }
+    }
+  } catch (e) {
+    // استفاده از رمز موجود در لوکال
+  }
   return localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
 }
 
@@ -85,6 +85,17 @@ export function loadSiteContent(): SiteContent {
       resume: parsed.resume || initialSiteContent.resume,
       books: parsed.books || initialSiteContent.books,
       equipment: parsed.equipment || initialSiteContent.equipment,
+      commercialCategories: parsed.commercialCategories || initialSiteContent.commercialCategories,
+      travelCategories: parsed.travelCategories || initialSiteContent.travelCategories,
+      tripCategories: parsed.tripCategories || initialSiteContent.tripCategories,
+      gearCategories: parsed.gearCategories || initialSiteContent.gearCategories,
+      definedTechniques: parsed.definedTechniques || initialSiteContent.definedTechniques,
+      homeCategoryCards: parsed.homeCategoryCards || initialSiteContent.homeCategoryCards,
+      articles: parsed.articles || initialSiteContent.articles,
+      navLabels: parsed.navLabels || initialSiteContent.navLabels,
+      aboutBio: parsed.aboutBio || initialSiteContent.aboutBio,
+      aboutPage: parsed.aboutPage || initialSiteContent.aboutPage,
+      homeShowcaseConfig: parsed.homeShowcaseConfig || initialSiteContent.homeShowcaseConfig,
     };
   } catch (err) {
     console.warn('خطا در خواندن اطلاعات محلی:', err);
@@ -93,67 +104,13 @@ export function loadSiteContent(): SiteContent {
 }
 
 /**
- * پاکسازی رشته‌های حجیم Base64 از اشیاء جهت جلوگیری از پر شدن حافظه ۵ مگابایتی LocalStorage در Safari آیفون
- */
-function sanitizeContentForLocalStorage(content: SiteContent): SiteContent {
-  const cleanPhotos = (content.photos || []).map((p) => {
-    const isBase64Img = p.imageUrl && p.imageUrl.startsWith('data:image/');
-    const isLargeBase64 = isBase64Img && p.imageUrl.length > 50000;
-
-    const cleanGallery = (p.galleryImages || [])
-      .map((g) => {
-        if (g && g.startsWith('data:image/') && g.length > 50000) {
-          return '';
-        }
-        return g;
-      })
-      .filter(Boolean);
-
-    if (isLargeBase64) {
-      return {
-        ...p,
-        imageUrl: p.thumbnailUrl && !p.thumbnailUrl.startsWith('data:image/') ? p.thumbnailUrl : '',
-        galleryImages: cleanGallery,
-      };
-    }
-
-    return {
-      ...p,
-      galleryImages: cleanGallery,
-    };
-  });
-
-  return {
-    ...content,
-    photos: cleanPhotos,
-  };
-}
-
-/**
  * تابع ذخیره اطلاعات در حافظه محلی و ارسال به سرور جهت همگام‌سازی تمام دستگاه‌ها
- * مجهز به بررسی ایمنی Base64 و سقف حافظه Safari آیفون (QuotaExceededError)
  */
 export function saveSiteContent(content: SiteContent): void {
   try {
-    const rawJson = JSON.stringify(content);
-    // اگر حجم کل فراتر از ۲.۵ مگابایت بود یا داده حاوی عکس‌های Base64 بود، متادیتا را بدون کرش ذخیره می‌کنیم
-    if (rawJson.length > 2.5 * 1024 * 1024 || rawJson.includes('data:image/')) {
-      const sanitized = sanitizeContentForLocalStorage(content);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
-    } else {
-      localStorage.setItem(STORAGE_KEY, rawJson);
-    }
-  } catch (err: any) {
-    console.warn('هشدار خطای ذخیره‌سازی در LocalStorage مرورگر (احتمال سقف QuotaExceeded در Safari آیفون)، تلاش با پاکسازی کش قبلی...', err);
-    try {
-      // پاک کردن کش قبلی در صورت پر شدن سهمیه ذخیره‌سازی
-      localStorage.removeItem(STORAGE_KEY);
-      const minimal = sanitizeContentForLocalStorage(content);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(minimal));
-    } catch (fallbackErr) {
-      // نادیده گرفتن خطا تا اپلیکیشن در آیفون هرگز کرش نکند
-      console.warn('امکان نوشتن در LocalStorage دستگاه وجود ندارد، دیتای سرور مرجع خواهد بود:', fallbackErr);
-    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(content));
+  } catch (err) {
+    console.error('خطا در ذخیره محلی:', err);
   }
 
   // ارسال پس‌زمینه به سرور برای اینکه گوشی و لپ‌تاپ هر دو به‌روز شوند
@@ -199,38 +156,11 @@ export function setSessionAuthenticated(auth: boolean): void {
 }
 
 /**
- * بررسی رمز عبور ورودی به صورت محلی
+ * بررسی رمز عبور ورودی
  */
 export function checkAdminPasscode(pin: string): boolean {
   const stored = localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
   return pin.trim() === stored.trim();
-}
-
-/**
- * بررسی امن رمز عبور در سرور از طریق POST /api/auth/verify (بدون افشای رمز عبور متن خام)
- */
-export async function verifyAdminPasscodeWithServer(pin: string): Promise<boolean> {
-  const cleanPin = pin.trim();
-  try {
-    const res = await fetch('/api/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passcode: cleanPin }),
-    });
-    if (res.ok) {
-      const data = await res.json().catch(() => null);
-      if (data && typeof data.authenticated === 'boolean') {
-        if (data.authenticated) {
-          localStorage.setItem(PASSCODE_KEY, cleanPin);
-        }
-        return data.authenticated;
-      }
-    }
-  } catch (err) {
-    console.warn('اعتبارسنجی سروری رمز انجام نشد:', err);
-  }
-  // در صورت عدم دسترسی به سرور یا اجرای سایت در هاست استاتیک
-  return checkAdminPasscode(cleanPin);
 }
 
 /**
@@ -328,199 +258,6 @@ export function parseGoogleDriveLink(rawUrl: string): { isDrive: boolean; embedU
   return { isDrive: false, embedUrl: trimmed };
 }
 
-const WATERMARK_IMAGE_KEY = 'sina_watermark_image';
-const WATERMARK_OPACITY_KEY = 'sina_watermark_opacity';
-const WATERMARK_POSITION_KEY = 'sina_watermark_position';
-
-export const DEFAULT_WATERMARK_SVG = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="90" viewBox="0 0 320 90"><filter id="glow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="1" dy="1.5" stdDeviation="2.5" flood-color="%23000000" flood-opacity="0.85"/></filter><g filter="url(%23glow)"><path d="M 20 65 Q 40 10, 60 45 T 100 35 T 135 55" fill="none" stroke="%23FFFFFF" stroke-width="2.5" stroke-linecap="round"/><text x="25" y="76" font-family="'Cinzel', 'Playfair Display', Georgia, serif" font-size="14" font-weight="bold" fill="%23FFFFFF" letter-spacing="2">SINA ZARGHAMI</text><text x="180" y="76" font-family="sans-serif" font-size="9" font-weight="600" fill="%23F3F4F6" letter-spacing="1.5">STUDIO</text></g></svg>`;
-
-export const DEFAULT_DARK_PLACEHOLDER_SVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800"><rect width="100%" height="100%" fill="#1c1917"/><circle cx="600" cy="360" r="90" fill="none" stroke="#d97706" stroke-width="2"/><text x="600" y="520" font-family="system-ui, sans-serif" font-size="24" font-weight="700" fill="#f5f5f4" text-anchor="middle">SINA ZARGHAMI STUDIO</text><text x="600" y="560" font-family="monospace" font-size="14" fill="#a8a29e" text-anchor="middle">PURE STATIC ARCHIVAL · SINAZARGHAMI.IR</text></svg>`
-)}`;
-
-export interface WatermarkConfig {
-  imageDataUrl?: string;
-  opacity?: number; // 0 to 1
-  position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
-}
-
-export function getSavedWatermarkImage(): string {
-  if (typeof window === 'undefined') return DEFAULT_WATERMARK_SVG;
-  return localStorage.getItem(WATERMARK_IMAGE_KEY) || DEFAULT_WATERMARK_SVG;
-}
-
-export function saveWatermarkImage(img: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(WATERMARK_IMAGE_KEY, img);
-}
-
-export function getSavedWatermarkOpacity(): number {
-  if (typeof window === 'undefined') return 0.15;
-  const val = parseFloat(localStorage.getItem(WATERMARK_OPACITY_KEY) || '');
-  return isNaN(val) ? 0.15 : val;
-}
-
-export function saveWatermarkOpacity(opacity: number): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(WATERMARK_OPACITY_KEY, String(opacity));
-}
-
-export function getSavedWatermarkPosition(): 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center' {
-  if (typeof window === 'undefined') return 'bottom-right';
-  const pos = localStorage.getItem(WATERMARK_POSITION_KEY) as any;
-  return pos || 'bottom-right';
-}
-
-export function saveWatermarkPosition(position: string): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(WATERMARK_POSITION_KEY, position);
-}
-
-const SETTINGS_API_URL = '/api/studio-settings';
-const STORAGE_KEY_MAIN_REPO = 'sina_github_main_repo';
-const STORAGE_KEY_VIDEO_REPO = 'sina_github_video_repo';
-const STORAGE_KEY_VIDEO_BASE_URL = 'sina_github_video_base_url';
-const STORAGE_KEY_FORCE_ALL_VIDEOS = 'sina_github_force_all_videos_to_video_repo';
-const DEFAULT_MAIN_REPO = 'szarghami/sinazarghami-aistudio-site';
-const DEFAULT_VIDEO_REPO = 'szarghami/video-portfolio';
-const DEFAULT_VIDEO_BASE_URL = 'https://szarghami.github.io/video-portfolio/';
-
-export interface StudioSettings {
-  githubToken?: string;
-  mainRepo?: string;
-  videoRepo?: string;
-  videoBaseUrl?: string;
-  forceAllVideos?: boolean;
-  youtubeApiKey?: string;
-  aparatApiKey?: string;
-  watermarkImg?: string;
-  watermarkOpacity?: number;
-  watermarkPosition?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center';
-}
-
-/**
- * همگام‌سازی و خواندن تنظیمات استودیو از سرور جهت ماندگاری دائمی حتی پس از رفرش یا تعویض مرورگر
- */
-export async function syncStudioSettingsFromServer(): Promise<StudioSettings> {
-  try {
-    const res = await fetch(`${SETTINGS_API_URL}?t=${Date.now()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && typeof data === 'object') {
-        if (data.githubToken) saveGitHubToken(data.githubToken);
-        if (data.mainRepo && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_MAIN_REPO, data.mainRepo);
-        if (data.videoRepo && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_VIDEO_REPO, data.videoRepo);
-        if (data.videoBaseUrl && typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY_VIDEO_BASE_URL, data.videoBaseUrl);
-        if (data.youtubeApiKey && typeof window !== 'undefined') {
-          localStorage.setItem('sina_youtube_api_key', data.youtubeApiKey);
-        }
-        if (data.aparatApiKey && typeof window !== 'undefined') {
-          localStorage.setItem('sina_aparat_api_key', data.aparatApiKey);
-        }
-        if (data.watermarkImg) saveWatermarkImage(data.watermarkImg);
-        if (data.watermarkOpacity !== undefined) saveWatermarkOpacity(data.watermarkOpacity);
-        if (data.watermarkPosition) saveWatermarkPosition(data.watermarkPosition);
-        return data;
-      }
-    }
-  } catch (err) {
-    console.warn('عدم امکان خواندن تنظیمات از سرور:', err);
-  }
-  return {
-    githubToken: getSavedGitHubToken(),
-    mainRepo: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_MAIN_REPO) || DEFAULT_MAIN_REPO : DEFAULT_MAIN_REPO,
-    videoRepo: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_VIDEO_REPO) || DEFAULT_VIDEO_REPO : DEFAULT_VIDEO_REPO,
-    videoBaseUrl: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_VIDEO_BASE_URL) || DEFAULT_VIDEO_BASE_URL : DEFAULT_VIDEO_BASE_URL,
-    forceAllVideos: typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY_FORCE_ALL_VIDEOS) === 'true' : true,
-    youtubeApiKey: typeof window !== 'undefined' ? localStorage.getItem('sina_youtube_api_key') || '' : '',
-    aparatApiKey: typeof window !== 'undefined' ? localStorage.getItem('sina_aparat_api_key') || '' : '',
-    watermarkImg: getSavedWatermarkImage(),
-    watermarkOpacity: getSavedWatermarkOpacity(),
-    watermarkPosition: getSavedWatermarkPosition(),
-  };
-}
-
-/**
- * ذخیره تنظیمات استودیو هم در لوکال‌استوریج و هم در سرور ابری جهت حفظ همیشگی
- */
-export async function saveStudioSettingsToServer(settings: Partial<StudioSettings>): Promise<void> {
-  if (settings.githubToken !== undefined) saveGitHubToken(settings.githubToken);
-  if (settings.mainRepo !== undefined && typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY_MAIN_REPO, settings.mainRepo);
-  }
-  if (settings.videoRepo !== undefined && typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY_VIDEO_REPO, settings.videoRepo);
-  }
-  if (settings.videoBaseUrl !== undefined && typeof window !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY_VIDEO_BASE_URL, settings.videoBaseUrl);
-  }
-  if (settings.youtubeApiKey !== undefined && typeof window !== 'undefined') {
-    localStorage.setItem('sina_youtube_api_key', settings.youtubeApiKey);
-  }
-  if (settings.aparatApiKey !== undefined && typeof window !== 'undefined') {
-    localStorage.setItem('sina_aparat_api_key', settings.aparatApiKey);
-  }
-  if (settings.watermarkImg !== undefined) saveWatermarkImage(settings.watermarkImg);
-  if (settings.watermarkOpacity !== undefined) saveWatermarkOpacity(settings.watermarkOpacity);
-  if (settings.watermarkPosition !== undefined) saveWatermarkPosition(settings.watermarkPosition);
-
-  try {
-    await fetch(SETTINGS_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings),
-    });
-  } catch (err) {
-    console.warn('عدم امکان ذخیره تنظیمات استودیو در سرور:', err);
-  }
-}
-
-/**
- * ترسیم امضای کاری روی Canvas بدون هیچ‌گونه سایه مشکی یا ضخیم‌شدن ناخواسته
- */
-export function drawWatermarkOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  canvasWidth: number,
-  canvasHeight: number,
-  wmImg: HTMLImageElement,
-  opacity: number = 0.15,
-  position: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center' = 'bottom-right'
-): void {
-  if (opacity <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = Math.min(1, Math.max(0, opacity));
-
-  const targetWidth = Math.max(100, Math.round(canvasWidth * 0.18));
-  const targetHeight = wmImg.width > 0 ? Math.round((wmImg.height / wmImg.width) * targetWidth) : Math.round(targetWidth * 0.3);
-  const margin = Math.round(Math.min(canvasWidth, canvasHeight) * 0.035);
-
-  let x = canvasWidth - targetWidth - margin;
-  let y = canvasHeight - targetHeight - margin;
-
-  if (position === 'bottom-left') {
-    x = margin;
-    y = canvasHeight - targetHeight - margin;
-  } else if (position === 'top-right') {
-    x = canvasWidth - targetWidth - margin;
-    y = margin;
-  } else if (position === 'top-left') {
-    x = margin;
-    y = margin;
-  } else if (position === 'center') {
-    x = Math.round((canvasWidth - targetWidth) / 2);
-    y = Math.round((canvasHeight - targetHeight) / 2);
-  }
-
-  // حذف سایه تیره که باعث ایجاد هاله دوتایی و حالت بولد ناخواسته می‌شد
-  ctx.shadowColor = 'transparent';
-  ctx.shadowBlur = 0;
-  ctx.shadowOffsetX = 0;
-  ctx.shadowOffsetY = 0;
-
-  ctx.drawImage(wmImg, x, y, targetWidth, targetHeight);
-  ctx.restore();
-}
-
 export interface CompressedImageResult {
   name: string;
   dataUrl: string;
@@ -530,13 +267,12 @@ export interface CompressedImageResult {
 }
 
 /**
- * فشرده‌سازی یک عکس منفرد با فرمت WebP و اعمال اختیاری امضای کاری
+ * فشرده‌سازی یک عکس منفرد با فرمت WebP
  */
 export function compressImageToWebP(
   file: File,
   maxDimension = 1400,
-  quality = 0.70,
-  watermark?: WatermarkConfig
+  quality = 0.70
 ): Promise<CompressedImageResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -569,47 +305,18 @@ export function compressImageToWebP(
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, width, height);
 
-        const finishExport = () => {
-          const dataUrl = canvas.toDataURL('image/webp', quality);
-          const compressedSize = Math.round((dataUrl.length * 3) / 4);
-          const originalSize = file.size;
-          const reductionPercent = Math.max(0, Math.round(((originalSize - compressedSize) / originalSize) * 100));
+        const dataUrl = canvas.toDataURL('image/webp', quality);
+        const compressedSize = Math.round((dataUrl.length * 3) / 4);
+        const originalSize = file.size;
+        const reductionPercent = Math.max(0, Math.round(((originalSize - compressedSize) / originalSize) * 100));
 
-          resolve({
-            name: file.name,
-            dataUrl,
-            originalSize,
-            compressedSize,
-            reductionPercent,
-          });
-        };
-
-        // اعمال امضای کاری در صورت فعال بودن
-        const wmOpacity = watermark?.opacity !== undefined ? watermark.opacity : getSavedWatermarkOpacity();
-        const wmImgSrc = watermark?.imageDataUrl || getSavedWatermarkImage();
-
-        if (wmOpacity > 0 && wmImgSrc) {
-          const wm = new Image();
-          wm.crossOrigin = 'anonymous';
-          wm.onload = () => {
-            drawWatermarkOnCanvas(
-              ctx,
-              width,
-              height,
-              wm,
-              wmOpacity,
-              watermark?.position || getSavedWatermarkPosition()
-            );
-            finishExport();
-          };
-          wm.onerror = () => {
-            // در صورت خطا در لود امضا، تصویر اصلی ذخیره می‌شود
-            finishExport();
-          };
-          wm.src = wmImgSrc;
-        } else {
-          finishExport();
-        }
+        resolve({
+          name: file.name,
+          dataUrl,
+          originalSize,
+          compressedSize,
+          reductionPercent,
+        });
       };
       img.onerror = (err) => reject(err);
       img.src = e.target?.result as string;
@@ -625,15 +332,14 @@ export function compressImageToWebP(
 export async function compressMultipleImagesToWebP(
   files: File[],
   maxDimension = 1400,
-  quality = 0.70,
-  watermark?: WatermarkConfig
+  quality = 0.70
 ): Promise<{
   results: CompressedImageResult[];
   totalOriginalKB: number;
   totalCompressedKB: number;
   overallReductionPercent: number;
 }> {
-  const promises = files.map((f) => compressImageToWebP(f, maxDimension, quality, watermark));
+  const promises = files.map((f) => compressImageToWebP(f, maxDimension, quality));
   const results = await Promise.all(promises);
 
   const totalOrigBytes = results.reduce((sum, r) => sum + r.originalSize, 0);

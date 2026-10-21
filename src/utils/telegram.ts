@@ -1,35 +1,35 @@
 // =====================================================================
 // ماژول ارسال پیام‌های لحظه‌ای و اعلان‌ها به تلگرام اختصاصی سینا ضرغامی
-// با استفاده از روت امن سرور /api/telegram/notify
-// جهت پیشگیری از افشای توکن در فرانت‌اند و حل مشکل فیلترینگ تلگرام در مرورگر
+// با استفاده از ربات هوشمند: @ai_Agent_for_sina_bot
+// Chat ID: 86050350 (@sina_zarghami)
 // =====================================================================
+
+const TELEGRAM_BOT_TOKEN = '8961351294:AAGqsMYUXBFS38uhdMvJjwnRh1FbxGdRGkQ';
+const SINA_CHAT_ID = '86050350';
 
 /**
  * تابع ارسال پیام متنی با فرمت‌بندی HTML به تلگرام سینا ضرغامی
- * ابتدا از طریق روت امن سرور /api/telegram/notify ارسال می‌شود
  */
 export async function sendTelegramNotification(messageHtml: string): Promise<boolean> {
   try {
-    const res = await fetch('/api/telegram/notify', {
+    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: messageHtml,
+        chat_id: SINA_CHAT_ID,
+        text: messageHtml,
+        parse_mode: 'HTML',
       }),
     });
-    if (res.ok) {
-      const data = await res.json().catch(() => null);
-      if (data && data.ok) {
-        return true;
-      }
-    }
+    const data = await res.json();
+    return data.ok === true;
   } catch (err) {
-    console.warn('ارسال اعلان تلگرام از طریق سرور انجام نشد:', err);
+    console.warn('خطا در ارسال پیام تلگرام:', err);
+    return false;
   }
-
-  return false;
 }
 
 /**

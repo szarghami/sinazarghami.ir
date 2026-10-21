@@ -6,37 +6,14 @@
 export type Language = 'fa' | 'en';
 
 // دسته‌بندی‌های تصاویر گالری
-export type PhotoCategory =
-  | 'all'
-  | 'landscape'
-  | 'commercial-shoes'
-  | 'commercial-jewelry'
-  | 'commercial-video'
-  | 'video'
-  | 'aerial'
-  | 'architecture'
-  | 'documentary'
-  | 'portrait';
-
-export type SpecificPhotoCategory = Exclude<PhotoCategory, 'all'>;
-
-// کامنت‌های همگام‌سازی‌شده از یوتیوب و آپارات
-export interface SyncedComment {
-  id: string;
-  authorName: string;
-  authorAvatar?: string;
-  text: string;
-  platform: 'youtube' | 'aparat';
-  date: string;
-  likesCount?: number;
-}
+export type PhotoCategory = 'all' | 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
 
 // ساختار اطلاعات هر قطعه عکس یا ویدیو
 export interface PhotoItem {
   id: string;
   titleFa: string; // عنوان فارسی اثر
   titleEn: string; // عنوان انگلیسی اثر
-  category: SpecificPhotoCategory;
+  category: 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
   locationFa: string; // موقعیت مکانی به فارسی (مثلاً: کویر لوت)
   locationEn: string; // موقعیت مکانی به انگلیسی
   year: string; // سال ثبت (مثلاً: 2024 یا 1403)
@@ -64,25 +41,18 @@ export interface PhotoItem {
   isVideo?: boolean;
   videoDuration?: string;
   videoQuality?: string; // مثلاً 4K / 60fps
-  videoUrl?: string; // لینک مستقیم فایل ویدیو (مثلاً در szarghami.github.io/video-portfolio)
-  // پلیر هوشمند چندسروره (گیت‌هاب + آپارات + یوتیوب)
-  githubVideoUrl?: string;
-  aparatUrl?: string;
-  youtubeUrl?: string;
-  defaultServer?: 'github' | 'aparat' | 'youtube';
-  // کامنت‌های همگام‌سازی‌شده از شبکه‌های اجتماعی
-  syncedComments?: SyncedComment[];
   featured?: boolean;
   galleryImages?: string[]; // تصاویر آلبوم (برای پست کردن چند عکس به صورت یک گالری)
   isAlbum?: boolean; // آیا این پست یک آلبوم چندعکسی است؟
-  // فیلدهای معماری چندصفحه‌ای و تفکیک نمونه‌کارها
-  showOnHome?: boolean; // مشخص می‌کند آیا این پست در ۴ پست برگزیده صفحه اصلی نمایش داده شود یا خیر
-  portfolioScope?: 'commercial' | 'travel'; // برای جداسازی کامل نمونه‌کارهای تخصصی/شرکتی از عکس‌های سفر
-  commercialCategory?: string; // دسته‌بندی کارهای تخصصی: مانند «صنعتی»، «همایش و رویداد»، «آموزشی»، «تبلیغاتی»
-  clientName?: string; // نام شرکت/کارفرما برای نمایش در کنار نمونه‌کارهای تجاری
-  clientInfo?: string; // توضیحات پروژه برای نمایش در کنار نمونه‌کارهای تجاری
-  gearIds?: string[]; // نام یا شناسه تجهیزات استفاده‌شده در این عکس
-  techniques?: string[]; // تکنیک‌های عکاسی/فیلمبرداری به‌کاررفته در این عکس
+  // فیلدهای تکمیلی جهت مدیریت داینامیک CMS و تفکیک نمونه‌کار
+  showOnHome?: boolean; // نمایش در پست‌های برگزیده صفحه اصلی
+  homeOrder?: number; // ترتیب نمایش در صفحه اصلی برای جابجایی
+  portfolioScope?: 'commercial' | 'travel'; // تفکیک نمونه‌کار تخصصی/تجاری از عکس‌های سفر
+  commercialCategory?: string; // شناسه یا نام دسته‌بندی تخصصی که ادمین در پنل تعریف می‌کند
+  clientName?: string; // نام شرکت/کارفرما
+  clientInfo?: string; // توضیحات پروژه برای آن شرکت
+  gearIds?: string[]; // تجهیزات استفاده‌شده
+  techniques?: string[]; // تکنیک‌های به‌کاررفته در این عکس
 }
 
 // ساختار اطلاعات تجهیزات و ابزارهای تولید (Production Gear Locker)
@@ -129,9 +99,79 @@ export interface ExpeditionItem {
   bookingOpen: boolean; // آیا ثبت‌نام باز است؟
   difficultyFa: string; // درجه سختی (آسان، متوسط، سخت)
   difficultyEn: string;
-  // فیلدهای فاز ۶
-  tripType?: 'travelogue' | 'tour'; // تفکیک «سفرهای رفته‌شده/سفرنامه» از «تورهای اجرایی/در حال ثبت‌نام»
-  galleryPhotos?: string[]; // آلبوم عکس‌های اختصاصی این سفر
+  tripType?: 'guided_tour' | 'personal_expedition' | 'travelogue' | 'tour'; // سفرنامه شخصی یا تور گردشگری
+  tourStatus?: 'completed' | 'upcoming' | 'open'; // وضعیت برگزاری تور
+  bookingUrl?: string;
+  gpxTrackUrl?: string;
+  galleryPhotos?: string[]; // تصاویر بیشتر از این سفر/اکسپدیشن
+}
+
+// اینترفیس دسته‌بندی‌های داینامیک CMS
+export interface CategoryItem {
+  id: string;
+  titleFa: string;
+  titleEn: string;
+  descriptionFa?: string;
+  descriptionEn?: string;
+  iconName?: string;
+  order?: number;
+  nameFa?: string; // برای سازگاری دوجانبه با کدهای پیشین
+  nameEn?: string;
+}
+
+// دسته‌بندی‌های نمونه‌کارهای تجاری/تخصصی قابل مدیریت توسط ادمین
+export type CommercialCategoryItem = CategoryItem;
+
+// تکنیک‌های عکاسی و تصویربرداری قابل تعریف و انتساب به عکس‌ها و مقالات
+export interface DefinedTechnique {
+  id: string;
+  nameFa: string;
+  nameEn: string;
+  descriptionFa?: string;
+  descriptionEn?: string;
+}
+
+// کارت‌های دسته‌بندی و ناوبری در صفحه اصلی
+export interface HomeCategoryCard {
+  id: string;
+  titleFa: string;
+  titleEn: string;
+  subtitleFa: string;
+  subtitleEn: string;
+  coverUrl: string;
+  targetPath: string;
+  badgeFa?: string;
+  badgeEn?: string;
+}
+
+// ساختار مقالات و یادداشت‌های آموزشی/فنی سینا ضرغامی
+export interface ArticleItem {
+  id: string;
+  slug: string;
+  titleFa: string;
+  titleEn: string;
+  summaryFa: string;
+  summaryEn: string;
+  contentFa: string;
+  contentEn: string;
+  coverImage: string;
+  publishedAt: string;
+  readTimeMinutes: number;
+  category: string;
+  tags: string[];
+  author: string;
+  isPublished: boolean;
+  // سازگاری کامل با کامپوننت‌های موجود
+  excerptFa: string;
+  excerptEn: string;
+  coverUrl: string;
+  readingTimeMinutes: number;
+  categoryFa: string;
+  categoryEn: string;
+  seoKeywords?: string[];
+  relatedTechniques?: string[];
+  relatedGearIds?: string[];
+  featured?: boolean;
 }
 
 // ساختار اطلاعات پروژه‌های نرم‌افزاری و وب‌سایت‌های ساخته‌شده
@@ -219,27 +259,74 @@ export interface ProfileContent {
   stats: StatItem[];
 }
 
-// ساختار تکنیک‌های تعریف‌شده عکاسی و فیلمبرداری
-export interface DefinedTechnique {
-  id: string;
-  nameFa: string; // نام فارسی (مثلاً هایپرمکرو با لنز معکوس)
-  nameEn: string;
-  descriptionFa?: string; // توضیحات تخصصی متد عکاسی
-  descriptionEn?: string;
-  badge?: string;
+// عناوین قابل تنظیم منوی اصلی وب‌سایت از پنل مدیریت
+export interface NavLabelsItem {
+  [key: string]: any;
+  homeFa?: string;
+  homeEn?: string;
+  portfolioFa?: string;
+  portfolioEn?: string;
+  tripsFa?: string;
+  tripsEn?: string;
+  gearFa?: string;
+  gearEn?: string;
+  articlesFa?: string;
+  articlesEn?: string;
+  resumeFa?: string;
+  resumeEn?: string;
+  aboutFa?: string;
+  aboutEn?: string;
+  orderFa?: string;
+  orderEn?: string;
 }
 
-// ساختار کارت‌های متحرک دسته‌بندی در صفحه اصلی (Interactive Category Cards Carousel)
-export interface HomeCategoryCard {
-  id: string;
-  titleFa: string; // عنوان دسته‌بندی (مثلاً: عکاسی و تیزرهای صنعتی)
-  titleEn: string;
-  subtitleFa: string; // زیرعنوان جذاب
-  subtitleEn: string;
-  coverUrl: string; // عکس نمادین باکیفیت برای کارت
-  targetPath: string; // مقصد ناوبری (مثلاً /portfolio?cat=industrial)
-  badgeFa?: string;
-  badgeEn?: string;
+// اینترفیس محتوای جامع صفحه درباره من
+export interface AboutPageContent {
+  heroBioFa: string;
+  heroBioEn: string;
+  detailedBioFa: string;
+  detailedBioEn: string;
+  avatarUrl: string;
+  bannerUrl?: string;
+  educationFa?: string[];
+  educationEn?: string[];
+  philosophyFa?: string;
+  philosophyEn?: string;
+  stats?: {
+    labelFa: string;
+    labelEn: string;
+    value: string;
+  }[];
+  contactEmail?: string;
+  contactPhone?: string;
+  locationFa?: string;
+  locationEn?: string;
+  telegramUrl?: string;
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  aparatUrl?: string;
+  specialtiesFa?: string[];
+  specialtiesEn?: string[];
+}
+
+// ساختار اختصاصی بیوگرافی و راه‌های ارتباطی در صفحه درباره من و فوتر
+export interface AboutBioContent {
+  headlineFa?: string;
+  headlineEn?: string;
+  storyFa?: string;
+  storyEn?: string;
+  philosophyFa?: string;
+  philosophyEn?: string;
+  specialtiesFa?: string[];
+  specialtiesEn?: string[];
+  telegramUrl?: string;
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  aparatUrl?: string;
+  email?: string;
+  phone?: string;
+  locationFa?: string;
+  locationEn?: string;
 }
 
 // کل محتوای پویای وب‌سایت
@@ -251,9 +338,25 @@ export interface SiteContent {
   resume: ResumeEntry[];
   books: BookItem[];
   equipment: EquipmentItem[];
+  // بخش‌های جدید معماری داینامیک CMS (۱۰۰٪ بدون هاردکد)
+  articles?: ArticleItem[];
+  commercialCategories?: CategoryItem[];
+  travelCategories?: CategoryItem[];
+  tripCategories?: CategoryItem[];
+  gearCategories?: CategoryItem[];
+  aboutPage?: AboutPageContent;
+  aboutBio?: AboutBioContent;
+  navLabels?: NavLabelsItem | { [key: string]: { fa: string; en: string } };
+  homeShowcaseConfig?: {
+    titleFa: string;
+    titleEn: string;
+    subtitleFa: string;
+    subtitleEn: string;
+    maxHomePhotos?: number;
+    maxHomeTrips?: number;
+  };
   definedTechniques?: DefinedTechnique[];
   homeCategoryCards?: HomeCategoryCard[];
-  encryptedVault?: string; // گاوصندوق رمزنگاری‌شده AES-256 کلیدها با رمز ثابت ادمین
 }
 
 // ساختار رویدادهای رفتار و آمار بازدیدکنندگان وب‌سایت
@@ -267,26 +370,17 @@ export interface AnalyticsEvent {
     | 'select_format'
     | 'abandon_checkout'
     | 'complete_order'
-    | 'service_inquiry'
     | 'contact_inquiry'
     | 'download_resume'
-    | 'section_view'
     | 'gear_view';
   path?: string;
   referrer?: string;
   browser?: string;
   os?: string;
   device?: 'mobile' | 'desktop' | 'tablet';
-  deviceModel?: string;
-  exactBrowser?: string;
   screenResolution?: string;
   photoId?: string;
   photoTitle?: string;
-  serviceType?: string;
-  clientName?: string;
-  contact?: string;
-  brief?: string;
-  sectionName?: string;
   selectedFormat?: 'print' | 'digital';
   priceToman?: number;
   priceUsd?: number;
@@ -307,23 +401,7 @@ export interface AnalyticsSummary {
   abandonmentRate: number;
   topBrowsers: { name: string; count: number; percent: number }[];
   topDevices: { name: string; count: number; percent: number }[];
-  topDeviceModels: { name: string; count: number; percent: number }[];
   topReferrers: { name: string; count: number; percent: number }[];
-  topSections: { name: string; count: number; percent: number }[];
-  completedOrdersList: {
-    id: string;
-    type: 'print_shop' | 'service_commission' | 'contact_inquiry';
-    title: string;
-    priceToman?: number;
-    priceUsd?: number;
-    clientName?: string;
-    contact?: string;
-    device?: string;
-    browser?: string;
-    timestamp: string;
-    persianDate: string;
-    details?: string;
-  }[];
   abandonedCartList: {
     photoTitle: string;
     photoId?: string;

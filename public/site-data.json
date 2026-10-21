@@ -88,96 +88,6 @@
       "featured": true
     },
     {
-      "id": "video-expo-pavilion",
-      "titleFa": "تیزر رسمی رونمایی از غرفه در نمایشگاه بین‌المللی تهران",
-      "titleEn": "International Corporate Expo & Architectural Pavilion Teaser",
-      "category": "video",
-      "isVideo": true,
-      "videoDuration": "1:30",
-      "videoQuality": "4K 60fps HDR",
-      "locationFa": "محل دائمی نمایشگاه‌های بین‌المللی تهران",
-      "locationEn": "Tehran International Fairground",
-      "year": "1402",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ef4444%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%AA%DB%8C%D8%B2%D8%B1%20%D8%B1%D8%B3%D9%85%DB%8C%20%D8%B1%D9%88%D9%86%D9%85%D8%A7%DB%8C%DB%8C%20%D8%A7%D8%B2%20%D8%BA%D8%B1%D9%81%D9%87%20%D8%AF%D8%B1%20%D9%86%D9%85%D8%A7%DB%8C%D8%B4%DA%AF%D8%A7%D9%87%20%D8%A8%DB%8C%D9%86%E2%80%8C%D8%A7%D9%84%D9%85%D9%84%D9%84%DB%8C%20%D8%AA%D9%87%D8%B1%D8%A7%D9%86%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EInternational%20Corporate%20Expo%20%26%20Architectural%20Pavilion%20Teaser%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23ef4444%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EVIDEO%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
-      "camera": "Canon R8",
-      "lens": "Canon RF 24-50mm IS STM",
-      "exif": {
-        "focalLength": "28mm",
-        "aperture": "f/4.0",
-        "shutter": "1/120s",
-        "iso": "640"
-      },
-      "descriptionFa": "روایت بصری و پوشش تخصصی نمایشگاهی شامل ثبت تعاملات بازدیدکنندگان، دیزاین غرفه، مصاحبه‌های کوتاه مدیران و رونمایی رسمی از دستاوردهای صنعتی برند.",
-      "descriptionEn": "Comprehensive corporate event cinematography documenting custom booth architecture, attendee engagement, and executive product unveilings with broadcast-ready fidelity.",
-      "printAvailable": false,
-      "printPriceToman": 0,
-      "printPriceUsd": 0,
-      "digitalAvailable": true,
-      "digitalPriceToman": 1500000,
-      "digitalPriceUsd": 30,
-      "featured": true
-    },
-    {
-      "id": "video-rig-yalan-reels",
-      "titleFa": "ریلز سینمایی پیمایش آفرود و کویرنوردی در هرم‌های ریگ یلان",
-      "titleEn": "Rig Yalan Megadunes Off-Road Expedition: Cinematic Reel",
-      "category": "video",
-      "isVideo": true,
-      "videoDuration": "0:58",
-      "videoQuality": "4K Vertical 9:16",
-      "locationFa": "کویر لوت، اعماق ریگ یلان",
-      "locationEn": "Rig Yalan, Central Lut Desert",
-      "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ef4444%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B1%DB%8C%D9%84%D8%B2%20%D8%B3%DB%8C%D9%86%D9%85%D8%A7%DB%8C%DB%8C%20%D9%BE%DB%8C%D9%85%D8%A7%DB%8C%D8%B4%20%D8%A2%D9%81%D8%B1%D9%88%D8%AF%20%D9%88%20%DA%A9%D9%88%DB%8C%D8%B1%D9%86%D9%88%D8%B1%D8%AF%DB%8C%20%D8%AF%D8%B1%20%D9%87%D8%B1%D9%85%E2%80%8C%D9%87%D8%A7%DB%8C%20%D8%B1%DB%8C%DA%AF%20%DB%8C%D9%84%D8%A7%D9%86%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ERig%20Yalan%20Megadunes%20Off-Road%20Expedition%3A%20Cinematic%20Reel%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23ef4444%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EVIDEO%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
-      "camera": "GoPro Max 360 & Mavic Mini 3 Pro",
-      "lens": "360 Spherical & 24mm f/1.7 eq",
-      "exif": {
-        "focalLength": "24mm",
-        "aperture": "f/2.8",
-        "shutter": "1/500s",
-        "iso": "100"
-      },
-      "descriptionFa": "تولید و تدوین ریلز پرانرژی عمودی ویژه اینستاگرام از عبور تویوتاهای دودیفرانسیل از بلندترین دیواره‌های ماسه‌ای جهان، نماهای تعقیبی پرسرعت پهپادی و حس خالص ماجراجویی.",
-      "descriptionEn": "Dynamic vertical 9:16 cinematic reels showcasing 4x4 vehicles conquering the world’s tallest sand dunes in Rig Yalan, built specifically for viral social engagement.",
-      "printAvailable": false,
-      "printPriceToman": 0,
-      "printPriceUsd": 0,
-      "digitalAvailable": true,
-      "digitalPriceToman": 1200000,
-      "digitalPriceUsd": 25,
-      "featured": true
-    },
-    {
-      "id": "video-akhavi-line",
-      "titleFa": "تیزر صنعتی خط تولید و معرفی لابراتوار دکتر اخوی",
-      "titleEn": "Dr. Akhavi Laboratory: Automated Line Industrial Teaser",
-      "category": "video",
-      "isVideo": true,
-      "videoDuration": "2:15",
-      "videoQuality": "4K 60fps Cinema",
-      "locationFa": "تهران، شهرک صنعتی",
-      "locationEn": "Tehran Industrial Zone",
-      "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ef4444%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%AA%DB%8C%D8%B2%D8%B1%20%D8%B5%D9%86%D8%B9%D8%AA%DB%8C%20%D8%AE%D8%B7%20%D8%AA%D9%88%D9%84%DB%8C%D8%AF%20%D9%88%20%D9%85%D8%B9%D8%B1%D9%81%DB%8C%20%D9%84%D8%A7%D8%A8%D8%B1%D8%A7%D8%AA%D9%88%D8%A7%D8%B1%20%D8%AF%DA%A9%D8%AA%D8%B1%20%D8%A7%D8%AE%D9%88%DB%8C%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EDr.%20Akhavi%20Laboratory%3A%20Automated%20Line%20Industrial%20Teaser%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23ef4444%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EVIDEO%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
-      "camera": "Canon R8 & DJI RS 3 Pro",
-      "lens": "Canon EF 50mm f/1.8 & RF 24-50mm",
-      "exif": {
-        "focalLength": "50mm",
-        "aperture": "f/2.2",
-        "shutter": "1/120s",
-        "iso": "400"
-      },
-      "descriptionFa": "تصویربرداری سینمایی با گیمبال و نورپردازی دقیق استودیویی از خطوط تمام‌اتوماتیک دارویی و بسته‌بندی لابراتوار دکتر اخوی، تدوین ریتمیک همراه با ساند دیزاین اختصاصی صنعتی.",
-      "descriptionEn": "High-precision corporate cinematography capturing automated pharmaceutical production and packaging systems for Dr. Akhavi Laboratory, with custom sound design and grading.",
-      "printAvailable": false,
-      "printPriceToman": 0,
-      "printPriceUsd": 0,
-      "digitalAvailable": true,
-      "digitalPriceToman": 1800000,
-      "digitalPriceUsd": 35,
-      "featured": true
-    },
-    {
       "id": "photo-1",
       "titleFa": "سکوت کلوت‌ها در شفق کویر لوت",
       "titleEn": "Kaluts in Twilight, Lut Desert",
@@ -185,7 +95,7 @@
       "locationFa": "کویر لوت، شهداد",
       "locationEn": "Lut Desert, Kerman",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%DA%A9%D9%88%D8%AA%20%DA%A9%D9%84%D9%88%D8%AA%E2%80%8C%D9%87%D8%A7%20%D8%AF%D8%B1%20%D8%B4%D9%81%D9%82%20%DA%A9%D9%88%DB%8C%D8%B1%20%D9%84%D9%88%D8%AA%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EKaluts%20in%20Twilight%2C%20Lut%20Desert%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon EF 50mm f/1.8",
       "exif": {
@@ -205,8 +115,8 @@
       "featured": true,
       "isAlbum": true,
       "galleryImages": [
-        "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%DA%A9%D9%88%D8%AA%20%DA%A9%D9%84%D9%88%D8%AA%E2%80%8C%D9%87%D8%A7%20%D8%AF%D8%B1%20%D8%B4%D9%81%D9%82%20%DA%A9%D9%88%DB%8C%D8%B1%20%D9%84%D9%88%D8%AA%20(%D9%86%D9%85%D8%A7%DB%8C%201)%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EKaluts%20in%20Twilight%2C%20Lut%20Desert%20(Angle%201)%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
-        "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%DA%A9%D9%88%D8%AA%20%DA%A9%D9%84%D9%88%D8%AA%E2%80%8C%D9%87%D8%A7%20%D8%AF%D8%B1%20%D8%B4%D9%81%D9%82%20%DA%A9%D9%88%DB%8C%D8%B1%20%D9%84%D9%88%D8%AA%20(%D9%86%D9%85%D8%A7%DB%8C%202)%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EKaluts%20in%20Twilight%2C%20Lut%20Desert%20(Angle%202)%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E"
+        "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1600&q=80",
+        "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1600&q=80"
       ]
     },
     {
@@ -217,7 +127,7 @@
       "locationFa": "جزیره هرمز، خلیج فارس",
       "locationEn": "Hormuz Island, Persian Gulf",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23818cf8%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23818cf8%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23818cf8%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23818cf8%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%AA%D9%84%D8%A7%D9%82%DB%8C%20%D8%AE%D8%A7%DA%A9%20%D8%B3%D8%B1%D8%AE%20%D9%88%20%D8%A7%D9%85%D9%88%D8%A7%D8%AC%20%D9%81%DB%8C%D8%B1%D9%88%D8%B2%D9%87%E2%80%8C%D8%A7%DB%8C%20%D9%87%D8%B1%D9%85%D8%B2%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ERed%20Soil%20Meets%20Turquoise%20Tides%2C%20Hormuz%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23818cf8%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EAERIAL%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
       "camera": "GoPro Max 360",
       "lens": "Ultra-Wide Panoramic 360",
       "exif": {
@@ -244,7 +154,7 @@
       "locationFa": "استودیو عکاسی ماکرو، تهران",
       "locationEn": "Macro Studio, Tehran",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2310b981%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%AF%D9%86%DB%8C%D8%A7%DB%8C%20%D8%B1%DB%8C%D8%B2%D8%AF%D8%A7%D9%86%D9%87%3A%20%D9%87%D8%A7%DB%8C%D9%BE%D8%B1%D9%85%DA%A9%D8%B1%D9%88%20%DA%86%D8%B4%D9%85%20%D9%85%D8%B1%DA%A9%D8%A8%20%D8%B3%D9%86%D8%AC%D8%A7%D9%82%DA%A9%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EInsect%20Eye%20Architecture%20(Hyper-Macro)%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%2310b981%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EPORTRAIT%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8 & Reverse Macro Ring",
       "lens": "Canon EF 50mm f/1.8 (رینگ معکوس)",
       "exif": {
@@ -271,7 +181,7 @@
       "locationFa": "کوه دماوند، مازندران",
       "locationEn": "Mount Damavand, Mazandaran",
       "year": "1402",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%D9%BE%DB%8C%D8%AF%D9%87%E2%80%8C%D8%AF%D9%85%20%D8%A8%D8%B1%20%D9%81%D8%B1%D8%A7%D8%B2%20%DB%8C%D8%A7%D9%84%20%D8%AC%D9%86%D9%88%D8%A8%20%D8%B4%D8%B1%D9%82%DB%8C%20%D8%AF%D9%85%D8%A7%D9%88%D9%86%D8%AF%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EDawn%20Over%20Damavand%20Ridge%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon 70D",
       "lens": "Canon EF-S 55–250mm IS",
       "exif": {
@@ -298,7 +208,7 @@
       "locationFa": "تهران",
       "locationEn": "Tehran Modern Spaces",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23c084fc%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23c084fc%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23c084fc%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23c084fc%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%AE%D8%B7%D9%88%D8%B7%20%D9%86%D9%88%D8%B1%20%D8%AF%D8%B1%20%D9%87%D9%86%D8%AF%D8%B3%D9%87%20%D9%85%D8%B9%D9%85%D8%A7%D8%B1%DB%8C%20%D9%85%D8%B9%D8%A7%D8%B5%D8%B1%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ELight%20Pathways%20in%20Modern%20Architecture%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23c084fc%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EARCHITECTURE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "RF 24-50mm IS STM",
       "exif": {
@@ -325,7 +235,7 @@
       "locationFa": "جنگل الیمستان، مازندران",
       "locationEn": "Alimastan Forest, Mazandaran",
       "year": "1402",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%DA%A9%D9%88%D8%AA%20%D9%85%D9%87%E2%80%8C%D8%A2%D9%84%D9%88%D8%AF%20%D8%AF%D8%B1%20%D8%B1%D8%A7%D8%B4%D8%B3%D8%AA%D8%A7%D9%86%E2%80%8C%D9%87%D8%A7%DB%8C%20%D9%87%DB%8C%D8%B1%DA%A9%D8%A7%D9%86%DB%8C%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EMist%20in%20Ancient%20Hyrcanian%20Forest%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon EF 50mm f/1.8",
       "exif": {
@@ -352,7 +262,7 @@
       "locationFa": "کویر مرنجاب و دریاچه نمک، آران و بیدگل",
       "locationEn": "Maranjab Salt Lake, Isfahan",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%BE%D9%84%DB%8C%E2%80%8C%DA%AF%D9%88%D9%86%E2%80%8C%D9%87%D8%A7%DB%8C%20%D8%A8%D9%84%D9%88%D8%B1%DB%8C%D9%86%20%D8%AF%D8%B1%20%D8%BA%D8%B1%D9%88%D8%A8%20%D8%AF%D8%B1%DB%8C%D8%A7%DA%86%D9%87%20%D9%86%D9%85%DA%A9%20%D9%85%D8%B1%D9%86%D8%AC%D8%A7%D8%A8%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ECrystalline%20Salt%20Polygons%2C%20Maranjab%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1518457607834-6e8d80c183c5?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon RF 24–50mm IS",
       "exif": {
@@ -379,7 +289,7 @@
       "locationFa": "تنگه چاهکوه، ژئوپارک قشم",
       "locationEn": "Chahkooh Gorge, Qeshm Island",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%81%D8%B1%D8%B3%D8%A7%DB%8C%D8%B4%E2%80%8C%D9%87%D8%A7%DB%8C%20%D8%B1%D8%B3%D9%88%D8%A8%DB%8C%20%D9%88%20%D8%AA%D9%86%D8%AF%DB%8C%D8%B3%E2%80%8C%D9%87%D8%A7%DB%8C%20%D8%AF%D8%B1%D9%87%20%DA%86%D8%A7%D9%87%DA%A9%D9%88%D9%87%20%D9%82%D8%B4%D9%85%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ESculpted%20Canyons%20of%20Chahkooh%20Gorge%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon RF 24–50mm IS",
       "exif": {
@@ -402,11 +312,11 @@
       "id": "photo-9",
       "titleFa": "تیزر سینمایی و عکاسی درب‌های بدون قاب لندی دور",
       "titleEn": "Landi Doors Architectural Cinematography",
-      "category": "video",
+      "category": "architecture",
       "locationFa": "تهران و پروژه‌های معماری مدرن",
       "locationEn": "Landi Doors Installations, Tehran",
       "year": "1402",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23ef4444%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23ef4444%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%AA%DB%8C%D8%B2%D8%B1%20%D8%B3%DB%8C%D9%86%D9%85%D8%A7%DB%8C%DB%8C%20%D9%88%20%D8%B9%DA%A9%D8%A7%D8%B3%DB%8C%20%D8%AF%D8%B1%D8%A8%E2%80%8C%D9%87%D8%A7%DB%8C%20%D8%A8%D8%AF%D9%88%D9%86%20%D9%82%D8%A7%D8%A8%20%D9%84%D9%86%D8%AF%DB%8C%20%D8%AF%D9%88%D8%B1%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ELandi%20Doors%20Architectural%20Cinematography%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23ef4444%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EVIDEO%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8 & DJI RS 4",
       "lens": "Canon EF 50mm f/1.8",
       "exif": {
@@ -436,7 +346,7 @@
       "locationFa": "استودیو صنعتی، تهران",
       "locationEn": "Commercial Product Studio, Tehran",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23c084fc%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23c084fc%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23c084fc%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23c084fc%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B9%DA%A9%D8%A7%D8%B3%DB%8C%20%DA%A9%D8%A7%D8%AA%D8%A7%D9%84%D9%88%DA%AF%20%D8%B5%D9%86%D8%B9%D8%AA%DB%8C%20%D9%85%D8%AD%D8%B5%D9%88%D9%84%D8%A7%D8%AA%20%D9%84%D8%A7%D8%A8%D8%B1%D8%A7%D8%AA%D9%88%D8%A7%D8%B1%20%D8%AF%DA%A9%D8%AA%D8%B1%20%D8%A7%D8%AE%D9%88%DB%8C%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EDr.%20Akhavi%20Laboratory%20Product%20Catalog%20Studio%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23c084fc%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EARCHITECTURE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1556228720-195a672e8a03?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon EF 50mm f/1.8",
       "exif": {
@@ -463,7 +373,7 @@
       "locationFa": "ریگ یلان، کویر لوت",
       "locationEn": "Rig Yalan, Eastern Lut Desert",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%BE%DB%8C%D9%85%D8%A7%DB%8C%D8%B4%20%D9%87%D8%B1%D9%85%E2%80%8C%D9%87%D8%A7%DB%8C%20%D9%85%D8%A7%D8%B3%D9%87%E2%80%8C%D8%A7%DB%8C%20%D8%B9%D8%B8%DB%8C%D9%85%20%D8%B1%DB%8C%DA%AF%20%DB%8C%D9%84%D8%A7%D9%86%20%D8%AF%D8%B1%20%D9%82%D9%84%D8%A8%20%D9%84%D9%88%D8%AA%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ERig%20Yalan%20Megadunes%20Wilderness%20Expedition%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EDOCUMENTARY%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon 70D & GoPro Max 360",
       "lens": "Canon EF-S 18–55mm IS",
       "exif": {
@@ -490,7 +400,7 @@
       "locationFa": "استودیو هایپرمکرو، تهران",
       "locationEn": "Hyper-Macro Lab, Tehran",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2310b981%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%85%D9%86%D8%B4%D9%88%D8%B1%D9%87%D8%A7%DB%8C%20%D9%85%DB%8C%D9%86%DB%8C%D8%A7%D8%AA%D9%88%D8%B1%DB%8C%3A%20%D8%A8%D8%A7%D8%B2%D8%AA%D8%A7%D8%A8%20%D8%AF%D8%B1%20%D9%82%D8%B7%D8%B1%D9%87%20%D8%B4%D8%A8%D9%86%D9%85%20%DA%A9%D9%88%DB%8C%D8%B1%DB%8C%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EMicro-Refraction%20in%20Desert%20Dew%20Droplets%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%2310b981%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EPORTRAIT%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1533227268428-f9ed0900fb3b?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8 & Reverse Macro Ring",
       "lens": "50mm Inverted Prime",
       "exif": {
@@ -517,7 +427,7 @@
       "locationFa": "بندر لافت، جزیره قشم",
       "locationEn": "Historic Laft Harbor, Qeshm",
       "year": "1402",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%BE%D8%B1%D8%AA%D8%B1%D9%87%20%D9%86%D8%A7%D8%AE%D8%AF%D8%A7%20%D8%AE%D8%AF%D8%B1%3A%20%D8%B1%D8%A7%D9%88%DB%8C%20%D8%A8%D8%A7%D8%AF%DA%AF%DB%8C%D8%B1%D9%87%D8%A7%20%D9%88%20%D8%B3%D9%86%D8%AA%20%D9%84%D9%86%D8%AC%E2%80%8C%D8%B3%D8%A7%D8%B2%DB%8C%20%D9%84%D8%A7%D9%81%D8%AA%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ECaptain%20Khedr%3A%20Guardian%20of%20Historic%20Laft%20Harbor%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EDOCUMENTARY%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon EF 50mm f/1.8",
       "exif": {
@@ -544,7 +454,7 @@
       "locationFa": "پارک ملی کویر، سمنان",
       "locationEn": "Kavir National Park, Semnan",
       "year": "1402",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B4%DA%A9%D9%88%D9%87%20%DA%A9%D9%87%DA%A9%D8%B4%D8%A7%D9%86%20%D8%B1%D8%A7%D9%87%20%D8%B4%DB%8C%D8%B1%DB%8C%20%D8%A8%D8%B1%20%D9%81%D8%B1%D8%A7%D8%B2%20%DA%A9%D8%A7%D8%B1%D9%88%D8%A7%D9%86%D8%B3%D8%B1%D8%A7%DB%8C%20%D9%82%D8%B5%D8%B1%20%D8%A8%D9%87%D8%B1%D8%A7%D9%85%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EMilky%20Way%20Arch%20Over%20Qasr-e%20Bahram%20Caravanserai%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3ELANDSCAPE%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon RF 24–50mm IS",
       "exif": {
@@ -571,7 +481,7 @@
       "locationFa": "استودیو هایپرمکرو، تهران",
       "locationEn": "Hyper-Macro Studio, Tehran",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%2310b981%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%2310b981%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%86%DA%AF%D8%A7%D9%87%20%D9%85%DB%8C%D9%86%DB%8C%D8%A7%D8%AA%D9%88%D8%B1%DB%8C%3A%20%D8%B2%D8%B1%D9%87%20%DA%A9%D8%AA%DB%8C%D9%86%DB%8C%20%D9%88%20%DA%AF%DB%8C%D8%B1%D9%86%D8%AF%D9%87%E2%80%8C%D9%87%D8%A7%DB%8C%20%D8%B4%D8%A7%D8%AE%DA%A9%20%D9%85%D9%88%D8%B1%DA%86%D9%87%20%D8%A8%DB%8C%D8%A7%D8%A8%D8%A7%D9%86%DB%8C%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EAnt%20Chitin%20Armor%20%26%20Sensory%20Antenna%20Architecture%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%2310b981%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EPORTRAIT%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1563245372-f21724e3856d?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8 & Reverse Macro Coupling",
       "lens": "Canon EF 50mm f/1.8 Reversed",
       "exif": {
@@ -598,7 +508,7 @@
       "locationFa": "خلیج پزم، دریای عمان، چابهار",
       "locationEn": "Pozm Bay, Gulf of Oman, Chabahar",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23818cf8%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23818cf8%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23818cf8%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23818cf8%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%DA%86%DB%8C%D9%86%E2%80%8C%D8%AE%D9%88%D8%B1%D8%AF%DA%AF%DB%8C%E2%80%8C%D9%87%D8%A7%DB%8C%20%D9%85%D8%B1%DB%8C%D8%AE%DB%8C%20%D9%85%DA%A9%D8%B1%D8%A7%D9%86%20%D8%AF%D8%B1%20%D8%B3%D9%88%D8%A7%D8%AD%D9%84%20%D8%AE%D9%84%DB%8C%D8%AC%20%D9%BE%D8%B2%D9%85%20%DA%86%D8%A7%D8%A8%D9%87%D8%A7%D8%B1%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EMartian%20Badlands%20of%20Pozm%2C%20Chabahar%20Coast%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23818cf8%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EAERIAL%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1600&q=80",
       "camera": "Mavic Mini 3 Pro",
       "lens": "24mm f/1.7 eq",
       "exif": {
@@ -625,7 +535,7 @@
       "locationFa": "اکوکمپ شهداد، کویر لوت",
       "locationEn": "Shahdad Ecotour Camp, Lut Desert",
       "year": "1403",
-      "imageUrl": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23d97706%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23d97706%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B7%D9%86%DB%8C%D9%86%20%D8%A2%D8%AA%D8%B4%20%D8%AF%D8%B1%20%D8%B4%D8%A8%E2%80%8C%D9%86%D8%B4%DB%8C%D9%86%DB%8C%20%DA%A9%D8%A7%D8%B1%D9%88%D8%A7%D9%86%20%DA%A9%D9%88%DB%8C%D8%B1%20%D9%84%D9%88%D8%AA%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ECampfire%20Stories%20Under%20the%20Desert%20Canopy%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23d97706%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EDOCUMENTARY%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "imageUrl": "https://images.unsplash.com/photo-1517824806704-9040b037703b?auto=format&fit=crop&w=1600&q=80",
       "camera": "Canon R8",
       "lens": "Canon EF 50mm f/1.8",
       "exif": {
@@ -641,6 +551,117 @@
       "printPriceUsd": 46,
       "digitalAvailable": true,
       "digitalPriceToman": 980000,
+      "digitalPriceUsd": 18,
+      "featured": false
+    },
+    {
+      "id": "photo-18",
+      "titleFa": "مستند صنعتی و خط مونتاژ قطعات فوق‌سنگین کومین زاد یدک",
+      "titleEn": "Komin Zad Heavy Industrial Cinematography & Precision Assembly",
+      "category": "architecture",
+      "locationFa": "تهران و شهرک صنعتی کاسپین",
+      "locationEn": "Caspian Industrial Complex, Tehran",
+      "year": "1403",
+      "imageUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1600&q=80",
+      "camera": "Canon R8 & DJI RS 4",
+      "lens": "Canon EF 50mm f/1.8 & RF 24–50mm",
+      "exif": {
+        "aperture": "f/2.8",
+        "shutter": "1/120s",
+        "iso": "400",
+        "focalLength": "35mm"
+      },
+      "isVideo": true,
+      "videoDuration": "2:30",
+      "videoQuality": "4K 60fps C-Log3",
+      "descriptionFa": "پروژه جامع مستندسازی چنددوربینه از خطوط تولید، عملیات تراشکاری CNC و تست فشار با نورپردازی پیوسته استودیویی ۳۳۰ وات و ضبط صدای محیطی با سیستم هالی‌لند لارک ام۲.",
+      "descriptionEn": "Multi-camera industrial cinematography documenting automated CNC milling and precision stress testing with 330W continuous lighting and broadcast audio.",
+      "printAvailable": false,
+      "printPriceToman": 0,
+      "printPriceUsd": 0,
+      "digitalAvailable": true,
+      "digitalPriceToman": 2200000,
+      "digitalPriceUsd": 38,
+      "featured": true
+    },
+    {
+      "id": "photo-19",
+      "titleFa": "معماری رنگین‌تاب: فلورسنت نانومتری پولک‌های بال پروانه",
+      "titleEn": "Structural Iridescence: Lepidoptera Wing Scales",
+      "category": "portrait",
+      "locationFa": "آزمایشگاه هایپرمکرو، تهران",
+      "locationEn": "Hyper-Macro Studio Lab, Tehran",
+      "year": "1403",
+      "imageUrl": "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?auto=format&fit=crop&w=1600&q=80",
+      "camera": "Canon R8 & Reverse Macro Coupling",
+      "lens": "Canon EF 50mm f/1.8 (رینگ معکوس)",
+      "exif": {
+        "aperture": "f/11 (معکوس)",
+        "shutter": "1/200s",
+        "iso": "100",
+        "focalLength": "50mm Inverted"
+      },
+      "descriptionFa": "بزرگ‌نمایی میکروسکوپی فراتر از ۳:۱ از چیدمان پولک‌های بال پروانه؛ نمایش انکسار نور ناشی از ساختار نانومتری کراتین و بازتاب پرتوهای رنگین‌کمانی بدون استفاده از رنگدانه شیمیایی.",
+      "descriptionEn": "Microscopic optical examination beyond 3:1 reproduction ratio showcasing biological structural iridescence across overlapping chitinous wing scales.",
+      "printAvailable": true,
+      "printPriceToman": 3700000,
+      "printPriceUsd": 62,
+      "digitalAvailable": true,
+      "digitalPriceToman": 1350000,
+      "digitalPriceUsd": 24,
+      "featured": true
+    },
+    {
+      "id": "photo-20",
+      "titleFa": "شکاف‌های گرادیانی کال جنی و تندیس‌های آبی طبس",
+      "titleEn": "Gradient Labyrinths of Kal Jeni Canyon, Tabas",
+      "category": "landscape",
+      "locationFa": "کال جنی، طبس، خراسان جنوبی",
+      "locationEn": "Kal Jeni Canyon, Tabas, South Khorasan",
+      "year": "1403",
+      "imageUrl": "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1600&q=80",
+      "camera": "Mavic Mini 3 Pro",
+      "lens": "24mm f/1.7 eq",
+      "exif": {
+        "aperture": "f/4.0",
+        "shutter": "1/500s",
+        "iso": "100",
+        "focalLength": "24mm"
+      },
+      "descriptionFa": "چشم‌انداز عمودی از فرسایش سیلابی رسوبات آهکی در دره باستانی کال جنی، جریان آب خنک در کف دره و سایه‌روشن دیواره‌های تنگه در گرمای سوزان کویر مرکزی.",
+      "descriptionEn": "Aerial vertical cinematography revealing centuries of flash-flood carving through the labyrinthine clay gorges of historic Kal Jeni canyon.",
+      "printAvailable": true,
+      "printPriceToman": 3200000,
+      "printPriceUsd": 54,
+      "digitalAvailable": true,
+      "digitalPriceToman": 1100000,
+      "digitalPriceUsd": 20,
+      "featured": true
+    },
+    {
+      "id": "photo-21",
+      "titleFa": "آوای زنگ کاروان در گردنه گدوک و راه‌آهن تاریخی شمال",
+      "titleEn": "Echoes of the North: Historical Veresk & Gadook Pass",
+      "category": "documentary",
+      "locationFa": "پل ورسک، گردنه گدوک، سوادکوه",
+      "locationEn": "Veresk Bridge & Gadook Pass, Savadkuh",
+      "year": "1402",
+      "imageUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=1600&q=80",
+      "camera": "Canon R8",
+      "lens": "Canon RF 24–50mm IS",
+      "exif": {
+        "aperture": "f/6.3",
+        "shutter": "1/320s",
+        "iso": "200",
+        "focalLength": "35mm"
+      },
+      "descriptionFa": "مستندسازی عبور قطار از روی شاهکار مهندسی پل ورسک در میان مه ارتفاعات البرز مرکزی؛ تلفیق نبوغ مهندسی قرن با چشم‌انداز صخره‌های عمودی سوادکوه.",
+      "descriptionEn": "Documentary framing of a trans-Iranian passenger train traversing the iconic 110-meter Veresk railway viaduct enshrouded in mountain clouds.",
+      "printAvailable": true,
+      "printPriceToman": 2900000,
+      "printPriceUsd": 48,
+      "digitalAvailable": true,
+      "digitalPriceToman": 990000,
       "digitalPriceUsd": 18,
       "featured": false
     }
@@ -1058,7 +1079,7 @@
       "durationEn": "4 Days / 3 Nights",
       "seasonFa": "پاییز و زمستان",
       "seasonEn": "Autumn & Winter",
-      "coverImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23f97316%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%D9%81%D8%B1%20%D8%A7%DA%A9%D8%AA%D8%B4%D8%A7%D9%81%DB%8C%20%D9%88%20%D9%85%D8%B3%D8%AA%D8%B1%DA%A9%D9%84%D8%A7%D8%B3%20%D8%B9%DA%A9%D8%A7%D8%B3%DB%8C%20%DA%A9%D9%88%DB%8C%D8%B1%20%D9%84%D9%88%D8%AA%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ELut%20Desert%20Expedition%20%26%20Astrophotography%20Masterclass%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23f97316%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EEXPEDITION%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "coverImage": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80",
       "descriptionFa": "پیمایش تخصصی با خودروهای دو دیفرانسیل مجهز، عکاسی از آسمان شب با کمترین آلودگی نوری خاورمیانه، آموزش تکنیک‌های ترکیب‌بندی منظره و عکاسی تایم‌لپس.",
       "descriptionEn": "Professional 4WD navigation through high desert dunes, astrophotography under Bortle Class 1 night skies, and hands-on landscape composition mentorship.",
       "highlightsFa": [
@@ -1086,7 +1107,7 @@
       "durationEn": "5 Days / 4 Nights",
       "seasonFa": "آذر تا اسفند",
       "seasonEn": "December to March",
-      "coverImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23f97316%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%A7%D9%88%D8%AF%DB%8C%D8%B3%D9%87%20%D8%B9%DA%A9%D8%A7%D8%B3%DB%8C%20%D9%88%20%D9%85%D8%B3%D8%AA%D9%86%D8%AF%D8%B3%D8%A7%D8%B2%DB%8C%20%D8%AC%D8%B2%D8%A7%DB%8C%D8%B1%20%D8%B1%D9%86%DA%AF%DB%8C%D9%86%20%D9%87%D8%B1%D9%85%D8%B2%20%D9%88%20%D9%82%D8%B4%D9%85%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EHormuz%20%26%20Qeshm%20Visual%20Storytelling%20Odyssey%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23f97316%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EEXPEDITION%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "coverImage": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
       "descriptionFa": "اکتشاف دره مجسمه‌ها، غار نمکدان، عکاسی ۳۶۰ درجه و واید از تلاقی صخره‌ها و آب، و فیلمبرداری مستند از فرهنگ بومی صیادی جنوب.",
       "descriptionEn": "Exploring geological wonders of Valley of Statues, 360 cinematography over pristine coasts, and intimate documentary portraits of local fishermen.",
       "highlightsFa": [
@@ -1114,7 +1135,7 @@
       "durationEn": "3 Days / 2 Nights",
       "seasonFa": "بهار و اوایل تابستان",
       "seasonEn": "Spring & Early Summer",
-      "coverImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23f97316%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23f97316%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D9%BE%DB%8C%D9%85%D8%A7%DB%8C%D8%B4%20%D8%A2%D9%84%D9%BE%D8%A7%DB%8C%D9%86%20%D9%88%20%D8%B9%DA%A9%D8%A7%D8%B3%DB%8C%20%DA%A9%D9%88%D9%87%D8%B3%D8%AA%D8%A7%D9%86%20%D8%AF%D8%B1%20%D8%B1%D8%B4%D8%AA%D9%87%E2%80%8C%DA%A9%D9%88%D9%87%20%D8%A7%D9%84%D8%A8%D8%B1%D8%B2%20%D9%85%D8%B1%DA%A9%D8%B2%DB%8C%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ECentral%20Alborz%20Alpine%20Photography%20Trek%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23f97316%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EEXPEDITION%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "coverImage": "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1200&q=80",
       "descriptionFa": "پیمایش دشت شقایق‌های سرخ، عکاسی با لنز تله ۵۵-۲۵۰ از حیات وحش البرز و تمرین عکاسی کوهستان در ارتفاع بالای ۳۰۰۰ متر.",
       "descriptionEn": "Trekking through wildflower meadows, alpine telephoto photography of wildlife, and high-altitude mountain landscape technique practice.",
       "highlightsFa": [
@@ -1354,7 +1375,7 @@
       "subtitleEn": "Optical Techniques for Microscopic Insect Eyes, Wings & Structural Textures",
       "statusFa": "منتشر شده (اسفند ۱۴۰۳)",
       "statusEn": "Published (March 2025)",
-      "coverImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23fbbf24%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23fbbf24%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23fbbf24%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23fbbf24%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%DA%A9%D8%AA%D8%A7%D8%A8%20%D8%B9%DA%A9%D8%A7%D8%B3%DB%8C%20%D9%87%D8%A7%DB%8C%D9%BE%D8%B1%D9%85%DA%A9%D8%B1%D9%88%20%D8%AD%D8%B4%D8%B1%D8%A7%D8%AA%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3EHyper-Macro%20Photography%3A%20The%20Kingdom%20of%20Insects%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23fbbf24%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EBOOK%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "coverImage": "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?auto=format&fit=crop&w=1000&q=80",
       "descriptionFa": "کتابی مرجع و کاربردی درباره عکاسی ماکرو فراتر از نسبت ۱:۱؛ آموزش اتصال معکوس لنز، مدیریت فوکوس میلی‌متری، نورپردازی با فلاش پرتابل بدون سوزاندن بال‌های ظریف حشرات و پردازش Focus Stacking.",
       "descriptionEn": "A masterclass field manual on extreme macro photography beyond 1:1 reproduction ratio, reverse lens optics, diffused flash lighting, and ultra-high-resolution focus stacking.",
       "pages": "۱۶۰ صفحه گلاسه تمام‌رنگی - مصور با کیفیت چاپ فاین‌آرت",
@@ -1371,7 +1392,7 @@
       "subtitleEn": "Fine Art Monograph & Field Notes on the Uncharted Iranian Plateau",
       "statusFa": "در دست نگارش و پیش‌تولید (۱۴۰۵)",
       "statusEn": "In Writing & Pre-production (2026)",
-      "coverImage": "data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221600%22%20height%3D%221066%22%20viewBox%3D%220%200%201600%201066%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22bg%22%20x1%3D%220%25%22%20y1%3D%220%25%22%20x2%3D%22100%25%22%20y2%3D%22100%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3Cstop%20offset%3D%2250%25%22%20stop-color%3D%22%231c1917%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%23141210%22%2F%3E%3C%2FlinearGradient%3E%3CradialGradient%20id%3D%22gl%22%20cx%3D%2250%25%22%20cy%3D%2245%25%22%20r%3D%2260%25%22%3E%3Cstop%20offset%3D%220%25%22%20stop-color%3D%22%23fbbf24%22%20stop-opacity%3D%220.22%22%2F%3E%3Cstop%20offset%3D%2260%25%22%20stop-color%3D%22%231c1917%22%20stop-opacity%3D%220.85%22%2F%3E%3Cstop%20offset%3D%22100%25%22%20stop-color%3D%22%230c0a09%22%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23bg)%22%2F%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22url(%23gl)%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22170%22%20fill%3D%22none%22%20stroke%3D%22%23fbbf24%22%20stroke-width%3D%221.5%22%20stroke-dasharray%3D%225%207%22%20opacity%3D%220.4%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%22120%22%20fill%3D%22none%22%20stroke%3D%22%23fbbf24%22%20stroke-width%3D%222%22%20opacity%3D%220.8%22%2F%3E%3Ccircle%20cx%3D%22800%22%20cy%3D%22460%22%20r%3D%2260%22%20fill%3D%22none%22%20stroke%3D%22%23f59e0b%22%20stroke-width%3D%221.5%22%20opacity%3D%220.9%22%2F%3E%3Cpath%20d%3D%22M800%20375%20L865%20460%20L800%20545%20L735%20460%20Z%22%20fill%3D%22none%22%20stroke%3D%22%23fbbf24%22%20stroke-width%3D%221.5%22%20opacity%3D%220.85%22%2F%3E%3Ctext%20x%3D%22800%22%20y%3D%22660%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2228%22%20font-weight%3D%22800%22%20fill%3D%22%23f5f5f4%22%20text-anchor%3D%22middle%22%3E%D8%B3%DA%A9%D9%88%D8%AA%20%D8%A7%D9%81%D9%82%E2%80%8C%D9%87%D8%A7%3A%20%D9%85%D9%86%D8%B8%D8%B1%D9%87%E2%80%8C%D9%86%DA%AF%D8%A7%D8%B1%DB%8C%20%D8%A7%DB%8C%D8%B1%D8%A7%D9%86%20%D8%A8%D9%87%20%D8%B1%D9%88%D8%A7%DB%8C%D8%AA%20%D9%84%D9%86%D8%B2%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22705%22%20font-family%3D%22system-ui%2C%20-apple-system%2C%20sans-serif%22%20font-size%3D%2218%22%20font-weight%3D%22600%22%20fill%3D%22%23d6d3d1%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%221%22%3ESilence%20of%20Horizons%3A%20Monograph%20of%20Iran%E2%80%99s%20Wild%20Landscapes%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22755%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2213%22%20font-weight%3D%22700%22%20fill%3D%22%23fbbf24%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%223%22%3EBOOK%20%C2%B7%20SINA%20ZARGHAMI%3C%2Ftext%3E%3Ctext%20x%3D%22800%22%20y%3D%22795%22%20font-family%3D%22ui-monospace%2C%20monospace%22%20font-size%3D%2211%22%20fill%3D%22%2378716c%22%20text-anchor%3D%22middle%22%20letter-spacing%3D%222%22%3EPURE%20STATIC%20ARCHIVAL%20%C2%B7%20SINAZARGHAMI.IR%3C%2Ftext%3E%3C%2Fsvg%3E",
+      "coverImage": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1000&q=80",
       "descriptionFa": "مجموعه‌ای نفیس از ۱۵۰ تصویر ثبت‌شده طی یک دهه سفر در سخت‌ترین اقلیم‌های ایران، از کویر لوت تا قله دماوند و جزایر هرمز، همراه با مختصات جغرافیایی و تجربیات سفر.",
       "descriptionEn": "A luxury fine-art monograph featuring 150 curated photographs taken across a decade of travel through Iran’s harshest terrains, accompanied by essays and field logs.",
       "pages": "۲۴۰ صفحه تمام‌رنگی - قطع رحلی بزرگ",
@@ -1380,5 +1401,268 @@
       "releaseYear": "۱۴۰۵",
       "purchaseUrl": "https://sinazarghami.ir/#resume"
     }
-  ]
+  ],
+  "commercialCategories": [
+    {
+      "id": "comm-industrial",
+      "nameFa": "عکاسی و فیلمبرداری صنعتی و خطوط تولید",
+      "nameEn": "Industrial & Manufacturing"
+    },
+    {
+      "id": "comm-products",
+      "nameFa": "کاتالوگ تبلیغاتی و محصولات",
+      "nameEn": "Product Catalog & Advertising"
+    },
+    {
+      "id": "comm-architecture",
+      "nameFa": "معماری مدرن و سازه‌های لوکس",
+      "nameEn": "Modern Architecture & Structures"
+    },
+    {
+      "id": "comm-macro-commercial",
+      "nameFa": "هایپرمکرو صنعتی و قطعات دقیق",
+      "nameEn": "Commercial Precision Hyper-Macro"
+    },
+    {
+      "id": "comm-documentary-film",
+      "nameFa": "مستندسازی و تیزرهای سازمانی",
+      "nameEn": "Corporate Documentaries & Teasers"
+    }
+  ],
+  "definedTechniques": [
+    {
+      "id": "tech-reverse-macro",
+      "nameFa": "عکاسی با رینگ معکوس (Reverse Lens)",
+      "nameEn": "Reverse Lens Macro Coupling",
+      "descriptionFa": "اتصال معکوس لنز پرایم برای دستیابی به بزرگ‌نمایی فراتر از ۱:۱ و آشکارسازی ساختارهای میکروسکوپی بدون افت اپتیکال.",
+      "descriptionEn": "Inverting prime lenses on the camera mount for extreme magnification ratios exceeding 1:1 without optical degradation."
+    },
+    {
+      "id": "tech-focus-stacking",
+      "nameFa": "تلفیق عمق میدان (Focus Stacking)",
+      "nameEn": "Focus Stacking & Depth Synthesis",
+      "descriptionFa": "ثبت ده‌ها فریم با فوکوس میلی‌متری متغیر و ادغام دیجیتال جهت دستیابی به وضوح سراسری در ماکرو.",
+      "descriptionEn": "Combining multiple frames focused at micro-intervals to achieve full edge-to-edge sharpness in macro depths."
+    },
+    {
+      "id": "tech-aerial-cinematography",
+      "nameFa": "فیلمبرداری هوایی با پهپاد و هلی‌شات",
+      "nameEn": "Dynamic Aerial Cinematography",
+      "descriptionFa": "کادربندی زوایای فراخ و توپوگرافی‌های اقلیمی از ارتفاع بالا با حفظ پایداری کامل در شرایط بادگیر.",
+      "descriptionEn": "High-altitude wide perspective capture revealing environmental topologies and geological strata."
+    },
+    {
+      "id": "tech-davinci-color",
+      "nameFa": "اصلاح رنگ سینمایی (DaVinci Resolve)",
+      "nameEn": "Cinematic Color Grading (DaVinci Resolve)",
+      "descriptionFa": "تبدیل لاگ ۱۰ بیتی C-Log3 به پالت‌های طبیعی و گرم با کنتراست ادیتوریال موزه.",
+      "descriptionEn": "Grading 10-bit C-Log3 dynamic range footage into natural filmic palettes with editorial contrast."
+    },
+    {
+      "id": "tech-pure-white-catalog",
+      "nameFa": "عکاسی پس‌زمینه سفید ایزوله (Pure White)",
+      "nameEn": "Pure White Catalog Isolation",
+      "descriptionFa": "نورپردازی دقیق با سافت‌باکس‌های دوگانه برای کاتالوگ دیجی‌کالا و وب‌سایت بدون سایه مزاحم.",
+      "descriptionEn": "Dual-diffused shadowless illumination delivering standardized pure white backgrounds."
+    },
+    {
+      "id": "tech-long-exposure-night",
+      "nameFa": "عکاسی لانگ اکسپوژر نجومی و شب",
+      "nameEn": "Deep Sky Long-Exposure Astrophotography",
+      "descriptionFa": "نوردهی طولانی با ایزوی بالا در آسمان‌های بورتل کلاس ۱ برای ثبت بازوهای کهکشان راه شیری.",
+      "descriptionEn": "Long exposures in Bortle Class 1 dark skies tracking celestial structures and Milky Way core."
+    }
+  ],
+  "homeCategoryCards": [
+    {
+      "id": "card-commercial",
+      "titleFa": "نمونه‌کارهای تخصصی و پروژه‌های تجاری",
+      "titleEn": "Commercial Works & Industry Portfolios",
+      "subtitleFa": "تیزرهای صنعتی، عکاسی کاتالوگ و فیلمبرداری معماری",
+      "subtitleEn": "Industrial films, product catalogs & architectural cinema",
+      "coverUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80",
+      "targetPath": "/commercial",
+      "badgeFa": "استودیو سینا ضرغامی",
+      "badgeEn": "Studio Showcase"
+    },
+    {
+      "id": "card-expeditions",
+      "titleFa": "سفرها، راهنمایی تور و مستندهای میدانی",
+      "titleEn": "Expeditions, Guided Treks & Travelogues",
+      "subtitleFa": "اکتشاف در بکرترین بیابان‌ها، کویر لوت و رشته‌کوه زاگرس",
+      "subtitleEn": "Wilderness navigation in Lut, Zagros & Persian Gulf islands",
+      "coverUrl": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80",
+      "targetPath": "/expeditions",
+      "badgeFa": "اکوتوریسم و تورلیدری",
+      "badgeEn": "Certified Guiding"
+    },
+    {
+      "id": "card-macro-prints",
+      "titleFa": "گالری فاین‌آرت و فروش نسخه‌های چاپی",
+      "titleEn": "Fine-Art Gallery & Archival Prints",
+      "subtitleFa": "آثار برگزیده نمایشگاه‌ها، هایپرمکرو حشرات و چشم‌اندازها",
+      "subtitleEn": "Exhibition-grade fine art prints & high-res digital licenses",
+      "coverUrl": "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?auto=format&fit=crop&w=1200&q=80",
+      "targetPath": "/prints",
+      "badgeFa": "چاپ موزه",
+      "badgeEn": "Archival Editions"
+    },
+    {
+      "id": "card-articles-academy",
+      "titleFa": "یادداشت‌ها، تکنیک‌ها و آموزش عکاسی",
+      "titleEn": "Articles, Techniques & Visual Academy",
+      "subtitleFa": "مقاله‌های تخصصی نور، رینگ معکوس و تجارب تدریس",
+      "subtitleEn": "In-depth essays on lighting, reverse macro and teaching logs",
+      "coverUrl": "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?auto=format&fit=crop&w=1200&q=80",
+      "targetPath": "/articles",
+      "badgeFa": "مجتمع فنی تهران",
+      "badgeEn": "Knowledge Hub"
+    }
+  ],
+  "articles": [
+    {
+      "id": "art-1",
+      "slug": "hyper-macro-reverse-lens-guide",
+      "titleFa": "راهنمای جامع عکاسی هایپرمکرو با رینگ معکوس و نورپردازی فلاش",
+      "titleEn": "Comprehensive Field Guide to Reverse-Lens Hyper-Macro",
+      "excerptFa": "چگونه بدون لنزهای گران‌قیمت و تنها با اتصال معکوس یک لنز ۵۰ میلی‌متر، به بزرگ‌نمایی میکروسکوپی چشمان مرکب حشرات برسیم؟",
+      "excerptEn": "How to achieve extreme microscopic magnification of compound insect eyes using an inverted 50mm prime lens and diffused flash lighting.",
+      "contentFa": "عکاسی ماکرو فراتر از نسبت ۱:۱ دنیایی شگفت‌انگیز و در عین حال پر از چالش‌های فیزیک نور و عمق میدان است. وقتی لنز ۵۰ میلی‌متری را به کمک رینگ معکوس به صورت وارونه روی دوربین می‌بندید، رفتار اپتیکی عدسی‌ها برعکس شده و تبدیل به یک میکروسکوپ قدرتمند می‌شود. در این مقاله به بررسی گام‌به‌گام دیافراگم مناسب، فاصله میلی‌متری تا سوژه، تکنیک فوکوس استکینگ و نحوه استفاده از دیفیوزر دست‌ساز برای جلوگیری از سوختن بال‌های ظریف حشرات می‌پردازیم.",
+      "contentEn": "Extreme macro photography beyond the 1:1 reproduction ratio unlocks a breathtaking hidden world. By inverting a standard 50mm prime lens using an inexpensive reverse macro coupling ring, the optical geometry shifts, turning your camera into a microscopic magnifying powerhouse. This field manual explores optimal aperture selection, delicate millimeter working distance, focus stacking methods, and custom flash diffusers designed to preserve organic textures without harsh reflections.",
+      "categoryFa": "تکنیک‌های عکاسی",
+      "categoryEn": "Photography Techniques",
+      "coverUrl": "https://images.unsplash.com/photo-1557053910-d9eadeed1c58?auto=format&fit=crop&w=1200&q=80",
+      "publishedAt": "۱۴۰۳/۱۱/۱۵",
+      "readingTimeMinutes": 7,
+      "seoKeywords": [
+        "عکاسی ماکرو",
+        "رینگ معکوس",
+        "فوکوس استکینگ",
+        "سینا ضرغامی",
+        "کتاب عکاسی هایپرمکرو"
+      ],
+      "relatedTechniques": [
+        "tech-reverse-macro",
+        "tech-focus-stacking"
+      ],
+      "relatedGearIds": [
+        "gear-cam-1",
+        "gear-lens-1",
+        "gear-lens-3",
+        "gear-light-5"
+      ],
+      "featured": true
+    },
+    {
+      "id": "art-2",
+      "slug": "lut-desert-astrophotography-field-notes",
+      "titleFa": "ثبت راه شیری در تاریک‌ترین شب‌های کویر لوت و ریگ یلان",
+      "titleEn": "Framing the Milky Way in the Dark Skies of Lut Desert",
+      "excerptFa": "تجربه شب‌مانی در میان کلوت‌های شهداد و تکنیک‌های انتخاب ایزو، شاتر و کادربندی نجومی با بورتل کلاس ۱.",
+      "excerptEn": "Night expedition logs deep inside the Shahdad yardangs and astrophotography techniques under Bortle Class 1 dark skies.",
+      "contentFa": "کویر لوت و پهنه‌های ماسه‌ای ریگ یلان یکی از خالص‌ترین و تاریک‌ترین آسمان‌های خاورمیانه را در اختیار عکاسان قرار می‌دهند. در غیاب هرگونه آلودگی نوری مصنوعی، نور بازوهای کهکشان راه شیری به قدری چشمگیر است که سایه‌های کم‌رنگی روی زمین کلوت‌ها می‌اندازد. در این یادداشت میدانی، تجربه شب‌نشینی کاروان، تنظیمات شاتر بر اساس قانون ۵۰۰ برای لنز ۲۴ میلی‌متر و مدیریت شارژ باتری در سرمای کویر را مرور می‌کنیم.",
+      "contentEn": "The vast expanses of the Lut Desert and Rig Yalan megadunes boast some of the darkest skies on the planet, categorized as pristine Bortle Class 1. Under this celestial canopy, the core of the Milky Way is so vivid that it casts subtle ambient shadows across the sculpted clay yardangs. This field log details the 500 rule for wide 24mm framing, ISO sensitivity management, and thermal battery maintenance in chilly desert nights.",
+      "categoryFa": "یادداشت‌های سفر",
+      "categoryEn": "Expedition Notes",
+      "coverUrl": "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1200&q=80",
+      "publishedAt": "۱۴۰۳/۰۹/۲۰",
+      "readingTimeMinutes": 6,
+      "seoKeywords": [
+        "کویر لوت",
+        "عکاسی نجومی",
+        "راه شیری",
+        "کلوت شهداد",
+        "تورلیدری کویر"
+      ],
+      "relatedTechniques": [
+        "tech-long-exposure-night"
+      ],
+      "relatedGearIds": [
+        "gear-cam-1",
+        "gear-lens-4"
+      ],
+      "featured": true
+    },
+    {
+      "id": "art-3",
+      "slug": "industrial-video-lighting-davinci-workflow",
+      "titleFa": "اصول نورپردازی صنعتی با نورهای ۳۳۰ وات و مدیریت C-Log3 در داوینچی",
+      "titleEn": "Industrial Cinematography Lighting & DaVinci Resolve C-Log3 Workflow",
+      "excerptFa": "روش‌های کنترل بازتاب فلزات براق در خطوط تولید و تنظیم کلوین نور با CRI بالای ۹۷ برای حفظ رنگ واقعی مواد.",
+      "excerptEn": "Strategies for taming specular reflections on metallic parts and post-production color science in DaVinci Resolve.",
+      "contentFa": "فیلمبرداری صنعتی در محیط کارخانه‌ها و سوله‌های مونتاژ چالش بزرگی دارد: تداخل نورهای سدیمی زرد، مهتابی‌های قدیمی و بازتاب‌های شدید از قطعات صیقلی فلزی. استفاده از نورهای پرقدرت پیوسته ۳۳۰ وات با شاخص تفکیک رنگ CRI بالای ۹۷ به همراه دیفیوزرهای بزرگ پارچه‌ای، بازتاب‌ها را نرم کرده و اجازه می‌دهد داینامیک رنج کامل دوربین Canon R8 با پروفایل C-Log3 ثبت شود.",
+      "contentEn": "Industrial cinematography inside manufacturing facilities presents steep lighting challenges: conflicting color temperatures from high-bay sodium lamps, aged fluorescent tubes, and harsh specular glares off polished steel surfaces. Utilizing high-output 330W COB video lights with CRI≥97 through large diffusion silks eliminates hotspots, allowing the 10-bit C-Log3 color profile to retain maximum shadow and highlight details.",
+      "categoryFa": "سینما و فیلمبرداری",
+      "categoryEn": "Cinematography",
+      "coverUrl": "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=1200&q=80",
+      "publishedAt": "۱۴۰۴/۰۱/۱۰",
+      "readingTimeMinutes": 8,
+      "seoKeywords": [
+        "فیلمبرداری صنعتی",
+        "داوینچی ریزالو",
+        "نورپردازی CRI",
+        "کومین زاد یدک",
+        "تجهیزات سینمایی"
+      ],
+      "relatedTechniques": [
+        "tech-davinci-color",
+        "tech-pure-white-catalog"
+      ],
+      "relatedGearIds": [
+        "gear-cam-1",
+        "gear-light-1",
+        "gear-light-2",
+        "gear-motion-1"
+      ],
+      "featured": false
+    }
+  ],
+  "navLabels": {
+    "homeFa": "صفحه اصلی",
+    "homeEn": "Home",
+    "portfolioFa": "نمونه‌کارها",
+    "portfolioEn": "Portfolio",
+    "tripsFa": "سفر و تورها",
+    "tripsEn": "Trips & Tours",
+    "gearFa": "تجهیزات",
+    "gearEn": "Gear",
+    "articlesFa": "مقالات",
+    "articlesEn": "Articles",
+    "resumeFa": "رزومه",
+    "resumeEn": "Resume",
+    "aboutFa": "درباره من",
+    "aboutEn": "About",
+    "orderFa": "ثبت پروژه",
+    "orderEn": "Order Project"
+  },
+  "aboutBio": {
+    "headlineFa": "سینا ضرغامی؛ تلاقی لنز سینمایی، کاوش در بیراهه‌های ایران و مهندسی فناوری",
+    "headlineEn": "Sina Zarghami: Visual Storyteller, Expedition Leader & Software Creator",
+    "storyFa": "بیش از ۱۲ سال است که دوربین عکاسی و تصویربرداری همراه دائمی من در پیمایش خشن‌ترین و زیباترین عوارض طبیعی ایران بوده است؛ از ریگ‌های روان و تنهایی سحرانگیز کویر لوت تا سکوت برف‌پوش قله دماوند و صخره‌های اخرایی جزیره هرمز. من هنر دیدن را نه صرفاً یک فن، بلکه روشی برای ادراک هستی می‌دانم. در طول این سال‌ها با برگزاری ده‌ها سفر اکتشافی و مسترکلاس میدانی عکاسی، راهنمایی بیش از ۱۲۰۰ همسفر را بر عهده داشته‌ام و در مجتمع فنی تهران، انتقال این تجارب را به نسل جوان دنبال می‌کنم. در کنار هنر تصویر، به عنوان توسعه‌دهنده نرم‌افزار، با ساخت ابزارهای نوآورانه و پلتفرم‌های مدرن وب، هنر بصری را به دنیای فناوری پیوند می‌زنم.",
+    "storyEn": "For over 12 years, professional cinematography and still cameras have been my companions across Iran’s most dramatic landscapes. From the silent wind-sculpted yardangs of the Lut Desert to the alpine crags of Damavand and the surreal red beaches of Hormuz Island, I consider photography not just a craft, but a profound lens for perceiving existence. Having guided more than 1,200 travelers through wilderness expeditions and masterclasses, and teaching at Tehran Technical Complex, I continuously bridge fine-art visual narratives with modern software engineering.",
+    "philosophyFa": "اصالت نور طبیعی، احترام بی قید و شرط به بوم‌شناسی و طبیعت بیابانی، و تعهد به کیفیت موزه در تک تک فریم‌ها.",
+    "philosophyEn": "Authentic natural light, unconditional ecological preservation, and archival museum-grade quality in every single frame.",
+    "specialtiesFa": [
+      "فیلمبرداری صنعتی و تبلیغاتی با استاندارد 4K 10-bit",
+      "عکاسی هایپرمکرو میکروسکوپی از حشرات و قطعات دقیق",
+      "سرپرستی و اجرای تورهای آفرود و اکوتوریسم در بیراهه‌ها",
+      "تدریس در مجتمع فنی تهران و دانشگاه",
+      "توسعه نرم‌افزارهای تحت وب و ابزارهای چندرسانه‌ای"
+    ],
+    "specialtiesEn": [
+      "4K 10-bit Industrial & Commercial Cinematography",
+      "Microscopic Hyper-Macro Photography & Focus Stacking",
+      "Off-road Wilderness Expedition Leadership",
+      "Visual Arts Lecturing at Tehran Technical Complex",
+      "Web Application Engineering & Digital Tool Crafting"
+    ],
+    "telegramUrl": "https://t.me/sina_zarghami",
+    "instagramUrl": "https://www.instagram.com/sina.zarghami",
+    "youtubeUrl": "https://www.youtube.com/@sina.zarghami",
+    "aparatUrl": "https://www.aparat.com/sinazarghami",
+    "email": "szarghami1995028@gmail.com",
+    "phone": "09127193767",
+    "locationFa": "تهران و اعزام به پروژه‌ها در سراسر ایران",
+    "locationEn": "Tehran & On-Location Nationwide"
+  }
 }

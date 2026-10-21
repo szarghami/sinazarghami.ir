@@ -68,11 +68,12 @@ export const SoftwareShowcase: React.FC<SoftwareShowcaseProps> = ({
                   <div className="text-[11px] font-mono text-stone-400 uppercase tracking-wider mb-2">
                     {isFa ? 'فناوری‌های به‌کاررفته:' : 'Stack:'}
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs font-mono text-stone-700">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono text-stone-600">
                     {item.techStack.map((tech, idx) => (
-                      <span key={tech} className="bg-stone-100 px-2 py-0.5 rounded text-stone-800">
-                        {tech}
-                      </span>
+                      <React.Fragment key={tech}>
+                        {idx > 0 && <span aria-hidden="true" className="text-stone-300">·</span>}
+                        <span>{tech}</span>
+                      </React.Fragment>
                     ))}
                   </div>
                 </div>

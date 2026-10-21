@@ -20,12 +20,6 @@ export const VoiceDictationButton: React.FC<VoiceDictationButtonProps> = ({
   const [interimText, setInterimText] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<any>(null);
-  const onTranscriptRef = useRef(onTranscript);
-
-  // به‌روزرسانی مداوم رفرنس تابع بدون ریست کردن شنونده صوتی
-  useEffect(() => {
-    onTranscriptRef.current = onTranscript;
-  });
 
   useEffect(() => {
     const SpeechRecognition =
@@ -61,7 +55,7 @@ export const VoiceDictationButton: React.FC<VoiceDictationButtonProps> = ({
         }
 
         if (finalChunk) {
-          onTranscriptRef.current(finalChunk.trim());
+          onTranscript(finalChunk.trim());
           setInterimText('');
         } else if (currentInterim) {
           setInterimText(currentInterim);
@@ -97,7 +91,7 @@ export const VoiceDictationButton: React.FC<VoiceDictationButtonProps> = ({
         }
       }
     };
-  }, [lang]);
+  }, [lang, onTranscript, isAppendMode]);
 
   const toggleListen = (e: React.MouseEvent) => {
     e.preventDefault();

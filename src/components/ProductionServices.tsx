@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Language } from '../types';
 import { Video, Camera, Compass, Sparkles, Send, CheckCircle2, MessageSquare, Phone } from 'lucide-react';
 import { notifyProjectCommission } from '../utils/telegram';
-import { trackEvent } from '../utils/analytics';
 
 interface ProductionServicesProps {
   language: Language;
@@ -59,15 +58,6 @@ export const ProductionServices: React.FC<ProductionServicesProps> = ({ language
       clientName,
       contact: clientContact,
       brief: projectBrief,
-    });
-
-    // ثبت در آمارگیر هوشمند دیوایس‌ها و سفارشات
-    trackEvent('service_inquiry', {
-      serviceType: serviceTitle,
-      clientName,
-      contact: clientContact,
-      brief: projectBrief,
-      details: `${serviceTitle} - ${clientName} (${clientContact})`,
     });
 
     const msg = isFa

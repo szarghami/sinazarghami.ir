@@ -19,13 +19,14 @@ import {
   BookItem,
   StatItem,
   AiPhotoSuggestion,
-  SpecificPhotoCategory,
-  PhotoCategory,
+  ArticleItem,
+  CategoryItem,
+  DefinedTechnique,
+  AboutPageContent,
+  NavLabelsItem,
 } from '../types';
 import {
   checkAdminPasscode,
-  verifyAdminPasscodeWithServer,
-  getCurrentPasscode,
   updateAdminPasscode,
   requestPasswordRecoveryToTelegram,
   exportSiteContentToJson,
@@ -36,62 +37,10 @@ import {
   isSessionAuthenticated,
   setSessionAuthenticated,
   saveSiteContent,
-  getSavedWatermarkImage,
-  saveWatermarkImage,
-  getSavedWatermarkOpacity,
-  saveWatermarkOpacity,
-  getSavedWatermarkPosition,
-  saveWatermarkPosition,
-  DEFAULT_WATERMARK_SVG,
-  DEFAULT_DARK_PLACEHOLDER_SVG,
-  drawWatermarkOnCanvas,
-  WatermarkConfig,
-  compressImageToWebP,
-  saveStudioSettingsToServer,
-  syncStudioSettingsFromServer,
 } from '../utils/storage';
-import {
-  getMainRepo,
-  saveMainRepo,
-  getVideoRepo,
-  saveVideoRepo,
-  getVideoBaseUrl,
-  saveVideoBaseUrl,
-  getVideoThresholdMB,
-  saveVideoThresholdMB,
-  getForceAllVideosToVideoRepo,
-  saveForceAllVideosToVideoRepo,
-  uploadMediaToGitHub,
-  discoverGitHubMedia,
-  inferTitlesFromFilename,
-  DEFAULT_MAIN_REPO,
-  DEFAULT_VIDEO_REPO,
-  DEFAULT_VIDEO_BASE_URL,
-  uploadLargeVideoChunked,
-  deployVideoProcessorWorkflowToGitHub,
-  getVideoProcessorWorkflowYaml,
-  parseAparatUrl,
-  parseYoutubeUrl,
-  commitFileToGitHub,
-  publishSiteDataToGitHub,
-  uploadImageToGitHub,
-} from '../utils/githubMediaService';
-import {
-  translateToArtisticEnglish,
-  suggestPhotoDetailsDirect,
-  getActiveGeminiKey,
-  saveLocalGeminiKey,
-} from '../utils/aiTranslator';
-import {
-  encryptAdminSecrets,
-  decryptAdminSecrets,
-  saveSessionVault,
-  getSessionVault,
-  clearSessionVault,
-  AdminSecrets,
-} from '../utils/cryptoVault';
+import { uploadToSupabaseStorage, smartUploadImage } from '../utils/supabase';
+import { translateToArtisticEnglish } from '../utils/aiTranslator';
 import { sendTelegramNotification } from '../utils/telegram';
-import { syncAnalyticsToGitHub } from '../utils/analytics';
 import { VoiceDictationButton } from './VoiceDictationButton';
 import { AdminAnalyticsTab } from './AdminAnalyticsTab';
 import {
@@ -127,20 +76,16 @@ import {
   Camera,
   BarChart3,
   CheckCircle2,
-  Video,
-  Film,
-  AlertCircle,
-  EyeOff,
-  FolderGit2,
-  Server,
+  Star,
+  Tag,
   Layers,
-  SlidersHorizontal,
-  Image as ImageIcon,
-  MessageSquare,
-  Copy,
   FileText,
-  Radio,
-  Play,
+  Bookmark,
+  Pin,
+  ListFilter,
+  SlidersHorizontal,
+  PlusCircle,
+  UserCheck,
 } from 'lucide-react';
 
 interface AdminStudioModalProps {
@@ -167,7 +112,18 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   // تب فعال در پنل استودیو
   const [activeTab, setActiveTab] = useState<
-    'upload_studio' | 'software' | 'expeditions' | 'books' | 'resume' | 'texts' | 'analytics' | 'publish' | 'security'
+    | 'upload_studio'
+    | 'categories_techniques'
+    | 'articles'
+    | 'about_and_home'
+    | 'software'
+    | 'expeditions'
+    | 'books'
+    | 'resume'
+    | 'texts'
+    | 'analytics'
+    | 'publish'
+    | 'security'
   >('upload_studio');
 
   // استیت فرم پروفایل، متن‌ها و اطلاعات تماس
@@ -177,6 +133,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [rawFiles, setRawFiles] = useState<File[]>([]);
   const [compressedResults, setCompressedResults] = useState<CompressedImageResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadToCloud, setUploadToCloud] = useState(true);
+  const [supabaseUploadMsg, setSupabaseUploadMsg] = useState<string | null>(null);
   const [compressQuality, setCompressQuality] = useState<number>(0.68);
   const [compressMaxDim, setCompressMaxDim] = useState<number>(1400);
   const [overallStats, setOverallStats] = useState<{ origKB: number; compKB: number; percent: number } | null>(null);
@@ -191,7 +149,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [photoTitleFa, setPhotoTitleFa] = useState('');
   const [photoTitleEn, setPhotoTitleEn] = useState('');
-  const [photoCategory, setPhotoCategory] = useState<SpecificPhotoCategory>('landscape');
+  const [photoCategory, setPhotoCategory] = useState<'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait'>('landscape');
   const [photoLocationFa, setPhotoLocationFa] = useState('');
   const [photoLocationEn, setPhotoLocationEn] = useState('');
   const [photoCamera, setPhotoCamera] = useState('Canon R8');
@@ -205,49 +163,118 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [photoImageUrl, setPhotoImageUrl] = useState<string>('');
   const [translatingField, setTranslatingField] = useState<string | null>(null);
 
-  // پلیر چندسروره برای نمونه‌کارهای ویدیویی
-  const [photoGithubVideoUrl, setPhotoGithubVideoUrl] = useState('');
-  const [photoAparatUrl, setPhotoAparatUrl] = useState('');
-  const [photoYoutubeUrl, setPhotoYoutubeUrl] = useState('');
-  const [photoDefaultServer, setPhotoDefaultServer] = useState<'github' | 'aparat' | 'youtube'>('github');
-  // سیستم دوحالته ویدیو در پنل ادمین: نمونه‌کار اختصاصی (استریم گیت‌هاب) / ویدیوی طولانی (لینک آپارات / یوتیوب)
-  const [videoMode, setVideoMode] = useState<'github-chunked' | 'external-stream'>('github-chunked');
+  // فیلدهای تکمیلی داینامیک CMS برای اثر
+  const [photoShowOnHome, setPhotoShowOnHome] = useState<boolean>(false);
+  const [photoHomeOrder, setPhotoHomeOrder] = useState<number>(0);
+  const [photoPortfolioScope, setPhotoPortfolioScope] = useState<'commercial' | 'travel'>('commercial');
+  const [photoCommercialCategory, setPhotoCommercialCategory] = useState<string>('');
+  const [photoClientName, setPhotoClientName] = useState<string>('');
+  const [photoClientInfo, setPhotoClientInfo] = useState<string>('');
+  const [photoGearIds, setPhotoGearIds] = useState<string[]>([]);
+  const [photoTechniques, setPhotoTechniques] = useState<string[]>([]);
+  const [quickNewTechInput, setQuickNewTechInput] = useState<string>('');
 
-  // استیت‌های سیستم امضای کاری و واترمارک زنده با Canvas
-  const [watermarkImg, setWatermarkImg] = useState<string>(() => getSavedWatermarkImage());
-  const [watermarkOpacity, setWatermarkOpacity] = useState<number>(() => getSavedWatermarkOpacity());
-  const [watermarkPosition, setWatermarkPosition] = useState<'bottom-right' | 'bottom-left' | 'top-right' | 'top-left' | 'center'>(() => getSavedWatermarkPosition());
-  const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const watermarkInputRef = useRef<HTMLInputElement | null>(null);
+  // استیت‌های دسته‌بندی‌های نمونه‌کار (commercialCategories)
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [catId, setCatId] = useState('');
+  const [catTitleFa, setCatTitleFa] = useState('');
+  const [catTitleEn, setCatTitleEn] = useState('');
+  const [catDescFa, setCatDescFa] = useState('');
+  const [catDescEn, setCatDescEn] = useState('');
+  const [catIcon, setCatIcon] = useState('Camera');
 
-  // استیت‌های آپلود تکه‌تکه ویدیو و استقرار خودکار ورک‌فلو گیت‌هاب
-  const [chunkedUploadProgress, setChunkedUploadProgress] = useState<{ status: string; percent: number } | null>(null);
-  const [isDeployingWorkflow, setIsDeployingWorkflow] = useState<boolean>(false);
-  const [showWorkflowCodeModal, setShowWorkflowCodeModal] = useState<boolean>(false);
-  const [workflowDeployMsg, setWorkflowDeployMsg] = useState<string | null>(null);
+  // استیت‌های بانک تکنیک‌ها (definedTechniques)
+  const [editingTechId, setEditingTechId] = useState<string | null>(null);
+  const [techId, setTechId] = useState('');
+  const [techNameFa, setTechNameFa] = useState('');
+  const [techNameEn, setTechNameEn] = useState('');
+  const [techDescFa, setTechDescFa] = useState('');
+  const [techDescEn, setTechDescEn] = useState('');
 
-  // استیت‌های اختصاصی حالت‌های کاری استودیو: کالکشن ورق‌خور / آپلود تکی / آپلود دسته‌ای مجزا
-  const [studioMode, setStudioMode] = useState<'collection' | 'single' | 'bulk'>('collection');
-  const [cleanBasePreviewUrl, setCleanBasePreviewUrl] = useState<string>('');
-  const [collectionTitleFa, setCollectionTitleFa] = useState<string>('');
-  const [collectionTitleEn, setCollectionTitleEn] = useState<string>('');
-  const [collectionDescFa, setCollectionDescFa] = useState<string>('');
-  const [collectionDescEn, setCollectionDescEn] = useState<string>('');
-  const [isAiSuggestingCollection, setIsAiSuggestingCollection] = useState<boolean>(false);
-  const [isProcessingCollection, setIsProcessingCollection] = useState<boolean>(false);
+  // استیت‌های مقالات سئو (articles)
+  const [editingArticleId, setEditingArticleId] = useState<string | null>(null);
+  const [artTitleFa, setArtTitleFa] = useState('');
+  const [artTitleEn, setArtTitleEn] = useState('');
+  const [artSlug, setArtSlug] = useState('');
+  const [artExcerptFa, setArtExcerptFa] = useState('');
+  const [artExcerptEn, setArtExcerptEn] = useState('');
+  const [artContentFa, setArtContentFa] = useState('');
+  const [artContentEn, setArtContentEn] = useState('');
+  const [artCategoryFa, setArtCategoryFa] = useState('آموزش عکاسی');
+  const [artCategoryEn, setArtCategoryEn] = useState('Photography Tutorial');
+  const [artCoverUrl, setArtCoverUrl] = useState('');
+  const [artReadTime, setArtReadTime] = useState<number>(6);
+  const [artTags, setArtTags] = useState('');
+  const [artSeoKeywords, setArtSeoKeywords] = useState('');
+  const [artIsPublished, setArtIsPublished] = useState<boolean>(true);
+  const [artFeatured, setArtFeatured] = useState<boolean>(false);
 
-  // استیت‌های آپلود دسته‌جمعی (Bulk Upload) بدون مصرف توکن هوش مصنوعی
-  const [isBulkMode, setIsBulkMode] = useState<boolean>(false);
-  const [bulkTitlePrefix, setBulkTitlePrefix] = useState<string>('');
-  const [bulkLocationFa, setBulkLocationFa] = useState<string>('تهران، استودیو صنعتی');
-  const [bulkLocationEn, setBulkLocationEn] = useState<string>('Tehran Industrial Studio');
-  const [bulkCategory, setBulkCategory] = useState<SpecificPhotoCategory>('commercial-shoes');
-  const [isBulkProcessing, setIsBulkProcessing] = useState<boolean>(false);
-  const [bulkUploadStatus, setBulkUploadStatus] = useState<string | null>(null);
+  // استیت‌های صفحه درباره من (aboutPage)
+  const [aboutPageForm, setAboutPageForm] = useState<AboutPageContent>(() => {
+    return (
+      content.aboutPage || {
+        heroBioFa: '',
+        heroBioEn: '',
+        detailedBioFa: '',
+        detailedBioEn: '',
+        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+        philosophyFa: '',
+        philosophyEn: '',
+        contactEmail: content.profile.email || '',
+        contactPhone: content.profile.phone || '',
+        locationFa: content.profile.locationFa || '',
+        locationEn: content.profile.locationEn || '',
+        telegramUrl: content.profile.telegram || '',
+        instagramUrl: content.profile.instagram || '',
+        youtubeUrl: content.profile.youtube || '',
+        aparatUrl: '',
+        educationFa: [],
+        educationEn: [],
+        specialtiesFa: [],
+        specialtiesEn: [],
+        stats: [],
+      }
+    );
+  });
+  const [aboutEduFaText, setAboutEduFaText] = useState(() => (content.aboutPage?.educationFa || []).join('\n'));
+  const [aboutSpecFaText, setAboutSpecFaText] = useState(() => (content.aboutPage?.specialtiesFa || []).join('، '));
 
-  // کلیدهای API سرویس‌ها
-  const [youtubeApiKey, setYoutubeApiKey] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('sina_youtube_api_key') || '' : ''));
-  const [aparatApiKey, setAparatApiKey] = useState<string>(() => (typeof window !== 'undefined' ? localStorage.getItem('sina_aparat_api_key') || '' : ''));
+  // استیت‌های ویترین صفحه اصلی (homeShowcaseConfig)
+  const [homeShowcaseForm, setHomeShowcaseForm] = useState(() => {
+    return (
+      content.homeShowcaseConfig || {
+        titleFa: 'ویترین پروژه‌ها و آثار شاخص',
+        titleEn: 'Featured Works & Portfolio Showcase',
+        subtitleFa: 'منتخبی از پروژه‌های صنعتی، معماری، مستند و آثار فاین‌آرت',
+        subtitleEn: 'Selected industrial, architectural, and documentary works',
+        maxHomePhotos: 8,
+        maxHomeTrips: 4,
+      }
+    );
+  });
+
+  // استیت‌های عناوین منو (navLabels)
+  const [navLabelsForm, setNavLabelsForm] = useState<NavLabelsItem>(() => {
+    const n = (content.navLabels as NavLabelsItem) || {};
+    return {
+      homeFa: n.homeFa || 'صفحه اصلی',
+      homeEn: n.homeEn || 'Home',
+      portfolioFa: n.portfolioFa || 'نمونه‌کارها',
+      portfolioEn: n.portfolioEn || 'Portfolio',
+      tripsFa: n.tripsFa || 'سفر و تورها',
+      tripsEn: n.tripsEn || 'Trips & Tours',
+      gearFa: n.gearFa || 'تجهیزات',
+      gearEn: n.gearEn || 'Gear',
+      articlesFa: n.articlesFa || 'مقالات',
+      articlesEn: n.articlesEn || 'Articles',
+      resumeFa: n.resumeFa || 'رزومه',
+      resumeEn: n.resumeEn || 'Resume',
+      aboutFa: n.aboutFa || 'درباره من',
+      aboutEn: n.aboutEn || 'About',
+      orderFa: n.orderFa || 'ثبت سفارش پروژه',
+      orderEn: n.orderEn || 'Hire Me',
+    };
+  });
 
   // استیت فرم نرم‌افزار (افزودن و ویرایش)
   const [editingSoftId, setEditingSoftId] = useState<string | null>(null);
@@ -307,11 +334,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   // استیت‌های انتشار ابری و پشتیبان‌گیری
   const [githubToken, setGithubToken] = useState(getSavedGitHubToken());
-  const [mainRepo, setMainRepoState] = useState(getMainRepo());
-  const [videoRepo, setVideoRepoState] = useState(getVideoRepo());
-  const [videoBaseUrl, setVideoBaseUrlState] = useState(getVideoBaseUrl());
-  const [forceAllVideos, setForceAllVideos] = useState(getForceAllVideosToVideoRepo());
-  const [uploadToGitHubOption, setUploadToGitHubOption] = useState(true);
+  const [githubRepo, setGithubRepo] = useState('szarghami/sinazarghami.ir');
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSyncingGithub, setIsSyncingGithub] = useState(false);
   const [githubSyncStatus, setGithubSyncStatus] = useState<{ success: boolean; msg: string } | null>(null);
@@ -319,30 +342,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [publishStatus, setPublishStatus] = useState<{ success: boolean; msg: string } | null>(null);
   const [telegramTestStatus, setTelegramTestStatus] = useState<string | null>(null);
 
-  // استیت‌های اختصاصی Auto-Discovery و آپلود گیت‌هاب
-  const [isDiscoveringGithub, setIsDiscoveringGithub] = useState(false);
-  const [discoveryLog, setDiscoveryLog] = useState<string | null>(null);
-  const [githubUploadProgress, setGithubUploadProgress] = useState<string | null>(null);
-  const [selectedVideoFile, setSelectedVideoFile] = useState<File | null>(null);
-  const [showRepoSettings, setShowRepoSettings] = useState(false);
-
-  // استیت‌های کلید Gemini API و گاوصندوق رمزنگاری‌شده AES-256 (Web Crypto Vault)
-  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
-    const sessionSecrets = getSessionVault();
-    if (sessionSecrets && sessionSecrets.geminiApiKey) return sessionSecrets.geminiApiKey;
-    return getActiveGeminiKey();
-  });
-  const [showGeminiApiKey, setShowGeminiApiKey] = useState(false);
-  const [vaultPasscode, setVaultPasscode] = useState('');
-  const [isEncryptingVault, setIsEncryptingVault] = useState(false);
-  const [vaultStatus, setVaultStatus] = useState<{ success: boolean; msg: string } | null>(null);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * همگام‌سازی دستی و مستقیم فایل داده‌های سایت با مخزن اصلی گیت‌هاب
+   * همگام‌سازی دستی و مستقیم فایل‌ها با مخزن گیت‌هاب
    */
   const handleManualGithubSync = async () => {
     if (!githubToken.trim()) {
@@ -353,23 +357,28 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       setIsSyncingGithub(true);
       setGithubSyncStatus(null);
       saveGitHubToken(githubToken.trim());
-      saveMainRepo(mainRepo.trim());
 
-      // کامیت مستقیم داده‌ها در مخزن گیت‌هاب (Pure Static Git-CMS) از مرورگر
-      const res = await publishSiteDataToGitHub(content, githubToken.trim(), mainRepo.trim());
-
-      // ارسال فرعی به سرور توسعه اپلت
-      fetch('/api/site-data', {
+      const res = await fetch('/api/github/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(content),
-      }).catch(() => {});
+        body: JSON.stringify({
+          token: githubToken.trim(),
+          repo: githubRepo.trim(),
+          path: 'site-data.json',
+          content: content,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'خطا در ارتباط با گیت‌هاب');
+      }
 
       setGithubSyncStatus({
         success: true,
         msg: isFa
-          ? `فایل داده‌های وب‌سایت با موفقیت مستقیماً در مخزن ${mainRepo} کامیت و مستقر شد!`
-          : res.msg,
+          ? `فایل داده‌های وب‌سایت با موفقیت در مخزن ${githubRepo} کامیت و همگام‌سازی شد!`
+          : `Successfully committed to ${githubRepo}!`,
       });
     } catch (err: any) {
       setGithubSyncStatus({
@@ -381,136 +390,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     }
   };
 
-  /**
-   * رمزنگاری کلیدهای حساس (GitHub Token, Main Repo, Gemini API Key)
-   * با الگوریتم ۲۵۶ بیتی AES-256-GCM و مشتق‌سازی PBKDF2 با رمز عبور ثابت ادمین
-   * و کامیت مستقیم در مخزن گیت‌هاب (Pure Static Git-CMS Vault)
-   */
-  const handleSaveAndEncryptVault = async () => {
-    const passcode = (vaultPasscode || getCurrentPasscode() || pinInput).trim();
-    if (!passcode) {
-      alert(isFa ? 'لطفاً رمز عبور ادمین را وارد نمایید.' : 'Please enter admin password.');
-      return;
-    }
-    if (!githubToken.trim()) {
-      alert(isFa ? 'لطفاً ابتدا توکن شخصی گیت‌هاب (Personal Access Token) را وارد کنید.' : 'Please enter GitHub token first.');
-      return;
-    }
-
-    try {
-      setIsEncryptingVault(true);
-      setVaultStatus(null);
-
-      const secrets: AdminSecrets = {
-        githubToken: githubToken.trim(),
-        githubRepo: mainRepo.trim() || DEFAULT_MAIN_REPO,
-        geminiApiKey: geminiApiKey.trim(),
-      };
-
-      // ۱. رمزنگاری امن کلیدها بدون ارسال متن خام
-      const encryptedVaultBase64 = await encryptAdminSecrets(secrets, passcode);
-
-      // ۲. نگهداری کلیدها در sessionStorage و حافظه لوکال
-      saveSessionVault(secrets);
-      saveGitHubToken(githubToken.trim());
-      saveMainRepo(mainRepo.trim());
-      if (geminiApiKey.trim()) {
-        saveLocalGeminiKey(geminiApiKey.trim());
-      }
-
-      // ۳. ثبت رشته رمزنگاری‌شده در محتوای سایت
-      const updatedContent: SiteContent = {
-        ...content,
-        encryptedVault: encryptedVaultBase64,
-      };
-
-      onUpdateContent(updatedContent);
-      saveSiteContent(updatedContent);
-
-      // ۴. کامیت مستقیم روی گیت‌هاب
-      const gitRes = await publishSiteDataToGitHub(updatedContent, githubToken.trim(), mainRepo.trim());
-
-      if (gitRes.success) {
-        syncAnalyticsToGitHub(githubToken.trim(), mainRepo.trim()).catch(() => {});
-        setVaultStatus({
-          success: true,
-          msg: isFa
-            ? `🔒 گاوصندوق کلیدها با موفقیت رمزنگاری و در مخزن ${mainRepo} کامیت شد! اکنون در هر دستگاه دیگری (موبایل یا کافی‌نت) فقط با زدن رمز عبور ادمین، کلیدها خودکار بازگشایی خواهند شد.`
-            : 'Vault successfully encrypted and committed to GitHub!',
-        });
-        alert(isFa ? '🔒 گاوصندوق کلیدها با رمز عبور شما رمزنگاری و روی مخزن گیت‌هاب ثبت گردید!' : 'Vault saved and deployed to GitHub!');
-      } else {
-        throw new Error(gitRes.msg || 'خطا در کامیت گاوصندوق روی گیت‌هاب');
-      }
-    } catch (err: any) {
-      setVaultStatus({
-        success: false,
-        msg: isFa ? `خطا در رمزنگاری گاوصندوق: ${err.message}` : `Vault error: ${err.message}`,
-      });
-    } finally {
-      setIsEncryptingVault(false);
-    }
-  };
-
-  /**
-   * شناسایی و همگام‌سازی خودکار فایل‌های آپلودشده در گیت‌هاب (Auto-Discovery بدون کپی لینک)
-   */
-  const handleAutoDiscoverFromGitHub = async () => {
-    try {
-      setIsDiscoveringGithub(true);
-      setDiscoveryLog(isFa ? 'در حال برقراری ارتباط با GitHub API و اسکن ریپازیتوری‌ها...' : 'Connecting to GitHub API...');
-
-      const res = await discoverGitHubMedia({
-        existingPhotos: content.photos,
-        token: githubToken.trim() || undefined,
-        mainRepo: mainRepo.trim(),
-        videoRepo: videoRepo.trim(),
-        videoBaseUrl: videoBaseUrl.trim(),
-        onLog: (msg) => setDiscoveryLog(msg),
-      });
-
-      if (res.totalDiscovered > 0) {
-        const updatedPhotos = [...res.newPhotos, ...content.photos];
-        const updatedContent = { ...content, photos: updatedPhotos };
-        onUpdateContent(updatedContent);
-        saveSiteContent(updatedContent);
-
-        const successMsg = isFa
-          ? `🎉 تعداد ${res.totalDiscovered} مدیا تازه (${res.scannedMainCount} فایل در مخزن اصلی، ${res.scannedVideoCount} ویدیو در مخزن ویدیو) شناسایی و با موفقیت به گالری سایت افزوده شدند!`
-          : `Discovered and added ${res.totalDiscovered} new items to gallery!`;
-        setDiscoveryLog(successMsg);
-        alert(successMsg);
-      } else {
-        const msg = isFa
-          ? `تمامی فایل‌های موجود در مخازن گیت‌هاب (${res.scannedMainCount} فایل اصلی و ${res.scannedVideoCount} ویدیو) قبلاً در گالری ثبت شده‌اند و فایل تازه‌ای یافت نشد.`
-          : 'All GitHub files are already present in your gallery.';
-        setDiscoveryLog(msg);
-        alert(msg);
-      }
-    } catch (err: any) {
-      const errMsg = isFa ? `خطا در شناسایی خودکار از گیت‌هاب: ${err.message}` : `Auto-discovery error: ${err.message}`;
-      setDiscoveryLog(errMsg);
-      alert(errMsg);
-    } finally {
-      setIsDiscoveringGithub(false);
-    }
-  };
-
-  // بارگذاری و هماهنگ‌سازی دائمی تنظیمات استودیو (توکن گیت‌هاب، آپارات، یوتیوب، واترمارک) از سرور
-  useEffect(() => {
-    syncStudioSettingsFromServer().then((st) => {
-      if (st.githubToken) setGithubToken(st.githubToken);
-      if (st.mainRepo) setMainRepoState(st.mainRepo);
-      if (st.videoRepo) setVideoRepoState(st.videoRepo);
-      if (st.videoBaseUrl) setVideoBaseUrlState(st.videoBaseUrl);
-      if (st.youtubeApiKey) setYoutubeApiKey(st.youtubeApiKey);
-      if (st.aparatApiKey) setAparatApiKey(st.aparatApiKey);
-      if (st.watermarkImg) setWatermarkImg(st.watermarkImg);
-      if (st.watermarkOpacity !== undefined) setWatermarkOpacity(st.watermarkOpacity);
-      if (st.watermarkPosition) setWatermarkPosition(st.watermarkPosition);
-    });
-  }, []);
-
   // بازفشرده‌سازی در صورت تغییر اسلایدرهای کیفیت یا حداکثر اندازه
   useEffect(() => {
     if (rawFiles.length > 0) {
@@ -519,46 +398,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   }, [compressQuality, compressMaxDim]);
 
   /**
-   * رندر زنده امضای کاری روی Canvas برای مشاهده آنی تغییرات شفافیت
-   */
-  useEffect(() => {
-    const canvas = previewCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const sampleSrc = cleanBasePreviewUrl || photoImageUrl || DEFAULT_DARK_PLACEHOLDER_SVG;
-    const baseImg = new window.Image();
-    baseImg.crossOrigin = 'anonymous';
-    baseImg.onload = () => {
-      canvas.width = 480;
-      canvas.height = Math.round((baseImg.height / baseImg.width) * 480) || 300;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
-
-      if (watermarkOpacity > 0 && watermarkImg) {
-        const wm = new window.Image();
-        wm.crossOrigin = 'anonymous';
-        wm.onload = () => {
-          drawWatermarkOnCanvas(ctx, canvas.width, canvas.height, wm, watermarkOpacity, watermarkPosition);
-        };
-        wm.src = watermarkImg;
-      }
-    };
-    baseImg.src = sampleSrc;
-  }, [watermarkImg, watermarkOpacity, watermarkPosition, cleanBasePreviewUrl, photoImageUrl]);
-
-  /**
-   * تابع فشرده‌سازی خودکار و سریع عکس‌ها به فرمت مدرن WebP با Canvas و اعمال واترمارک
+   * تابع فشرده‌سازی خودکار و سریع عکس‌ها به فرمت مدرن WebP با Canvas
    */
   const processSelectedFiles = async (files: File[]) => {
     try {
       setIsProcessing(true);
-      const res = await compressMultipleImagesToWebP(files, compressMaxDim, compressQuality, {
-        imageDataUrl: watermarkImg,
-        opacity: watermarkOpacity,
-        position: watermarkPosition,
-      });
+      const res = await compressMultipleImagesToWebP(files, compressMaxDim, compressQuality);
       setCompressedResults(res.results);
       setOverallStats({
         origKB: res.totalOriginalKB,
@@ -573,275 +418,35 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   /**
-   * مدیریت آپلود لوگوی امضای کاری (watermark.png)
-   */
-  const handleWatermarkUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setWatermarkImg(dataUrl);
-      saveWatermarkImage(dataUrl);
-      alert(isFa ? 'فایل امضای کاری (Watermark PNG) با موفقیت ذخیره شد!' : 'Watermark PNG saved!');
-    };
-    reader.readAsDataURL(file);
-  };
-
-  /**
-   * بازنشانی امضا به حالت پیش‌فرض
-   */
-  const handleResetWatermark = () => {
-    setWatermarkImg(DEFAULT_WATERMARK_SVG);
-    saveWatermarkImage(DEFAULT_WATERMARK_SVG);
-    setWatermarkOpacity(0.15);
-    saveWatermarkOpacity(0.15);
-    setWatermarkPosition('bottom-right');
-    saveWatermarkPosition('bottom-right');
-  };
-
-  /**
-   * ارسال خودکار فایل ورک‌فلو به ریپازیتوری szarghami/video-portfolio
-   */
-  const handleDeployWorkflow = async () => {
-    if (!githubToken.trim()) {
-      alert(isFa ? 'لطفاً ابتدا توکن دسترسی شخصی گیت‌هاب را وارد کنید.' : 'Please enter GitHub token.');
-      return;
-    }
-    try {
-      setIsDeployingWorkflow(true);
-      const res = await deployVideoProcessorWorkflowToGitHub(githubToken.trim(), videoRepo.trim());
-      setWorkflowDeployMsg(res.msg);
-      alert(res.msg);
-    } catch (err: any) {
-      const msg = (isFa ? 'خطا در استقرار ورک‌فلو در گیت‌هاب: ' : 'Error: ') + err.message;
-      setWorkflowDeployMsg(msg);
-      alert(msg);
-    } finally {
-      setIsDeployingWorkflow(false);
-    }
-  };
-
-
-
-  /**
-   * آپلود و انتشار دسته‌جمعی (Bulk Upload) بدون فراخوانی خودکار Gemini Vision
-   */
-  const handleBulkUploadSubmit = async () => {
-    if (rawFiles.length === 0) {
-      alert(isFa ? 'لطفاً ابتدا چند تصویر برای آپلود دسته‌جمعی انتخاب کنید.' : 'Please select files first.');
-      return;
-    }
-
-    try {
-      setIsBulkProcessing(true);
-      setBulkUploadStatus(isFa ? `در حال پردازش و اعمال واترمارک برای ${rawFiles.length} اثر...` : `Processing ${rawFiles.length} items...`);
-      const newItems: PhotoItem[] = [];
-
-      for (let i = 0; i < rawFiles.length; i++) {
-        const file = rawFiles[i];
-        setBulkUploadStatus(isFa ? `در حال آپلود اثر ${i + 1} از ${rawFiles.length} (${file.name})...` : `Uploading ${i + 1}/${rawFiles.length}...`);
-
-        let finalUrl = '';
-        if (uploadToGitHubOption && githubToken.trim()) {
-          const up = await uploadMediaToGitHub({
-            file,
-            token: githubToken.trim(),
-            mainRepo: mainRepo.trim(),
-            videoRepo: videoRepo.trim(),
-            maxDimension: compressMaxDim,
-            quality: compressQuality,
-            watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
-          });
-          finalUrl = up.url;
-        } else {
-          const comp = await compressImageToWebP(file, compressMaxDim, compressQuality, {
-            imageDataUrl: watermarkImg,
-            opacity: watermarkOpacity,
-            position: watermarkPosition,
-          });
-          finalUrl = comp.dataUrl;
-        }
-
-        const inferred = inferTitlesFromFilename(file.name);
-        const titleFa = bulkTitlePrefix ? `${bulkTitlePrefix} - ${inferred.titleFa}` : inferred.titleFa;
-        const titleEn = bulkTitlePrefix ? `${bulkTitlePrefix} ${inferred.titleEn}` : inferred.titleEn;
-
-        const isVid = file.type.startsWith('video/') || /\.(mp4|webm|mov)$/i.test(file.name);
-
-        const item: PhotoItem = {
-          id: `bulk-${Date.now()}-${i}`,
-          titleFa,
-          titleEn,
-          category: bulkCategory,
-          locationFa: bulkLocationFa || 'تهران',
-          locationEn: bulkLocationEn || 'Tehran',
-          year: photoYear || '1403',
-          camera: photoCamera || (isVid ? 'Canon R8 & Gimbal' : 'Canon R8'),
-          lens: photoLens || 'Canon EF 50mm f/1.8',
-          imageUrl: finalUrl,
-          videoUrl: isVid ? finalUrl : undefined,
-          isVideo: isVid,
-          videoQuality: isVid ? '4K Cinema 60fps' : undefined,
-          exif: {
-            focalLength: '50mm',
-            aperture: 'f/4.0',
-            shutter: '1/200s',
-            iso: '100',
-          },
-          descriptionFa: photoDescFa || `ثبت صنعتی و تجاری اختصاصی توسط استودیو سینا ضرغامی`,
-          descriptionEn: photoDescEn || 'Commercial capture by Sina Zarghami Studio',
-          printAvailable: !isVid && photoPrintAvail,
-          printPriceToman: photoPriceToman,
-          printPriceUsd: photoPriceUsd,
-          digitalAvailable: true,
-          digitalPriceToman: 1200000,
-          digitalPriceUsd: 25,
-        };
-        newItems.push(item);
-      }
-
-      const updatedContent = {
-        ...content,
-        photos: [...newItems, ...content.photos],
-      };
-      onUpdateContent(updatedContent);
-      saveSiteContent(updatedContent);
-      setRawFiles([]);
-      setCompressedResults([]);
-      alert(isFa ? `🎉 تعداد ${newItems.length} اثر با موفقیت و بدون مصرف توکن هوش مصنوعی منتشر شدند!` : `Published ${newItems.length} items without AI tokens!`);
-    } catch (err: any) {
-      alert((isFa ? 'خطا در آپلود دسته‌جمعی: ' : 'Error: ') + err.message);
-    } finally {
-      setIsBulkProcessing(false);
-      setBulkUploadStatus(null);
-    }
-  };
-
-  /**
-   * دریافت فایل‌ها از دیالوگ یا درگ‌اند‌دراپ (عکس یا ویدیو)
+   * دریافت فایل‌ها از دیالوگ یا درگ‌اند‌دراپ
    */
   const handleFilesChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
-    // تشخیص ویدیو
-    const video = files.find((f) => f.type.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(f.name));
-    if (video) {
-      setSelectedVideoFile(video);
-      const { titleFa, titleEn, category } = inferTitlesFromFilename(video.name);
-      setPhotoCategory(category === 'landscape' ? 'video' : category);
-      if (!photoTitleFa) setPhotoTitleFa(titleFa);
-      if (!photoTitleEn) setPhotoTitleEn(titleEn);
-    } else {
-      setSelectedVideoFile(null);
-    }
-
-    // تشخیص تصاویر
-    const imageFiles = files.filter(f => f.type.startsWith('image/') || /\.(webp|jpg|jpeg|png)$/i.test(f.name));
-    if (imageFiles.length > 0) {
-      setRawFiles(imageFiles);
-      processSelectedFiles(imageFiles);
-
-      // خواندن تصویر تمیز اولیه جهت پیش‌نمایش کاملاً دقیق و بدون لایه‌گذاری مکرر امضا
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        if (ev.target?.result) {
-          setCleanBasePreviewUrl(ev.target.result as string);
-        }
-      };
-      reader.readAsDataURL(imageFiles[0]);
-
-      if (!photoTitleFa && !video) {
-        const { titleFa, titleEn, category } = inferTitlesFromFilename(imageFiles[0].name);
-        setPhotoTitleFa(titleFa);
-        setPhotoTitleEn(titleEn);
-        setPhotoCategory(category);
-        if (!collectionTitleFa) {
-          setCollectionTitleFa(imageFiles.length > 1 ? `کالکشن ${titleFa}` : titleFa);
-          setCollectionTitleEn(imageFiles.length > 1 ? `${titleEn} Collection` : titleEn);
-        }
-      }
-    }
+    setRawFiles(files);
+    processSelectedFiles(files);
   };
 
   /**
-   * بررسی رمز ورود و گشایش خودکار گاوصندوق رمزنگاری‌شده (AES-256-GCM Vault)
+   * بررسی رمز ورود
    */
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const enteredPin = pinInput.trim();
-    if (!enteredPin) {
+    if (checkAdminPasscode(pinInput)) {
+      setIsAuthenticated(true);
+      setSessionAuthenticated(true);
+      setPinError(false);
+    } else {
       setPinError(true);
-      return;
-    }
-
-    setIsLoggingIn(true);
-    setPinError(false);
-
-    try {
-      // ۱. اگر گاوصندوق رمزنگاری‌شده AES-256 در دیتای سایت وجود دارد، رمزگشایی با رمز عبور
-      if (content.encryptedVault) {
-        try {
-          const secrets = await decryptAdminSecrets(content.encryptedVault, enteredPin);
-          if (secrets) {
-            // رمزگشایی با موفقیت انجام شد!
-            setIsAuthenticated(true);
-            setSessionAuthenticated(true);
-            setPinError(false);
-            saveSessionVault(secrets);
-
-            if (secrets.githubToken) {
-              setGithubToken(secrets.githubToken);
-              saveGitHubToken(secrets.githubToken);
-            }
-            if (secrets.githubRepo) {
-              setMainRepoState(secrets.githubRepo);
-              saveMainRepo(secrets.githubRepo);
-            }
-            if (secrets.geminiApiKey) {
-              setGeminiApiKey(secrets.geminiApiKey);
-              saveLocalGeminiKey(secrets.geminiApiKey);
-            }
-            return;
-          }
-        } catch (vaultErr) {
-          console.warn('Vault decryption attempt failed:', vaultErr);
-        }
-      }
-
-      // ۲. بررسی با رمز عبور ثابت (محلی و امن سروری)
-      let isPinValid = checkAdminPasscode(enteredPin);
-      if (!isPinValid) {
-        isPinValid = await verifyAdminPasscodeWithServer(enteredPin);
-      }
-      if (isPinValid) {
-        setIsAuthenticated(true);
-        setSessionAuthenticated(true);
-        setPinError(false);
-
-        // بازیابی کلیدهای امن از سشن تب در صورت وجود
-        const sessionSecrets = getSessionVault();
-        if (sessionSecrets) {
-          if (sessionSecrets.githubToken) setGithubToken(sessionSecrets.githubToken);
-          if (sessionSecrets.githubRepo) setMainRepoState(sessionSecrets.githubRepo);
-          if (sessionSecrets.geminiApiKey) setGeminiApiKey(sessionSecrets.geminiApiKey);
-        }
-      } else {
-        setPinError(true);
-      }
-    } finally {
-      setIsLoggingIn(false);
     }
   };
 
   /**
-   * خروج از پنل مدیریت (پاکسازی سشن و گاوصندوق)
+   * خروج از پنل مدیریت
    */
   const handleLogout = () => {
     setIsAuthenticated(false);
     setSessionAuthenticated(false);
-    clearSessionVault();
     setPinInput('');
   };
 
@@ -859,11 +464,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   // =========================================================================
-  // توابع ترجمه هوشمند و کپشن‌نویسی مستقیم با هوش مصنوعی (Client-Side Gemini API)
+  // توابع ترجمه هوشمند با هوش مصنوعی (AI Translation Helpers)
   // =========================================================================
 
   /**
-   * ترجمه تک‌فیلدی به کمک هوش مصنوعی جمینای مستقیم در مرورگر
+   * ترجمه تک‌فیلدی به کمک هوش مصنوعی جمینای
    */
   const handleAiTranslate = async (
     persianText: string,
@@ -875,8 +480,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     if (!persianText.trim()) return;
     try {
       setTranslatingField(fieldId);
-      const activeKey = geminiApiKey || getActiveGeminiKey();
-      const res = await translateToArtisticEnglish(persianText, type, category, activeKey);
+      const res = await translateToArtisticEnglish(persianText, type, category);
       targetSetter(res);
     } finally {
       setTranslatingField(null);
@@ -884,7 +488,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   /**
-   * تحلیل بصری عکس توسط هوش مصنوعی جمینای (مستقیم در مرورگر بدون نیاز به سرور)
+   * تحلیل بصری عکس توسط هوش مصنوعی جمینای و ارائه پیشنهادات موضوع، عنوان و داستان
    */
   const handleAiSuggestPhoto = async () => {
     const currentImage = compressedResults.length > 0
@@ -896,23 +500,27 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       return;
     }
 
-    const activeKey = geminiApiKey || getActiveGeminiKey();
-    if (!activeKey) {
-      alert(
-        isFa
-          ? '🔑 کلید Gemini API تنظیم نشده است!\nلطفاً در تب «انتشار و پشتیبان»، در بخش گاوصندوق کلید اختصاصی Google Gemini API خود را وارد کنید تا هوش مصنوعی مستقیم فعال شود.'
-          : 'Please enter your Gemini API key in the Publish & Vault settings tab.'
-      );
-      return;
-    }
-
     try {
       setIsAiSuggesting(true);
       setAiSuggestError(null);
-      const suggestion = await suggestPhotoDetailsDirect(currentImage, activeKey);
-      setAiSuggestion(suggestion);
+      const res = await fetch('/api/gemini/suggest-photo-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: currentImage.startsWith('data:') ? currentImage : undefined,
+          imageUrl: currentImage.startsWith('http') ? currentImage : undefined,
+          titleHint: photoTitleFa || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'خطا در تحلیل عکس با جمینای');
+      }
+
+      setAiSuggestion(data.suggestion);
     } catch (err: any) {
-      setAiSuggestError(err.message || 'خطا در ارتباط با هوش مصنوعی جمینای');
+      setAiSuggestError(err.message || 'خطا در ارتباط با هوش مصنوعی');
     } finally {
       setIsAiSuggesting(false);
     }
@@ -937,178 +545,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     alert(isFa ? 'پیشنهادات هوش مصنوعی جمینای در فرم اعمال شدند!' : 'AI suggestions applied to form!');
   };
 
-  /**
-   * پیشنهاد هوشمند عنوان و داستان کالکشن با هوش مصنوعی جمینای مستقیم در مرورگر
-   */
-  const handleAiSuggestCollection = async () => {
-    const currentImage = cleanBasePreviewUrl || (compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl);
-    if (!currentImage) {
-      alert(isFa ? 'لطفاً ابتدا حداقل یک تصویر برای کالکشن انتخاب نمایید.' : 'Please choose at least one photo for the collection.');
-      return;
-    }
-
-    const activeKey = geminiApiKey || getActiveGeminiKey();
-    if (!activeKey) {
-      alert(
-        isFa
-          ? '🔑 کلید Gemini API تنظیم نشده است!\nلطفاً در تب «انتشار و پشتیبان»، در بخش گاوصندوق کلید اختصاصی Google Gemini API خود را وارد کنید تا هوش مصنوعی فعال شود.'
-          : 'Please enter your Gemini API key in the Publish & Vault settings tab.'
-      );
-      return;
-    }
-
-    try {
-      setIsAiSuggestingCollection(true);
-      const s = await suggestPhotoDetailsDirect(currentImage, activeKey);
-      if (s.titleFa) setCollectionTitleFa(`کالکشن ${s.titleFa}`);
-      if (s.titleEn) setCollectionTitleEn(`${s.titleEn} Monograph`);
-      if (s.category) setBulkCategory(s.category);
-      if (s.locationFa) setBulkLocationFa(s.locationFa);
-      if (s.locationEn) setBulkLocationEn(s.locationEn);
-      if (s.descriptionFa) setCollectionDescFa(s.descriptionFa);
-      if (s.descriptionEn) setCollectionDescEn(s.descriptionEn);
-
-      alert(isFa ? '✨ عنوان و داستان جامع برای کالکشن با جمینای پیشنهاد و در فرم قرار گرفت!' : 'Collection title and narrative generated with Gemini!');
-    } catch (err: any) {
-      alert((isFa ? 'خطا در پیشنهاد هوش مصنوعی: ' : 'AI error: ') + err.message);
-    } finally {
-      setIsAiSuggestingCollection(false);
-    }
-  };
-
-  /**
-   * ثبت و انتشار مستقیم کالکشن چندعکسی به صورت یک آلبوم اسلایدی ورق‌خور
-   */
-  const handleSaveCollection = async () => {
-    if (rawFiles.length === 0) {
-      alert(isFa ? 'لطفاً حداقل ۲ تصویر برای ایجاد کالکشن انتخاب کنید.' : 'Please select images for the collection.');
-      return;
-    }
-
-    try {
-      setIsProcessingCollection(true);
-      setBulkUploadStatus(isFa ? `در حال آماده‌سازی و بهینه‌سازی ${rawFiles.length} تصویر برای کالکشن...` : `Optimizing ${rawFiles.length} photos...`);
-
-      // فشرده‌سازی با واترمارک دلخواه
-      const compRes = await compressMultipleImagesToWebP(rawFiles, compressMaxDim, compressQuality, {
-        imageDataUrl: watermarkImg,
-        opacity: watermarkOpacity,
-        position: watermarkPosition,
-      });
-
-      let mainImageUrl = '';
-      const additionalImages: string[] = [];
-
-      if (uploadToGitHubOption && githubToken.trim()) {
-        setBulkUploadStatus(isFa ? `در حال ارسال تصویر اصلی کالکشن به گیت‌هاب...` : 'Uploading cover to GitHub...');
-        const upMain = await uploadMediaToGitHub({
-          file: rawFiles[0],
-          token: githubToken.trim(),
-          mainRepo: mainRepo.trim(),
-          videoRepo: videoRepo.trim(),
-          maxDimension: compressMaxDim,
-          quality: compressQuality,
-          watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
-        });
-        mainImageUrl = upMain.url;
-
-        for (let i = 1; i < rawFiles.length; i++) {
-          setBulkUploadStatus(isFa ? `در حال آپلود اسلاید ${i + 1} از ${rawFiles.length} در گیت‌هاب...` : `Uploading slide ${i + 1}/${rawFiles.length}...`);
-          const upSub = await uploadMediaToGitHub({
-            file: rawFiles[i],
-            token: githubToken.trim(),
-            mainRepo: mainRepo.trim(),
-            videoRepo: videoRepo.trim(),
-            maxDimension: compressMaxDim,
-            quality: compressQuality,
-            watermark: { imageDataUrl: watermarkImg, opacity: watermarkOpacity, position: watermarkPosition },
-          });
-          additionalImages.push(upSub.url);
-        }
-      } else {
-        mainImageUrl = compRes.results[0].dataUrl;
-        for (let i = 1; i < compRes.results.length; i++) {
-          additionalImages.push(compRes.results[i].dataUrl);
-        }
-      }
-
-      const inferred = inferTitlesFromFilename(rawFiles[0].name);
-      const titleFa = collectionTitleFa.trim() || (bulkTitlePrefix ? `${bulkTitlePrefix} - ${inferred.titleFa}` : `کالکشن تصویری ${inferred.titleFa}`);
-      const titleEn = collectionTitleEn.trim() || (bulkTitlePrefix ? `${bulkTitlePrefix} ${inferred.titleEn}` : `${inferred.titleEn} Monograph`);
-      const descFa = collectionDescFa.trim() || `کالکشن و مونوگراف اختصاصی شامل ${rawFiles.length} فریم عکاسی با نورپردازی و ترکیب‌بندی استودیویی سینا ضرغامی.`;
-      const descEn = collectionDescEn.trim() || `Monograph series featuring ${rawFiles.length} curated fine-art frames by Sina Zarghami Studio.`;
-
-      const collectionItem: PhotoItem = {
-        id: `collection-${Date.now()}`,
-        titleFa,
-        titleEn,
-        category: bulkCategory,
-        locationFa: bulkLocationFa || 'تهران، استودیو',
-        locationEn: bulkLocationEn || 'Tehran Studio',
-        year: photoYear || '1403',
-        camera: photoCamera || 'Canon R8',
-        lens: photoLens || 'Canon EF 50mm f/1.8',
-        imageUrl: mainImageUrl,
-        galleryImages: additionalImages,
-        isAlbum: true,
-        exif: {
-          focalLength: '50mm',
-          aperture: 'f/4.0',
-          shutter: '1/200s',
-          iso: '100',
-        },
-        descriptionFa: descFa,
-        descriptionEn: descEn,
-        printAvailable: photoPrintAvail,
-        printPriceToman: photoPriceToman,
-        printPriceUsd: photoPriceUsd,
-        digitalAvailable: true,
-        digitalPriceToman: 1800000,
-        digitalPriceUsd: 35,
-      };
-
-      const updatedContent = {
-        ...content,
-        photos: [collectionItem, ...content.photos],
-      };
-
-      onUpdateContent(updatedContent);
-      saveSiteContent(updatedContent);
-
-      // ارسال مستقیم به سرور تا در تمام دستگاه‌ها فوراً لود شود
-      try {
-        await fetch('/api/site-data', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedContent),
-        });
-      } catch {}
-
-      setRawFiles([]);
-      setCompressedResults([]);
-      setCleanBasePreviewUrl('');
-      setCollectionTitleFa('');
-      setCollectionTitleEn('');
-      setCollectionDescFa('');
-      setCollectionDescEn('');
-
-      alert(isFa
-        ? `🎉 کالکشن «${titleFa}» با موفقیت شامل ${1 + additionalImages.length} عکس به عنوان یک آلبوم ورق‌خور در سایت منتشر شد!`
-        : `Collection "${titleEn}" published successfully as a sliding gallery monograph!`
-      );
-    } catch (err: any) {
-      alert((isFa ? 'خطا در ثبت کالکشن: ' : 'Error: ') + err.message);
-    } finally {
-      setIsProcessingCollection(false);
-      setBulkUploadStatus(null);
-      setGithubUploadProgress(null);
-    }
-  };
-
   // =========================================================================
   // ۱. مدیریت گالری و آثار عکاسی (Photography & Albums)
   // =========================================================================
 
+  /**
+   * آماده‌سازی فرم برای ویرایش یک عکس موجود
+   */
   /**
    * آماده‌سازی فرم برای ویرایش یک عکس موجود
    */
@@ -1128,10 +571,15 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoPriceUsd(photo.printPriceUsd);
     setPhotoPrintAvail(photo.printAvailable);
     setPhotoImageUrl(photo.imageUrl);
-    setPhotoGithubVideoUrl(photo.githubVideoUrl || photo.videoUrl || '');
-    setPhotoAparatUrl(photo.aparatUrl || '');
-    setPhotoYoutubeUrl(photo.youtubeUrl || '');
-    setPhotoDefaultServer(photo.defaultServer || 'github');
+    // فیلدهای تکمیلی داینامیک CMS
+    setPhotoShowOnHome(photo.showOnHome || false);
+    setPhotoHomeOrder(photo.homeOrder || 0);
+    setPhotoPortfolioScope(photo.portfolioScope || 'commercial');
+    setPhotoCommercialCategory(photo.commercialCategory || '');
+    setPhotoClientName(photo.clientName || '');
+    setPhotoClientInfo(photo.clientInfo || '');
+    setPhotoGearIds(photo.gearIds || []);
+    setPhotoTechniques(photo.techniques || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1147,10 +595,15 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoDescFa('');
     setPhotoDescEn('');
     setPhotoImageUrl('');
-    setPhotoGithubVideoUrl('');
-    setPhotoAparatUrl('');
-    setPhotoYoutubeUrl('');
-    setPhotoDefaultServer('github');
+    setPhotoShowOnHome(false);
+    setPhotoHomeOrder(0);
+    setPhotoPortfolioScope('commercial');
+    setPhotoCommercialCategory('');
+    setPhotoClientName('');
+    setPhotoClientInfo('');
+    setPhotoGearIds([]);
+    setPhotoTechniques([]);
+    setQuickNewTechInput('');
     setRawFiles([]);
     setCompressedResults([]);
     setOverallStats(null);
@@ -1164,82 +617,23 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
     try {
       setIsProcessing(true);
-      setGithubUploadProgress(null);
-      setChunkedUploadProgress(null);
       let mainImageUrl = photoImageUrl;
-      let mainVideoUrl = '';
-      let isVideoMedia = photoCategory === 'video' || photoCategory === 'commercial-video' || Boolean(selectedVideoFile) || Boolean(photoGithubVideoUrl || photoAparatUrl || photoYoutubeUrl);
       let additionalImages: string[] = [];
 
-      // ۱. اگر فایل ویدیویی توسط کاربر انتخاب شده باشد
-      if (selectedVideoFile) {
-        isVideoMedia = true;
-        const sizeMB = selectedVideoFile.size / (1024 * 1024);
-
-        if (uploadToGitHubOption && githubToken.trim()) {
-          // اگر ویدیو سنگین‌تر از ۲۵ مگابایت باشد، آپلود تکه‌تکه (Chunked) انجام می‌شود
-          if (sizeMB > 25) {
-            setGithubUploadProgress(isFa ? `در حال آپلود تکه‌تکه ویدیو (${sizeMB.toFixed(1)} MB) به پوشه temp_raw ریپازیتوری ویدیو...` : 'Uploading chunked video to temp_raw...');
-            const chunkRes = await uploadLargeVideoChunked({
-              file: selectedVideoFile,
-              token: githubToken.trim(),
-              videoRepo: videoRepo.trim(),
-              videoBaseUrl: videoBaseUrl.trim(),
-              chunkSizeMB: 15,
-              onProgress: (status, percent) => {
-                setGithubUploadProgress(`${status} (${percent}%)`);
-                setChunkedUploadProgress({ status, percent });
-              },
-            });
-            mainImageUrl = chunkRes.mp4DirectUrl;
-            mainVideoUrl = chunkRes.mp4DirectUrl;
-          } else {
-            setGithubUploadProgress(isFa ? 'در حال ارسال ویدیو به ریپازیتوری گیت‌هاب...' : 'Uploading video to GitHub...');
-            const uploadRes = await uploadMediaToGitHub({
-              file: selectedVideoFile,
-              token: githubToken.trim(),
-              mainRepo: mainRepo.trim(),
-              videoRepo: videoRepo.trim(),
-              videoBaseUrl: videoBaseUrl.trim(),
-              forceVideoRepo: forceAllVideos,
-              onProgress: (status) => setGithubUploadProgress(status),
-            });
-            mainImageUrl = uploadRes.url;
-            mainVideoUrl = uploadRes.url;
-          }
-        } else {
-          // در صورتی که توکن نبود، آدرس گیت‌هاب پیجز پیش‌فرض ساخته می‌شود
-          const cleanName = selectedVideoFile.name.toLowerCase().replace(/\s+/g, '-');
-          mainImageUrl = `${videoBaseUrl}${cleanName}`;
-          mainVideoUrl = `${videoBaseUrl}${cleanName}`;
-        }
-      }
-      // ۲. اگر کاربر فایل عکس انتخاب کرده باشد
-      else if (compressedResults.length > 0) {
-        if (githubToken && githubToken.trim()) {
-          setGithubUploadProgress(isFa ? 'در حال ارسال تصویر فشرده WebP به مخزن گیت‌هاب (Pure Static Git-CMS)...' : 'Uploading WebP to GitHub...');
-          const uploadRes = await uploadImageToGitHub(
-            compressedResults[0].dataUrl,
-            rawFiles[0]?.name || `photo_${Date.now()}`,
-            githubToken.trim(),
-            mainRepo.trim()
-          );
-          mainImageUrl = uploadRes.publicUrl;
+      // اگر کاربر فایل جدیدی انتخاب کرده باشد، آن را فشرده و آپلود می‌کنیم
+      if (compressedResults.length > 0) {
+        if (uploadToCloud) {
+          setSupabaseUploadMsg('در حال بارگذاری هوشمند در Supabase Storage و سرور...');
+          const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
+          mainImageUrl = mainUpload.success && mainUpload.publicUrl ? mainUpload.publicUrl : compressedResults[0].dataUrl;
 
           if (compressedResults.length > 1) {
             for (let i = 1; i < compressedResults.length; i++) {
-              setGithubUploadProgress(isFa ? `در حال آپلود تصویر ${i + 1} از ${compressedResults.length} در گیت‌هاب...` : `Uploading image ${i + 1}/${compressedResults.length}...`);
-              const subUpload = await uploadImageToGitHub(
-                compressedResults[i].dataUrl,
-                rawFiles[i]?.name || `sub_${Date.now()}_${i}`,
-                githubToken.trim(),
-                mainRepo.trim()
-              );
-              additionalImages.push(subUpload.publicUrl);
+              const subUpload = await smartUploadImage(compressedResults[i].dataUrl, `sub_${Date.now()}_${i}`);
+              additionalImages.push(subUpload.success && subUpload.publicUrl ? subUpload.publicUrl : compressedResults[i].dataUrl);
             }
           }
         } else {
-          // در صورت عدم وارد شدن توکن، داده WebP فشرده‌شده به صورت محلی ذخیره می‌شود
           mainImageUrl = compressedResults[0].dataUrl;
           if (compressedResults.length > 1) {
             additionalImages = compressedResults.slice(1).map((r) => r.dataUrl);
@@ -1247,8 +641,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         }
       }
 
-      if (!mainImageUrl && !photoGithubVideoUrl && !photoAparatUrl && !photoYoutubeUrl) {
-        alert(isFa ? 'لطفاً یک تصویر یا ویدیو بارگذاری کنید یا آدرس آن را وارد نمایید.' : 'Please provide an image or video.');
+      if (!mainImageUrl) {
+        alert(isFa ? 'لطفاً یک تصویر بارگذاری کنید یا آدرس آن را وارد نمایید.' : 'Please provide an image.');
         return;
       }
 
@@ -1262,97 +656,119 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
               ...p,
               titleFa: photoTitleFa || p.titleFa,
               titleEn: photoTitleEn || p.titleEn,
-              category: photoCategory, // حفظ دقیق دسته‌بندی انتخابی کاربر اعم از صنعتی
+              category: photoCategory,
               locationFa: photoLocationFa || p.locationFa,
               locationEn: photoLocationEn || p.locationEn,
               year: photoYear,
               camera: photoCamera,
               lens: photoLens,
-              imageUrl: mainImageUrl || p.imageUrl,
-              videoUrl: mainVideoUrl || photoGithubVideoUrl || p.videoUrl,
-              githubVideoUrl: photoGithubVideoUrl || mainVideoUrl || p.githubVideoUrl,
-              aparatUrl: photoAparatUrl || p.aparatUrl,
-              youtubeUrl: photoYoutubeUrl || p.youtubeUrl,
-              defaultServer: photoDefaultServer || p.defaultServer,
-              isVideo: isVideoMedia || p.isVideo,
+              imageUrl: mainImageUrl,
               galleryImages: additionalImages.length > 0 ? additionalImages : p.galleryImages,
               isAlbum: additionalImages.length > 0 ? true : p.isAlbum,
               descriptionFa: photoDescFa,
               descriptionEn: photoDescEn,
-              printAvailable: isVideoMedia ? false : photoPrintAvail,
+              printAvailable: photoPrintAvail,
               printPriceToman: photoPriceToman,
               printPriceUsd: photoPriceUsd,
+              showOnHome: photoShowOnHome,
+              homeOrder: Number(photoHomeOrder) || 0,
+              portfolioScope: photoPortfolioScope,
+              commercialCategory: photoCommercialCategory,
+              clientName: photoClientName,
+              clientInfo: photoClientInfo,
+              gearIds: photoGearIds,
+              techniques: photoTechniques,
             };
           }
           return p;
         });
 
-        const newContent = { ...content, photos: updatedPhotos };
-        onUpdateContent(newContent);
-        saveSiteContent(newContent);
+        onUpdateContent({ ...content, photos: updatedPhotos });
         alert(isFa ? 'اثر با موفقیت ویرایش شد!' : 'Photo updated.');
       } else {
         // ایجاد اثر یا آلبوم جدید
         const newPhoto: PhotoItem = {
           id: `photo-${Date.now()}`,
-          titleFa: photoTitleFa || (isVideoMedia ? 'پروژه ویدیویی و تیزر سینمایی' : isAlbum ? 'آلبوم عکس‌های تازه' : 'اثر عکاسی برگزیده'),
-          titleEn: photoTitleEn || (isVideoMedia ? 'Cinematic Video Project' : isAlbum ? 'New Photo Monograph' : 'Selected Fine Art Photograph'),
-          category: photoCategory, // بدون اورراید ناخواسته به video
+          titleFa: photoTitleFa || (isAlbum ? 'آلبوم عکس‌های تازه' : 'اثر عکاسی برگزیده'),
+          titleEn: photoTitleEn || (isAlbum ? 'New Photo Monograph' : 'Selected Fine Art Photograph'),
+          category: photoCategory,
           locationFa: photoLocationFa || 'ایران',
           locationEn: photoLocationEn || 'Iran',
           year: photoYear || '1403',
-          imageUrl: mainImageUrl || (isVideoMedia ? DEFAULT_DARK_PLACEHOLDER_SVG : ''),
-          videoUrl: mainVideoUrl || photoGithubVideoUrl || (isVideoMedia ? mainImageUrl : undefined),
-          githubVideoUrl: photoGithubVideoUrl || mainVideoUrl || undefined,
-          aparatUrl: photoAparatUrl || undefined,
-          youtubeUrl: photoYoutubeUrl || undefined,
-          defaultServer: photoDefaultServer,
-          isVideo: isVideoMedia,
-          videoQuality: isVideoMedia ? '4K Cinema 60fps' : undefined,
-          videoDuration: isVideoMedia ? '01:30' : undefined,
+          imageUrl: mainImageUrl,
           galleryImages: additionalImages,
           isAlbum: isAlbum,
-          camera: photoCamera || (isVideoMedia ? 'GoPro Max 360 / Canon R8' : 'Canon R8'),
-          lens: photoLens || (isVideoMedia ? 'Wide Cine Optics' : 'Canon EF 50mm f/1.8'),
+          camera: photoCamera,
+          lens: photoLens,
           exif: {
             focalLength: '35mm',
             aperture: 'f/4.0',
             shutter: '1/250s',
             iso: '100',
           },
-          descriptionFa: photoDescFa || (isVideoMedia ? 'پروژه تیزر و فیلمبرداری سینمایی اختصاصی سینا ضرغامی' : isAlbum ? `مجموعه شامل ${compressedResults.length} تصویر اختصاصی` : 'ثبت‌شده توسط سینا ضرغامی'),
+          descriptionFa: photoDescFa || (isAlbum ? `مجموعه شامل ${compressedResults.length} تصویر اختصاصی` : 'ثبت‌شده توسط سینا ضرغامی'),
           descriptionEn: photoDescEn || 'Captured by Sina Zarghami',
-          printAvailable: isVideoMedia ? false : photoPrintAvail,
+          printAvailable: photoPrintAvail,
           printPriceToman: photoPriceToman,
           printPriceUsd: photoPriceUsd,
+          showOnHome: photoShowOnHome,
+          homeOrder: Number(photoHomeOrder) || 0,
+          portfolioScope: photoPortfolioScope,
+          commercialCategory: photoCommercialCategory,
+          clientName: photoClientName,
+          clientInfo: photoClientInfo,
+          gearIds: photoGearIds,
+          techniques: photoTechniques,
         };
 
-        const newContent = { ...content, photos: [newPhoto, ...content.photos] };
-        onUpdateContent(newContent);
-        saveSiteContent(newContent);
-
-        // ذخیره قطعی در سرور اختصاصی جهت عدم پاک شدن در رفرش
-        try {
-          await fetch('/api/site-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(newContent),
-          });
-        } catch (serverErr) {
-          console.warn('عدم امکان ارسال به سرور:', serverErr);
-        }
-
-        alert(isFa ? (isVideoMedia ? 'ویدیو سینمایی با موفقیت در گالری ثبت و در سرور ذخیره شد!' : isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس در گالری ثبت و در سرور منتشر شد!` : 'اثر با موفقیت در گالری ثبت و در سرور ذخیره شد!') : 'Published!');
+        onUpdateContent({ ...content, photos: [newPhoto, ...content.photos] });
+        alert(isFa ? (isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس منتشر شد!` : 'اثر در گالری ثبت گردید!') : 'Published!');
       }
 
       handleCancelEditPhoto();
-      setSelectedVideoFile(null);
     } catch (err: any) {
-      alert((isFa ? 'خطا در ثبت اثر: ' : 'Error: ') + err.message);
+      alert(`خطا: ${err.message}`);
     } finally {
       setIsProcessing(false);
-      setGithubUploadProgress(null);
+      setSupabaseUploadMsg(null);
     }
+  };
+
+  /**
+   * ستاره‌دار کردن یا لغو ستاره برای نمایش در ویترین صفحه اصلی با ۱ کلیک
+   */
+  const handleTogglePhotoShowOnHome = (id: string) => {
+    const updatedPhotos = content.photos.map((p) => {
+      if (p.id === id) {
+        return { ...p, showOnHome: !p.showOnHome };
+      }
+      return p;
+    });
+    onUpdateContent({ ...content, photos: updatedPhotos });
+  };
+
+  /**
+   * افزودن سریع تکنیک جدید به بانک تکنیک‌ها و انتساب خودکار به فرم جاری
+   */
+  const handleQuickAddTechnique = () => {
+    if (!quickNewTechInput.trim()) return;
+    const name = quickNewTechInput.trim();
+    const id = `tech-${Date.now()}`;
+    const newTech: DefinedTechnique = {
+      id,
+      nameFa: name,
+      nameEn: name,
+      descriptionFa: `تکنیک اختصاصی ${name}`,
+    };
+    const currentList = content.definedTechniques || [];
+    onUpdateContent({
+      ...content,
+      definedTechniques: [...currentList, newTech],
+    });
+    if (!photoTechniques.includes(name)) {
+      setPhotoTechniques([...photoTechniques, name]);
+    }
+    setQuickNewTechInput('');
   };
 
   /**
@@ -1561,7 +977,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         durationEn: expDurationEn || expDurationFa,
         seasonFa: expSeasonFa,
         seasonEn: expSeasonEn || expSeasonFa,
-        coverImage: expImage || DEFAULT_DARK_PLACEHOLDER_SVG,
+        coverImage: expImage || 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
         descriptionFa: expDescFa || 'سفر اکتشافی و مسترکلاس میدانی عکاسی به سرپرستی سینا ضرغامی.',
         descriptionEn: expDescEn || 'Field photography expedition led by Sina Zarghami.',
         highlightsFa: ['پیمایش تخصصی با خودروهای آفرود مجهز', 'ورکشاپ عکاسی شب و رصد آسمان تاریک'],
@@ -1668,7 +1084,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         subtitleEn: bookSubtitleEn || 'Photographic Monograph & Visual Essay',
         statusFa: bookStatusFa,
         statusEn: bookStatusEn,
-        coverImage: bookCoverImage || DEFAULT_DARK_PLACEHOLDER_SVG,
+        coverImage: bookCoverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1000&q=80',
         descriptionFa: bookDescFa || 'کتاب فاین‌آرت و مستندنگاری زیست‌بوم‌های بکر ایران.',
         descriptionEn: bookDescEn || 'Fine art monograph capturing Iran untouched wilderness.',
         pages: bookPages,
@@ -1775,7 +1191,336 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   // =========================================================================
-  // ۶. ذخیره متن‌ها، مشخصات و ۴ آمار کلیدی هیرو
+  // ۶-الف. مدیریت دسته‌بندی‌های نمونه‌کارهای تخصصی (Commercial Categories)
+  // =========================================================================
+
+  const handleStartEditCategory = (cat: CategoryItem) => {
+    setEditingCatId(cat.id);
+    setCatId(cat.id);
+    setCatTitleFa(cat.titleFa || cat.nameFa || '');
+    setCatTitleEn(cat.titleEn || cat.nameEn || '');
+    setCatDescFa(cat.descriptionFa || '');
+    setCatDescEn(cat.descriptionEn || '');
+    setCatIcon(cat.iconName || 'Camera');
+  };
+
+  const handleCancelEditCategory = () => {
+    setEditingCatId(null);
+    setCatId('');
+    setCatTitleFa('');
+    setCatTitleEn('');
+    setCatDescFa('');
+    setCatDescEn('');
+    setCatIcon('Camera');
+  };
+
+  const handleSaveCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catTitleFa.trim()) return;
+    const finalId = catId.trim() || `comm-${Date.now()}`;
+    const currentList = content.commercialCategories || [];
+
+    if (editingCatId) {
+      const updated = currentList.map((c) => {
+        if (c.id === editingCatId) {
+          return {
+            ...c,
+            id: finalId,
+            titleFa: catTitleFa,
+            titleEn: catTitleEn || catTitleFa,
+            nameFa: catTitleFa,
+            nameEn: catTitleEn || catTitleFa,
+            descriptionFa: catDescFa,
+            descriptionEn: catDescEn,
+            iconName: catIcon,
+          };
+        }
+        return c;
+      });
+      onUpdateContent({ ...content, commercialCategories: updated });
+      alert(isFa ? 'دسته‌بندی با موفقیت ویرایش شد!' : 'Category updated.');
+    } else {
+      const newCat: CategoryItem = {
+        id: finalId,
+        titleFa: catTitleFa,
+        titleEn: catTitleEn || catTitleFa,
+        nameFa: catTitleFa,
+        nameEn: catTitleEn || catTitleFa,
+        descriptionFa: catDescFa,
+        descriptionEn: catDescEn,
+        iconName: catIcon,
+        order: currentList.length + 1,
+      };
+      onUpdateContent({ ...content, commercialCategories: [...currentList, newCat] });
+      alert(isFa ? 'دسته‌بندی جدید با موفقیت اضافه شد!' : 'Category added.');
+    }
+    handleCancelEditCategory();
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    if (confirm(isFa ? 'آیا از حذف این دسته‌بندی اطمینان دارید؟' : 'Delete category?')) {
+      const currentList = content.commercialCategories || [];
+      onUpdateContent({
+        ...content,
+        commercialCategories: currentList.filter((c) => c.id !== id),
+      });
+      if (editingCatId === id) handleCancelEditCategory();
+    }
+  };
+
+  const handleMoveCategory = (index: number, direction: 'up' | 'down') => {
+    const list = [...(content.commercialCategories || [])];
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= list.length) return;
+    const temp = list[index];
+    list[index] = list[target];
+    list[target] = temp;
+    onUpdateContent({ ...content, commercialCategories: list });
+  };
+
+  // =========================================================================
+  // ۶-ب. مدیریت بانک تکنیک‌های عکاسی و تصویربرداری (Defined Techniques)
+  // =========================================================================
+
+  const handleStartEditTechnique = (t: DefinedTechnique) => {
+    setEditingTechId(t.id);
+    setTechId(t.id);
+    setTechNameFa(t.nameFa);
+    setTechNameEn(t.nameEn);
+    setTechDescFa(t.descriptionFa || '');
+    setTechDescEn(t.descriptionEn || '');
+  };
+
+  const handleCancelEditTechnique = () => {
+    setEditingTechId(null);
+    setTechId('');
+    setTechNameFa('');
+    setTechNameEn('');
+    setTechDescFa('');
+    setTechDescEn('');
+  };
+
+  const handleSaveTechnique = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!techNameFa.trim()) return;
+    const finalId = techId.trim() || `tech-${Date.now()}`;
+    const currentList = content.definedTechniques || [];
+
+    if (editingTechId) {
+      const updated = currentList.map((t) => {
+        if (t.id === editingTechId) {
+          return {
+            ...t,
+            id: finalId,
+            nameFa: techNameFa,
+            nameEn: techNameEn || techNameFa,
+            descriptionFa: techDescFa,
+            descriptionEn: techDescEn,
+          };
+        }
+        return t;
+      });
+      onUpdateContent({ ...content, definedTechniques: updated });
+      alert(isFa ? 'تکنیک با موفقیت ویرایش شد!' : 'Technique updated.');
+    } else {
+      const newTech: DefinedTechnique = {
+        id: finalId,
+        nameFa: techNameFa,
+        nameEn: techNameEn || techNameFa,
+        descriptionFa: techDescFa,
+        descriptionEn: techDescEn,
+      };
+      onUpdateContent({ ...content, definedTechniques: [...currentList, newTech] });
+      alert(isFa ? 'تکنیک جدید با موفقیت اضافه شد!' : 'Technique added.');
+    }
+    handleCancelEditTechnique();
+  };
+
+  const handleDeleteTechnique = (id: string) => {
+    if (confirm(isFa ? 'آیا این تکنیک حذف شود؟' : 'Delete technique?')) {
+      const currentList = content.definedTechniques || [];
+      onUpdateContent({
+        ...content,
+        definedTechniques: currentList.filter((t) => t.id !== id),
+      });
+      if (editingTechId === id) handleCancelEditTechnique();
+    }
+  };
+
+  const handleMoveTechnique = (index: number, direction: 'up' | 'down') => {
+    const list = [...(content.definedTechniques || [])];
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= list.length) return;
+    const temp = list[index];
+    list[index] = list[target];
+    list[target] = temp;
+    onUpdateContent({ ...content, definedTechniques: list });
+  };
+
+  // =========================================================================
+  // ۶-ج. مدیریت مقالات سئو و بلاگ (SEO Articles & Editorial)
+  // =========================================================================
+
+  const handleStartEditArticle = (art: ArticleItem) => {
+    setEditingArticleId(art.id);
+    setArtTitleFa(art.titleFa);
+    setArtTitleEn(art.titleEn);
+    setArtSlug(art.slug);
+    setArtExcerptFa(art.summaryFa || art.excerptFa || '');
+    setArtExcerptEn(art.summaryEn || art.excerptEn || '');
+    setArtContentFa(art.contentFa);
+    setArtContentEn(art.contentEn || '');
+    setArtCategoryFa(art.categoryFa || art.category || 'آموزش عکاسی');
+    setArtCategoryEn(art.categoryEn || 'Tutorial');
+    setArtCoverUrl(art.coverImage || art.coverUrl || '');
+    setArtReadTime(art.readTimeMinutes || art.readingTimeMinutes || 6);
+    setArtTags((art.tags || []).join(', '));
+    setArtSeoKeywords((art.seoKeywords || []).join(', '));
+    setArtIsPublished(art.isPublished !== false);
+    setArtFeatured(art.featured || false);
+  };
+
+  const handleCancelEditArticle = () => {
+    setEditingArticleId(null);
+    setArtTitleFa('');
+    setArtTitleEn('');
+    setArtSlug('');
+    setArtExcerptFa('');
+    setArtExcerptEn('');
+    setArtContentFa('');
+    setArtContentEn('');
+    setArtCoverUrl('');
+    setArtTags('');
+    setArtSeoKeywords('');
+    setArtIsPublished(true);
+    setArtFeatured(false);
+  };
+
+  const handleSaveArticle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!artTitleFa.trim()) return;
+
+    const tagsArray = artTags.split(/[,،]/).map((t) => t.trim()).filter(Boolean);
+    const keywordsArray = artSeoKeywords.split(/[,،]/).map((k) => k.trim()).filter(Boolean);
+    const generatedSlug =
+      artSlug.trim() ||
+      artTitleEn
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '') ||
+      `article-${Date.now()}`;
+    const currentArticles = content.articles || [];
+
+    if (editingArticleId) {
+      const updated = currentArticles.map((a) => {
+        if (a.id === editingArticleId) {
+          return {
+            ...a,
+            titleFa: artTitleFa,
+            titleEn: artTitleEn || artTitleFa,
+            slug: generatedSlug,
+            summaryFa: artExcerptFa,
+            summaryEn: artExcerptEn || artExcerptFa,
+            excerptFa: artExcerptFa,
+            excerptEn: artExcerptEn || artExcerptFa,
+            contentFa: artContentFa,
+            contentEn: artContentEn || artContentFa,
+            category: artCategoryFa,
+            categoryFa: artCategoryFa,
+            categoryEn: artCategoryEn,
+            coverImage: artCoverUrl || a.coverImage,
+            coverUrl: artCoverUrl || a.coverUrl,
+            readTimeMinutes: Number(artReadTime) || 5,
+            readingTimeMinutes: Number(artReadTime) || 5,
+            tags: tagsArray.length > 0 ? tagsArray : a.tags,
+            seoKeywords: keywordsArray,
+            isPublished: artIsPublished,
+            featured: artFeatured,
+          };
+        }
+        return a;
+      });
+      onUpdateContent({ ...content, articles: updated });
+      alert(isFa ? 'مقاله با موفقیت ویرایش شد!' : 'Article updated.');
+    } else {
+      const newArticle: ArticleItem = {
+        id: `art-${Date.now()}`,
+        slug: generatedSlug,
+        titleFa: artTitleFa,
+        titleEn: artTitleEn || artTitleFa,
+        summaryFa: artExcerptFa,
+        summaryEn: artExcerptEn || artExcerptFa,
+        excerptFa: artExcerptFa,
+        excerptEn: artExcerptEn || artExcerptFa,
+        contentFa: artContentFa,
+        contentEn: artContentEn || artContentFa,
+        category: artCategoryFa,
+        categoryFa: artCategoryFa,
+        categoryEn: artCategoryEn,
+        coverImage: artCoverUrl || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
+        coverUrl: artCoverUrl || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
+        publishedAt: new Date().toISOString().split('T')[0],
+        readTimeMinutes: Number(artReadTime) || 6,
+        readingTimeMinutes: Number(artReadTime) || 6,
+        tags: tagsArray.length > 0 ? tagsArray : ['عکاسی', 'آموزش'],
+        author: 'سینا ضرغامی',
+        isPublished: artIsPublished,
+        seoKeywords: keywordsArray,
+        featured: artFeatured,
+      };
+      onUpdateContent({ ...content, articles: [newArticle, ...currentArticles] });
+      alert(isFa ? 'مقاله جدید با موفقیت منتشر شد!' : 'Article published.');
+    }
+    handleCancelEditArticle();
+  };
+
+  const handleDeleteArticle = (id: string) => {
+    if (confirm(isFa ? 'آیا از حذف این مقاله اطمینان دارید؟' : 'Delete article?')) {
+      const currentList = content.articles || [];
+      onUpdateContent({
+        ...content,
+        articles: currentList.filter((a) => a.id !== id),
+      });
+      if (editingArticleId === id) handleCancelEditArticle();
+    }
+  };
+
+  const handleMoveArticle = (index: number, direction: 'up' | 'down') => {
+    const list = [...(content.articles || [])];
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= list.length) return;
+    const temp = list[index];
+    list[index] = list[target];
+    list[target] = temp;
+    onUpdateContent({ ...content, articles: list });
+  };
+
+  // =========================================================================
+  // ۶-د. ذخیره تنظیمات صفحه درباره من، ویترین صفحه اصلی و منوهای داینامیک
+  // =========================================================================
+
+  const handleSaveAboutAndLayout = (e: React.FormEvent) => {
+    e.preventDefault();
+    const eduList = aboutEduFaText.split('\n').map((l) => l.trim()).filter(Boolean);
+    const specList = aboutSpecFaText.split(/[,،]/).map((s) => s.trim()).filter(Boolean);
+
+    const updatedAbout: AboutPageContent = {
+      ...aboutPageForm,
+      educationFa: eduList,
+      specialtiesFa: specList,
+    };
+
+    onUpdateContent({
+      ...content,
+      aboutPage: updatedAbout,
+      homeShowcaseConfig: homeShowcaseForm,
+      navLabels: navLabelsForm,
+    });
+    alert(isFa ? 'تنظیمات صفحه درباره من، ویترین صفحه اصلی و منوها با موفقیت ذخیره شد!' : 'About & Layout settings saved!');
+  };
+
+  // =========================================================================
+  // ۷. ذخیره متن‌ها، مشخصات و ۴ آمار کلیدی هیرو
   // =========================================================================
 
   const handleSaveTextsAndProfile = (e: React.FormEvent) => {
@@ -1804,66 +1549,61 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       setPublishStatus(null);
       saveGitHubToken(githubToken);
 
-      // در صورت وجود توکن و رمز ادمین، اطمینان از به‌روز بودن گاوصندوق رمزنگاری‌شده در فایل داده‌ها
-      let contentToPublish = { ...content };
-      const currentPass = (vaultPasscode || getCurrentPasscode() || pinInput).trim();
-      if (githubToken.trim() && currentPass) {
-        try {
-          const secrets: AdminSecrets = {
-            githubToken: githubToken.trim(),
-            githubRepo: mainRepo.trim() || DEFAULT_MAIN_REPO,
-            geminiApiKey: geminiApiKey.trim(),
-          };
-          const encryptedVault = await encryptAdminSecrets(secrets, currentPass);
-          contentToPublish.encryptedVault = encryptedVault;
-          saveSessionVault(secrets);
-          onUpdateContent(contentToPublish);
-        } catch (vErr) {
-          console.warn('Auto vault encryption before publish:', vErr);
-        }
+      // ۱. ذخیره فوری در کش لوکال استوریج
+      saveSiteContent(content);
+
+      // ۲. ذخیره قطعی در سرور اختصاصی جهت همگام‌سازی لحظه‌ای بین لپ‌تاپ و گوشی
+      const serverRes = await fetch('/api/site-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(content),
+      });
+
+      if (!serverRes.ok) {
+        throw new Error('سرور در ذخیره‌سازی داده با خطا مواجه شد.');
       }
 
-      // ۱. ذخیره فوری در کش لوکال استوریج
-      saveSiteContent(contentToPublish);
+      // ۳. ارسال اعلان انتشار به تلگرام سینا ضرغامی
+      await sendTelegramNotification(
+        `🚀 <b>انتشار فوری نسخه جدید وب‌سایت sinazarghami.ir</b>\n` +
+        `سینا جان، تمام تغییرات، آثار جدید، پروژه‌ها و متون در سرور ابری ذخیره شدند و اکنون در تمام گوشی‌ها و لپ‌تاپ‌ها به صورت هماهنگ نمایش داده می‌شوند.`
+      );
 
-      // ۲. در صورتی که توکن گیت‌هاب وارد شده باشد، انتشار و کامیت مستقیم در گیت‌هاب (Pure Static Git-CMS)
+      // ۴. در صورتی که توکن گیت‌هاب وارد شده باشد، همگام‌سازی با مخزن szarghami/sinazarghami.ir انجام می‌شود
       let githubMsg = '';
       if (githubToken && githubToken.trim()) {
         try {
-          const syncResult = await publishSiteDataToGitHub(contentToPublish, githubToken.trim(), mainRepo.trim());
-          if (syncResult.success) {
+          const syncRes = await fetch('/api/github/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token: githubToken.trim(),
+              repo: 'szarghami/sinazarghami.ir',
+              path: 'site-data.json',
+              content: content,
+            }),
+          });
+          const syncData = await syncRes.json();
+          if (syncRes.ok && syncData.success) {
             githubMsg = isFa
-              ? ` و تغییرات مستقیماً در مخزن گیت‌هاب ${mainRepo} کامیت و مستقر شدند.`
-              : ` and successfully committed directly to ${mainRepo}.`;
-            syncAnalyticsToGitHub(githubToken.trim(), mainRepo.trim()).catch(() => {});
+              ? ' همچنین همگام‌سازی با مخزن گیت‌هاب szarghami/sinazarghami.ir با موفقیت انجام شد.'
+              : ' and repository szarghami/sinazarghami.ir was successfully synchronized.';
+          } else if (syncData.error) {
+            githubMsg = isFa
+              ? ` (توجه: ذخیره در سرور انجام شد، اما گیت‌هاب: ${syncData.error})`
+              : ` (Server updated, GitHub notice: ${syncData.error})`;
           }
-        } catch (gitErr: any) {
-          console.warn('Direct GitHub publish error:', gitErr);
-          githubMsg = isFa
-            ? ` (توجه گیت‌هاب: ${gitErr.message})`
-            : ` (GitHub notice: ${gitErr.message})`;
+        } catch (gitErr) {
+          console.warn('GitHub sync optional warning:', gitErr);
         }
       }
-
-      // ۳. ذخیره فرعی در /api/site-data با .catch() جهت هماهنگی محیط پیش‌نمایش محلی/AI Studio بدون خطا در هاست استاتیک
-      fetch('/api/site-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(contentToPublish),
-      }).catch(() => {});
-
-      // ۴. ارسال اعلان انتشار به تلگرام سینا ضرغامی
-      sendTelegramNotification(
-        `🚀 <b>انتشار مستقیم نسخه جدید وب‌سایت sinazarghami.ir (Pure Static Git-CMS)</b>\n` +
-        `سینا جان، تمامی تغییرات و متون مستقیماً در مخزن گیت‌هاب ذخیره شدند و نسخه استاتیک با موفقیت منتشر شد.`
-      ).catch(() => {});
 
       setInstantPublishSuccess(true);
       setPublishStatus({
         success: true,
         msg: isFa
-          ? `انتشار با موفقیت انجام شد! تمامی تغییرات ذخیره شدند${githubMsg}`
-          : `Universal Publish Succeeded! Live and synchronized.${githubMsg}`,
+          ? `انتشار فوری با موفقیت انجام شد! تمامی تغییرات در سرور ابری ثبت و بین گوشی و لپ‌تاپ یکپارچه شدند.${githubMsg}`
+          : `Universal Publish Succeeded! Live and synchronized across all devices.${githubMsg}`,
       });
       setTimeout(() => setInstantPublishSuccess(false), 8000);
     } catch (err: any) {
@@ -1989,12 +1729,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   ? 'جهت مدیریت آثار، ترجمه هوشمند، تغییر پست‌ها و تنظیمات، رمز عبور اختصاصی خود را وارد نمایید:'
                   : 'Enter your studio password to unlock:'}
               </p>
-              {content.encryptedVault && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-900 border border-amber-200 rounded-full text-[11px] font-medium mt-1">
-                  <Lock className="w-3 h-3 text-amber-700" />
-                  <span>{isFa ? 'گاوصندوق AES-256 فعال: بازگشایی خودکار توکن‌ها' : 'AES-256 Vault Active'}</span>
-                </div>
-              )}
             </div>
 
             <form onSubmit={handleLogin} className="space-y-3">
@@ -2003,7 +1737,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 placeholder={isFa ? 'رمز عبور' : 'Password'}
                 value={pinInput}
                 onChange={(e) => setPinInput(e.target.value)}
-                disabled={isLoggingIn}
                 className={`w-full px-4 py-2.5 text-center text-sm font-mono tracking-wider border rounded-lg focus:outline-none focus:ring-2 ${
                   pinError
                     ? 'border-red-500 focus:ring-red-300'
@@ -2019,17 +1752,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
               <button
                 type="submit"
-                disabled={isLoggingIn}
-                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-600 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-sm font-bold rounded-lg transition-colors cursor-pointer shadow-sm"
               >
-                {isLoggingIn ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                    <span>{isFa ? 'در حال بازگشایی گاوصندوق...' : 'Unlocking Vault...'}</span>
-                  </>
-                ) : (
-                  <span>{isFa ? 'ورود به پنل' : 'Unlock Studio'}</span>
-                )}
+                {isFa ? 'ورود به پنل' : 'Unlock Studio'}
               </button>
             </form>
 
@@ -2066,7 +1791,52 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 }`}
               >
                 <Images className="w-3.5 h-3.5" />
-                <span>{isFa ? 'گالری و آپلود ابری' : 'Photos & Cloud'}</span>
+                <span>{isFa ? 'گالری و آثار' : 'Photos & Cloud'}</span>
+                <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded-full font-mono">
+                  {content.photos.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('categories_techniques')}
+                className={`pb-3 px-3 border-b-2 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'categories_techniques'
+                    ? 'border-amber-700 text-stone-950 font-bold'
+                    : 'border-transparent hover:text-stone-950'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5 text-amber-700" />
+                <span>{isFa ? 'دسته‌بندی‌ها و تکنیک‌ها' : 'Categories & Techniques'}</span>
+                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded-full font-mono">
+                  {(content.commercialCategories || []).length + (content.definedTechniques || []).length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('articles')}
+                className={`pb-3 px-3 border-b-2 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'articles'
+                    ? 'border-amber-700 text-stone-950 font-bold'
+                    : 'border-transparent hover:text-stone-950'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-700" />
+                <span>{isFa ? 'مقالات سئو و وبلاگ' : 'SEO Articles'}</span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded-full font-mono">
+                  {(content.articles || []).length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('about_and_home')}
+                className={`pb-3 px-3 border-b-2 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === 'about_and_home'
+                    ? 'border-amber-700 text-stone-950 font-bold'
+                    : 'border-transparent hover:text-stone-950'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-700" />
+                <span>{isFa ? 'درباره من، چیدمان و منو' : 'About & Layout'}</span>
               </button>
 
               <button
@@ -2180,238 +1950,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
             {/* تب ۱: آپلود، فشرده‌سازی کنار هم، ترجمه با هوش مصنوعی و گالری */}
             {/* ============================================================== */}
             {activeTab === 'upload_studio' && (
-              <div className="p-4 sm:p-6 space-y-6">
-                {/* ============================================================== */}
-                {/* پنل معماری ذخیره‌سازی دو ریپازیتوری گیت‌هاب و همگام‌سازی خودکار */}
-                {/* ============================================================== */}
-                <div className="p-5 bg-gradient-to-br from-stone-900 via-stone-900 to-stone-950 text-white rounded-2xl border border-stone-800 shadow-md space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/80 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-                        <Github className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-                          <span>{isFa ? 'معماری دو ریپازیتوری گیت‌هاب (ذخیره‌سازی هوشمند و Auto-Discovery)' : 'Dual GitHub Repositories Architecture'}</span>
-                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono">
-                            Live Sync
-                          </span>
-                        </h4>
-                        <p className="text-[11px] text-stone-400 mt-0.5">
-                          {isFa
-                            ? 'مسیردهی هوشمند بر اساس نوع و حجم فایل + شناسایی اتوماتیک فایل‌های آپلودشده بدون کپی لینک'
-                            : 'Smart routing by media type & file size + zero-friction Auto-Discovery'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleAutoDiscoverFromGitHub}
-                        disabled={isDiscoveringGithub}
-                        className="px-4 py-2 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer shrink-0"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isDiscoveringGithub ? 'animate-spin' : ''}`} />
-                        <span>{isDiscoveringGithub ? (isFa ? 'در حال اسکن گیت‌هاب...' : 'Discovering...') : (isFa ? 'همگام‌سازی خودکار با گیت‌هاب (Auto-Discovery)' : 'Auto-Discover from GitHub')}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowRepoSettings(!showRepoSettings)}
-                        className="p-2 text-stone-400 hover:text-white bg-stone-800 hover:bg-stone-700 rounded-xl transition-colors cursor-pointer text-xs"
-                        title={isFa ? 'تنظیمات مخازن' : 'Settings'}
-                      >
-                        <Sliders className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* کارت وضعیت دو ریپازیتوری متصل */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                    {/* ریپازیتوری اصلی عکس‌ها */}
-                    <div className="p-3 bg-stone-850/80 rounded-xl border border-stone-800/80 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-stone-200 flex items-center gap-1.5">
-                          <Images className="w-3.5 h-3.5 text-amber-400" />
-                          <span>{isFa ? 'ریپازیتوری اصلی سایت (عکس‌ها):' : 'Main Repo (Photos):'}</span>
-                        </span>
-                        <a
-                          href={`https://github.com/${mainRepo}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-amber-400 hover:underline flex items-center gap-0.5"
-                        >
-                          <span className="font-mono">{mainRepo}</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      </div>
-                      <div className="text-[11px] text-stone-400 font-mono flex items-center justify-between">
-                        <span>مسیر مقصد: <code className="text-stone-300">public/portfolio/</code></span>
-                        <span className="text-emerald-400">فرمت WebP</span>
-                      </div>
-                    </div>
-
-                    {/* ریپازیتوری ویدیوها */}
-                    <div className="p-3 bg-stone-850/80 rounded-xl border border-stone-800/80 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-stone-200 flex items-center gap-1.5">
-                          <Film className="w-3.5 h-3.5 text-red-400" />
-                          <span>{isFa ? 'ریپازیتوری ویدیوها (GitHub Pages):' : 'Video Repo (GitHub Pages):'}</span>
-                        </span>
-                        <a
-                          href={`https://github.com/${videoRepo}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-red-400 hover:underline flex items-center gap-0.5"
-                        >
-                          <span className="font-mono">{videoRepo}</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      </div>
-                      <div className="text-[11px] text-stone-400 font-mono flex items-center justify-between">
-                        <span>لینک پایه: <code className="text-stone-300">{videoBaseUrl}</code></span>
-                        <span className="text-red-400">استریم 4K مستقیم</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* تنظیمات پیشرفته در صورت کلیک کاربر */}
-                  {showRepoSettings && (
-                    <div className="p-4 bg-stone-950/70 rounded-xl border border-stone-800 space-y-3 text-xs animate-in fade-in">
-                      <div className="font-bold text-amber-400 mb-1">
-                        {isFa ? 'تنظیمات نام مخازن و لینک پایه ویدیوها:' : 'Configure Repositories & Base URL:'}
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-[11px] text-stone-400 mb-1">{isFa ? 'مخزن اصلی سایت:' : 'Main Repo:'}</label>
-                          <input
-                            type="text"
-                            value={mainRepo}
-                            onChange={(e) => {
-                              setMainRepoState(e.target.value);
-                              saveMainRepo(e.target.value);
-                            }}
-                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 rounded-lg text-white font-mono text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] text-stone-400 mb-1">{isFa ? 'مخزن ویدیوها:' : 'Video Repo:'}</label>
-                          <input
-                            type="text"
-                            value={videoRepo}
-                            onChange={(e) => {
-                              setVideoRepoState(e.target.value);
-                              saveVideoRepo(e.target.value);
-                            }}
-                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 rounded-lg text-white font-mono text-xs"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] text-stone-400 mb-1">{isFa ? 'آدرس پایه GitHub Pages ویدیوها:' : 'Video Base URL:'}</label>
-                          <input
-                            type="text"
-                            value={videoBaseUrl}
-                            onChange={(e) => {
-                              setVideoBaseUrlState(e.target.value);
-                              saveVideoBaseUrl(e.target.value);
-                            }}
-                            className="w-full px-2.5 py-1.5 bg-stone-900 border border-stone-700 rounded-lg text-white font-mono text-xs"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-4 pt-1 text-[11px] text-stone-300">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={forceAllVideos}
-                            onChange={(e) => {
-                              setForceAllVideos(e.target.checked);
-                              saveForceAllVideosToVideoRepo(e.target.checked);
-                            }}
-                            className="rounded text-amber-500"
-                          />
-                          <span>{isFa ? 'انتقال تمام ویدیوها به ریپازیتوری دوم (szarghami/video-portfolio) جهت دور زدن محدودیت کلودفلر' : 'Route all videos to video repo'}</span>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* فیلد توکن گیت‌هاب (Personal Access Token) */}
-                  <div className="pt-2 border-t border-stone-800/80">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span className="font-bold text-stone-200">
-                          {isFa ? 'توکن دسترسی شخصی گیت‌هاب (GitHub Personal Access Token):' : 'GitHub Token:'}
-                        </span>
-                        {githubToken.trim() && (
-                          <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded-full font-mono">
-                            ذخیره‌شده در مرورگر ✓
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="relative flex-1 sm:max-w-md flex items-center gap-2">
-                        <div className="relative flex-1">
-                          <input
-                            type={showGithubToken ? 'text' : 'password'}
-                            value={githubToken}
-                            onChange={(e) => {
-                              setGithubToken(e.target.value);
-                              saveGitHubToken(e.target.value);
-                            }}
-                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                            className="w-full px-3 py-1.5 pr-8 bg-stone-950 border border-stone-700 rounded-lg text-white font-mono text-xs focus:border-amber-500 focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowGithubToken(!showGithubToken)}
-                            className="absolute right-2 top-1.5 text-stone-400 hover:text-white"
-                          >
-                            {showGithubToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            saveGitHubToken(githubToken);
-                            alert(isFa ? 'توکن گیت‌هاب با موفقیت در مرورگر شما ذخیره شد!' : 'Token saved!');
-                          }}
-                          className="px-3 py-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold rounded-lg cursor-pointer whitespace-nowrap"
-                        >
-                          {isFa ? 'ذخیره' : 'Save'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* نوار وضعیت یا لاگ زنده شناسایی */}
-                  {discoveryLog && (
-                    <div className="p-3 bg-stone-950/80 rounded-xl border border-amber-500/40 text-xs text-amber-200 font-mono animate-in fade-in flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>{discoveryLog}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setDiscoveryLog(null)}
-                        className="text-stone-400 hover:text-white text-[11px]"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  )}
-
-                  {githubUploadProgress && (
-                    <div className="p-3 bg-amber-950/60 border border-amber-600/50 rounded-xl text-xs text-amber-200 font-mono flex items-center gap-2 animate-pulse">
-                      <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
-                      <span>{githubUploadProgress}</span>
-                    </div>
-                  )}
-                </div>
-
+              <div className="p-4 sm:p-6 space-y-8">
                 {/* بخش دو ستونه: آپلود دسته‌ای در چپ، تنظیمات فشرده‌سازی همزمان در راست */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   {/* ستون اول: بارگذاری فایل‌ها */}
@@ -2419,26 +1958,24 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
                         <Images className="w-4 h-4 text-amber-700" />
-                        <span>{isFa ? 'انتخاب عکس، ویدیو یا آلبوم' : 'Upload Media (Photo/Video)'}</span>
+                        <span>{isFa ? 'انتخاب عکس یا مجموعه عکس (آلبوم چندعکسی)' : 'Upload Photo(s)'}</span>
                       </h4>
-                      <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 text-xs text-stone-700 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={uploadToGitHubOption}
-                            onChange={(e) => setUploadToGitHubOption(e.target.checked)}
-                            className="rounded text-amber-700 focus:ring-amber-600"
-                          />
-                          <span className="font-bold text-amber-900">{isFa ? 'آپلود مستقیم در گیت‌هاب' : 'GitHub Routing'}</span>
-                        </label>
-                      </div>
+                      <label className="flex items-center gap-1.5 text-xs text-stone-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={uploadToCloud}
+                          onChange={(e) => setUploadToCloud(e.target.checked)}
+                          className="rounded text-amber-700 focus:ring-amber-600"
+                        />
+                        <span>{isFa ? 'آپلود در باکت ابری (sina_site)' : 'Supabase Cloud'}</span>
+                      </label>
                     </div>
 
                     <input
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept="image/*,video/*"
+                      accept="image/*"
                       onChange={handleFilesChosen}
                       className="hidden"
                     />
@@ -2449,42 +1986,18 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     >
                       <Upload className="w-8 h-8 text-stone-400 group-hover:text-amber-700 mx-auto transition-colors" />
                       <div className="text-xs font-bold text-stone-800">
-                        {isFa ? 'کلیک کنید یا فایل‌ها را بکشید (عکس، تیزر ویدیویی، آلبوم)' : 'Click or drop photos or videos here'}
+                        {isFa ? 'کلیک کنید یا فایل‌ها را بکشید (تک عکس یا انتخاب همزمان چند عکس)' : 'Click or drop photos here'}
                       </div>
                       <p className="text-[11px] text-stone-400">
-                        {isFa ? 'تبدیل خودکار عکس به WebP و هدایت خودکار ویدیو به مخزن video-portfolio' : 'Auto WebP for photos & video routing'}
+                        {isFa ? 'تبدیل خودکار به WebP بسیار سبک با حفظ حداکثر رزولوشن' : 'Auto WebP format & 5MB bucket check'}
                       </p>
                     </div>
-
-                    {/* پیش‌نمایش فایل ویدیویی انتخاب‌شده */}
-                    {selectedVideoFile && (
-                      <div className="p-3.5 bg-red-50/80 rounded-xl border border-red-200 text-xs flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <div className="w-10 h-10 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0">
-                            <Video className="w-5 h-5" />
-                          </div>
-                          <div className="truncate">
-                            <div className="font-bold text-red-950 truncate">{selectedVideoFile.name}</div>
-                            <div className="text-[11px] text-red-700 font-mono">
-                              حجم: {(selectedVideoFile.size / (1024 * 1024)).toFixed(1)} MB · مقصد: {forceAllVideos || (selectedVideoFile.size / (1024 * 1024) > 25) ? 'ریپازیتوری اختصاصی ویدیو (szarghami/video-portfolio)' : 'ریپازیتوری اصلی'}
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedVideoFile(null)}
-                          className="text-[11px] text-red-600 hover:underline cursor-pointer shrink-0"
-                        >
-                          {isFa ? 'حذف ویدیو' : 'Clear'}
-                        </button>
-                      </div>
-                    )}
 
                     {/* پیش‌نمایش بندانگشتی عکس‌های انتخاب‌شده */}
                     {compressedResults.length > 0 && (
                       <div className="space-y-2 pt-2">
                         <div className="flex items-center justify-between text-xs font-bold text-stone-700">
-                          <span>{isFa ? `پیش‌نمایش خروجی فشرده‌شده (${compressedResults.length} تصویر WebP):` : 'Compressed Previews:'}</span>
+                          <span>{isFa ? `پیش‌نمایش خروجی فشرده‌شده (${compressedResults.length} تصویر):` : 'Compressed Previews:'}</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -2511,7 +2024,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     )}
                   </div>
 
-                  {/* ستون دوم: تنظیمات زنده فشرده‌سازی در همان لحظه همراه با سیستم امضای کاری و پیش‌نمایش Canvas */}
+                  {/* ستون دوم: تنظیمات زنده فشرده‌سازی در همان لحظه */}
                   <div className="lg:col-span-5 bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
                     <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
                       <Sliders className="w-4 h-4 text-amber-700" />
@@ -2567,592 +2080,103 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           </div>
                         </div>
                       )}
-
-                      {/* ============================================================== */}
-                      {/* سیستم امضای کاری (Watermark PNG) با پیش‌نمایش زنده Canvas */}
-                      {/* ============================================================== */}
-                      <div className="pt-3 border-t border-stone-200/90 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-stone-800 flex items-center gap-1.5 text-xs">
-                            <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
-                            <span>{isFa ? 'سیستم امضای کاری (Watermark PNG):' : 'Work Signature (Watermark):'}</span>
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => watermarkInputRef.current?.click()}
-                              className="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-md text-[10px] font-bold cursor-pointer transition-colors"
-                            >
-                              {isFa ? 'آپلود watermark.png' : 'Upload PNG'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={handleResetWatermark}
-                              className="px-2 py-1 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-md text-[10px] cursor-pointer transition-colors"
-                            >
-                              {isFa ? 'پیش‌فرض' : 'Reset'}
-                            </button>
-                          </div>
-                        </div>
-
-                        <input
-                          ref={watermarkInputRef}
-                          type="file"
-                          accept="image/png,image/webp,image/svg+xml"
-                          onChange={handleWatermarkUpload}
-                          className="hidden"
-                        />
-
-                        {/* اسلایدر درصد شفافیت امضا 0% تا 100% (پیش‌فرض 15%) */}
-                        <div>
-                          <div className="flex justify-between font-medium text-stone-700 mb-1 text-[11px]">
-                            <span>{isFa ? 'درصد شفافیت امضا (Opacity):' : 'Watermark Opacity:'}</span>
-                            <span className="font-mono text-amber-800 font-bold">{Math.round(watermarkOpacity * 100)}%</span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            value={watermarkOpacity}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
-                              setWatermarkOpacity(val);
-                              saveWatermarkOpacity(val);
-                            }}
-                            className="w-full accent-amber-700 cursor-pointer"
-                          />
-                        </div>
-
-                        {/* موقعیت امضا در کادر */}
-                        <div>
-                          <span className="block text-[11px] text-stone-600 mb-1">{isFa ? 'موقعیت امضا روی تصویر:' : 'Position:'}</span>
-                          <div className="grid grid-cols-3 gap-1 text-[10px]">
-                            {[
-                              { id: 'bottom-right', label: isFa ? 'پایین راست' : 'Bottom Right' },
-                              { id: 'bottom-left', label: isFa ? 'پایین چپ' : 'Bottom Left' },
-                              { id: 'center', label: isFa ? 'مرکز کادر' : 'Center' },
-                              { id: 'top-right', label: isFa ? 'بالا راست' : 'Top Right' },
-                              { id: 'top-left', label: isFa ? 'بالا چپ' : 'Top Left' },
-                            ].map((pos) => (
-                              <button
-                                key={pos.id}
-                                type="button"
-                                onClick={() => {
-                                  setWatermarkPosition(pos.id as any);
-                                  saveWatermarkPosition(pos.id as any);
-                                }}
-                                className={`px-2 py-1 rounded text-center cursor-pointer transition-colors ${
-                                  watermarkPosition === pos.id
-                                    ? 'bg-amber-700 text-white font-bold'
-                                    : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-100'
-                                }`}
-                              >
-                                {pos.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* پیش‌نمایش زنده Canvas */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] text-stone-500">
-                            <span>{isFa ? 'پیش‌نمایش زنده Canvas (اعمال لحظه‌ای):' : 'Live Canvas Preview:'}</span>
-                            <span className="text-emerald-700 font-mono font-bold">حک خودکار روی WebP ✓</span>
-                          </div>
-                          <div className="rounded-xl overflow-hidden border border-stone-300 bg-stone-900 shadow-inner flex items-center justify-center p-1">
-                            <canvas
-                              ref={previewCanvasRef}
-                              className="w-full h-auto max-h-44 object-contain rounded-lg"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ============================================================== */}
-                {/* سوئیچ حالت کاری استودیو: کالکشن ورق‌خور / آپلود تکی اثر / انتشار دسته‌جمعی */}
-                {/* ============================================================== */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-stone-100 rounded-xl border border-stone-200 gap-3">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-amber-700" />
-                    <div>
-                      <span className="text-xs font-bold text-stone-800 block">
-                        {isFa ? 'حالت کاری استودیو و انتشار آثار:' : 'Publishing Mode:'}
-                      </span>
-                      <span className="text-[10px] text-stone-500">
-                        {isFa ? 'انتخاب کنید آثار به صورت آلبوم ورق‌خور، تک‌اثر یا دسته‌جمعی ثبت شوند.' : 'Choose collection slider, single masterpiece, or bulk separate posts.'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-stone-200 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStudioMode('collection');
-                        setIsBulkMode(false);
-                      }}
-                      className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        studioMode === 'collection' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      <Images className="w-3.5 h-3.5" />
-                      <span>{isFa ? 'کالکشن / آلبوم ورق‌خور (پیشنهادی)' : 'Collection Slider'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStudioMode('single');
-                        setIsBulkMode(false);
-                      }}
-                      className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
-                        studioMode === 'single' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      {isFa ? 'آپلود تک‌اثر' : 'Single Photo'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStudioMode('bulk');
-                        setIsBulkMode(true);
-                      }}
-                      className={`px-3 py-1.5 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                        studioMode === 'bulk' ? 'bg-amber-700 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
-                      }`}
-                    >
-                      <span>⚡</span>
-                      <span>{isFa ? 'آثار جداگانه (Zero AI)' : 'Bulk Separate'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* ۱. پنل استودیو کالکشن و آلبوم تصویری ورق‌خور (اسلایدر چندعکسی با متن و داستان واحد) */}
-                {studioMode === 'collection' && (
-                  <div className="p-5 bg-gradient-to-r from-amber-50/80 via-stone-50 to-orange-50/60 rounded-2xl border-2 border-amber-400 shadow-sm space-y-4 text-xs animate-in fade-in">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
-                      <div>
-                        <h4 className="font-bold text-stone-900 text-sm flex items-center gap-2">
-                          <Images className="w-4 h-4 text-amber-700" />
-                          <span>{isFa ? 'استودیو کالکشن و مونوگراف اسلایدی (ورق‌خور در یک پست)' : 'Collection & Monograph Slider Studio'}</span>
-                        </h4>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          {isFa
-                            ? 'تمام تصاویر انتخاب‌شده به عنوان یک مجموعه واحد ثبت می‌شوند و کاربر در سایت می‌تواند عکس‌ها را به صورت اسلایدی ورق بزند.'
-                            : 'All selected photos will be published as ONE unified monograph post with an interactive slide viewer.'}
-                        </p>
-                      </div>
-                      <div className="text-left font-mono text-amber-800 font-bold bg-white px-3 py-1.5 rounded-lg border border-amber-300">
-                        {rawFiles.length > 0
-                          ? (isFa ? `${rawFiles.length} عکس برای این کالکشن انتخاب شده` : `${rawFiles.length} photos ready`)
-                          : (isFa ? 'هنوز عکسی انتخاب نشده' : 'No photos selected')}
-                      </div>
-                    </div>
-
-                    {/* دکمه پیشنهاد هوش مصنوعی برای کل کالکشن */}
-                    <div className="p-3 bg-white/90 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span className="text-xs text-stone-700">
-                          {isFa
-                            ? 'هوش مصنوعی جمینای می‌تواند با بررسی تصویر اول، بهترین عنوان و داستان هنری را برای کل این کالکشن پیشنهاد دهد.'
-                            : 'Gemini AI can propose a fine-art monograph title and story for the entire collection.'}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAiSuggestCollection}
-                        disabled={isAiSuggestingCollection || (rawFiles.length === 0 && !cleanBasePreviewUrl)}
-                        className="px-4 py-2 bg-amber-700 hover:bg-amber-600 disabled:opacity-50 text-white font-bold rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
-                      >
-                        {isAiSuggestingCollection ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>{isFa ? 'در حال نگارش داستان کالکشن...' : 'Analyzing...'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>{isFa ? '✨ پیشنهاد عنوان و داستان کالکشن با جمینای' : 'Suggest Title & Story'}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* فرم مشخصات کالکشن */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان فارسی کالکشن:' : 'Collection Title (FA):'}</label>
-                        <input
-                          type="text"
-                          value={collectionTitleFa}
-                          onChange={(e) => setCollectionTitleFa(e.target.value)}
-                          placeholder="مثال: کالکشن کفش چرم طبیعی دست‌دوز تبریز"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium text-stone-900"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی کالکشن:' : 'Collection Title (EN):'}</label>
-                        <input
-                          type="text"
-                          value={collectionTitleEn}
-                          onChange={(e) => setCollectionTitleEn(e.target.value)}
-                          placeholder="e.g. Tabriz Handcrafted Leather Footwear Series"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium text-stone-900"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'دسته‌بندی کالکشن:' : 'Category:'}</label>
-                        <select
-                          value={bulkCategory}
-                          onChange={(e) => setBulkCategory(e.target.value as any)}
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium text-stone-900"
-                        >
-                          <option value="commercial-shoes">{isFa ? 'عکاسی صنعتی کفش (Footwear & Shoes)' : 'Commercial Shoes'}</option>
-                          <option value="commercial-jewelry">{isFa ? 'عکاسی صنعتی جواهرات (Jewelry & Gems)' : 'Commercial Jewelry'}</option>
-                          <option value="commercial-video">{isFa ? 'تیزر و ویدیوی صنعتی (Industrial Video)' : 'Commercial Video'}</option>
-                          <option value="landscape">{isFa ? 'چشم‌انداز و کویر (Landscape)' : 'Landscape'}</option>
-                          <option value="aerial">{isFa ? 'دید ۳۶۰ و هوایی (Aerial)' : 'Aerial'}</option>
-                          <option value="portrait">{isFa ? 'هایپرمکرو و چهره (Macro & Portrait)' : 'Macro & Portrait'}</option>
-                          <option value="architecture">{isFa ? 'صنعتی و معماری (Architecture)' : 'Architecture'}</option>
-                          <option value="documentary">{isFa ? 'مستند سفر (Documentary)' : 'Documentary'}</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'موقعیت مکانی:' : 'Location:'}</label>
-                        <input
-                          type="text"
-                          value={bulkLocationFa}
-                          onChange={(e) => setBulkLocationFa(e.target.value)}
-                          placeholder="تهران، استودیو صنعتی"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'سال ثبت:' : 'Year:'}</label>
-                        <input
-                          type="text"
-                          value={photoYear}
-                          onChange={(e) => setPhotoYear(e.target.value)}
-                          placeholder="1403"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'توضیحات و داستان کلی این مجموعه:' : 'Collection Story / Narrative:'}</label>
-                      <textarea
-                        rows={2}
-                        value={collectionDescFa}
-                        onChange={(e) => setCollectionDescFa(e.target.value)}
-                        placeholder="توضیحاتی در مورد متریال، زاویه نورپردازی، اهداف تبلیغاتی یا حس و حال این کالکشن..."
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white leading-relaxed"
-                      />
-                    </div>
-
-                    {bulkUploadStatus && (
-                      <div className="p-3 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-mono flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
-                        <span>{bulkUploadStatus}</span>
-                      </div>
-                    )}
-
-                    {/* دکمه ثبت و انتشار مستقیم کالکشن در زیر فرم */}
-                    <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-amber-200/80">
-                      <div className="text-[11px] text-stone-500">
-                        {isFa
-                          ? 'با کلیک روی دکمه زیر، کالکشن فوراً در دیتابیس ثبت، به سرور ارسال و در سایت منتشر می‌شود.'
-                          : 'Instantly packs and deploys the monograph collection to the site.'}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleSaveCollection}
-                        disabled={isProcessingCollection || rawFiles.length === 0}
-                        className="px-6 py-3 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer text-sm"
-                      >
-                        <Images className="w-4 h-4" />
-                        <span>
-                          {isProcessingCollection
-                            ? (isFa ? 'در حال ثبت و انتشار کالکشن...' : 'Publishing Collection...')
-                            : (isFa
-                              ? `🚀 ثبت کالکشن (${rawFiles.length} عکس در یک آلبوم ورق‌خور) و انتشار فوری`
-                              : `Deploy Collection (${rawFiles.length} Photos Slider)`)}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* ۲. پنل آپلود دسته‌جمعی به صورت آثار مجزا (Bulk Upload - Zero AI) */}
-                {studioMode === 'bulk' && (
-                  <div className="p-5 bg-gradient-to-r from-amber-50/70 via-stone-50 to-orange-50/60 rounded-2xl border border-amber-300 shadow-xs space-y-4 text-xs animate-in fade-in">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/80 pb-3">
-                      <div>
-                        <h4 className="font-bold text-stone-900 text-sm flex items-center gap-2">
-                          <Layers className="w-4 h-4 text-amber-700" />
-                          <span>{isFa ? 'انتشار دسته‌جمعی به صورت آثار جداگانه بدون مصرف توکن' : 'Zero-Token Bulk Upload Studio'}</span>
-                        </h4>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          {isFa
-                            ? 'هر فایل به عنوان یک پست مجزا در گالری ثبت می‌شود.'
-                            : 'Upload multiple assets at once with no AI API consumption.'}
-                        </p>
-                      </div>
-                      <div className="text-left font-mono text-amber-800 font-bold bg-white px-3 py-1.5 rounded-lg border border-amber-200">
-                        {rawFiles.length} {isFa ? 'فایل انتخاب‌شده' : 'files selected'}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'پیشوند عنوان آثار (اختیاری):' : 'Title Prefix:'}</label>
-                        <input
-                          type="text"
-                          value={bulkTitlePrefix}
-                          onChange={(e) => setBulkTitlePrefix(e.target.value)}
-                          placeholder="مثال: کالکشن چرم و کفش دست‌دوز"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'دسته‌بندی صنعتی برای همه آثار:' : 'Bulk Category:'}</label>
-                        <select
-                          value={bulkCategory}
-                          onChange={(e) => setBulkCategory(e.target.value as any)}
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium"
-                        >
-                          <option value="commercial-shoes">{isFa ? 'عکاسی صنعتی کفش (Footwear & Shoes)' : 'Commercial Shoes'}</option>
-                          <option value="commercial-jewelry">{isFa ? 'عکاسی صنعتی جواهرات (Jewelry & Gems)' : 'Commercial Jewelry'}</option>
-                          <option value="commercial-video">{isFa ? 'تیزر و ویدیوی صنعتی (Industrial Video)' : 'Commercial Video'}</option>
-                          <option value="video">{isFa ? 'ویدیو و تیزر سینمایی (Cinematography)' : 'Video'}</option>
-                          <option value="landscape">{isFa ? 'چشم‌انداز و کویر (Landscape)' : 'Landscape'}</option>
-                          <option value="aerial">{isFa ? 'دید ۳۶۰ و هوایی (Aerial)' : 'Aerial'}</option>
-                          <option value="portrait">{isFa ? 'هایپرمکرو و چهره (Macro & Portrait)' : 'Macro & Portrait'}</option>
-                          <option value="architecture">{isFa ? 'صنعتی و معماری (Architecture)' : 'Architecture'}</option>
-                          <option value="documentary">{isFa ? 'مستند سفر (Documentary)' : 'Documentary'}</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'موقعیت مکانی ثبت:' : 'Location:'}</label>
-                        <input
-                          type="text"
-                          value={bulkLocationFa}
-                          onChange={(e) => setBulkLocationFa(e.target.value)}
-                          placeholder="تهران، استودیو صنعتی"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    {bulkUploadStatus && (
-                      <div className="p-3 bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-mono flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
-                        <span>{bulkUploadStatus}</span>
-                      </div>
-                    )}
-
-                    <div className="pt-2 flex items-center justify-end">
-                      <button
-                        type="button"
-                        onClick={handleBulkUploadSubmit}
-                        disabled={isBulkProcessing || rawFiles.length === 0}
-                        className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        <Layers className="w-4 h-4" />
-                        <span>
-                          {isBulkProcessing
-                            ? (isFa ? 'در حال انتشار دسته‌جمعی...' : 'Processing Bulk Upload...')
-                            : (isFa ? `انتشار دسته‌جمعی ${rawFiles.length} اثر به صورت مجزا` : `Publish ${rawFiles.length} Items (Zero AI)`)}
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* کارت پیشنهاد هوشمند عنوان، موضوع و داستان با جمینای (فقط در حالت تکی) */}
-                {!isBulkMode && (
-                  <div className="p-4 bg-gradient-to-r from-amber-50 via-stone-50 to-indigo-50/60 rounded-2xl border border-amber-200/90 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-                          <Sparkles className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <h5 className="text-xs font-bold text-stone-900">
-                            {isFa ? 'پیشنهاد هوشمند موضوع، عنوان و داستان عکس (Gemini AI Vision)' : 'AI Photo Topic, Title & Story Suggester'}
-                          </h5>
-                          <p className="text-[11px] text-stone-500">
-                            {isFa
-                              ? 'جمینای تصویر انتخاب‌شده را تحلیل کرده و عنوان شاعرانه، دسته‌بندی و داستان هنری متناسب پیشنهاد می‌دهد.'
-                              : 'AI analyzes the image composition and generates fine-art titles and narrative.'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleAiSuggestPhoto}
-                        disabled={isAiSuggesting || (compressedResults.length === 0 && !photoImageUrl)}
-                        className="px-4 py-2 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-                      >
-                        {isAiSuggesting ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>{isFa ? 'در حال تحلیل بصری عکس...' : 'Analyzing Image...'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-3.5 h-3.5" />
-                            <span>{isFa ? 'دریافت پیشنهادات هوش مصنوعی' : 'Get AI Suggestions'}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {aiSuggestError && (
-                      <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
-                        {aiSuggestError}
-                      </div>
-                    )}
-
-                    {aiSuggestion && (
-                      <div className="p-4 bg-white rounded-xl border border-amber-300 space-y-3 animate-fade-in shadow-xs text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px]">
-                              {aiSuggestion.categoryFa || aiSuggestion.category}
-                            </span>
-                            <span className="text-stone-500 font-mono text-[11px]">
-                              {aiSuggestion.locationFa} · {aiSuggestion.camera}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleApplyAiSuggestion}
-                            className="px-3 py-1 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
-                          >
-                            <Check className="w-3 h-3" />
-                            <span>{isFa ? 'اعمال تمام پیشنهادات در فرم' : 'Apply All to Form'}</span>
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <span className="text-[10px] text-stone-400 font-mono block">عنوان پیشنهادی فارسی:</span>
-                            <p className="font-bold text-stone-900 text-sm">«{aiSuggestion.titleFa}»</p>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-[10px] text-stone-400 font-mono block">English Title:</span>
-                            <p className="font-medium text-stone-800 text-xs italic">{aiSuggestion.titleEn}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-1 pt-1 border-t border-stone-100">
-                          <span className="text-[10px] text-stone-400 font-mono block">داستان و روایت پیشنهادی عکس:</span>
-                          <p className="text-stone-700 leading-relaxed text-xs">{aiSuggestion.descriptionFa}</p>
-                        </div>
-
-                        {aiSuggestion.tags && aiSuggestion.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-1">
-                            {aiSuggestion.tags.map((tag, tIdx) => (
-                              <span key={tIdx} className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]">
-                                #{tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* ============================================================== */}
-                {/* پنل آپلود تکه‌تکه (Chunked Upload) و ورک‌فلو پردازش ابری FFmpeg HLS */}
-                {/* ============================================================== */}
-                <div className="p-5 bg-gradient-to-br from-stone-900 to-stone-950 text-white rounded-2xl border border-stone-800 shadow-md space-y-4 text-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800 pb-3">
+                {/* کارت پیشنهاد هوشمند عنوان، موضوع و داستان با جمینای */}
+                <div className="p-4 bg-gradient-to-r from-amber-50 via-stone-50 to-indigo-50/60 rounded-2xl border border-amber-200/90 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-xl bg-red-600/20 text-red-400 border border-red-500/30 flex items-center justify-center shrink-0">
-                        <Video className="w-5 h-5" />
+                      <div className="w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Sparkles className="w-5 h-5" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-bold text-stone-100 flex items-center gap-2">
-                          <span>{isFa ? 'سیستم آپلود تکه‌تکه (Chunked) و تبدیل خودکار ویدیوهای سنگین (۲۰۰ تا ۵۰۰ مگابایت)' : 'Chunked Video & Automated FFmpeg Pipeline'}</span>
-                          <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-mono">
-                            HLS Stream
-                          </span>
-                        </h4>
-                        <p className="text-[11px] text-stone-400 mt-0.5">
+                        <h5 className="text-xs font-bold text-stone-900">
+                          {isFa ? 'پیشنهاد هوشمند موضوع، عنوان و داستان عکس (Gemini AI Vision)' : 'AI Photo Topic, Title & Story Suggester'}
+                        </h5>
+                        <p className="text-[11px] text-stone-500">
                           {isFa
-                            ? 'تقسیم خودکار به قطعات ۱۵ مگابایتی (File.slice) جهت عبور از سقف ۱۰۰ مگابایت گیت‌هاب + اکشن پس‌زمینه با FFmpeg'
-                            : 'Bypass GitHub 100MB limit with 15MB chunks + auto background processing'}
+                            ? 'جمینای تصویر انتخاب‌شده را تحلیل کرده و عنوان شاعرانه، دسته‌بندی و داستان هنری متناسب پیشنهاد می‌دهد.'
+                            : 'AI analyzes the image composition and generates fine-art titles and narrative.'}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleDeployWorkflow}
-                        disabled={isDeployingWorkflow}
-                        className="px-3.5 py-2 bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isDeployingWorkflow ? 'animate-spin' : ''}`} />
-                        <span>{isDeployingWorkflow ? (isFa ? 'در حال ارسال...' : 'Deploying...') : (isFa ? 'ارسال خودکار فایل ورک‌فلو به ریپازیتوری' : 'Deploy Workflow to GitHub')}</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setShowWorkflowCodeModal(true)}
-                        className="px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Code2 className="w-3.5 h-3.5 text-amber-400" />
-                        <span>{isFa ? 'مشاهده کد YAML' : 'View YAML'}</span>
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAiSuggestPhoto}
+                      disabled={isAiSuggesting || (compressedResults.length === 0 && !photoImageUrl)}
+                      className="px-4 py-2 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                    >
+                      {isAiSuggesting ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>{isFa ? 'در حال تحلیل بصری عکس...' : 'Analyzing Image...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3.5 h-3.5" />
+                          <span>{isFa ? 'دریافت پیشنهادات هوش مصنوعی' : 'Get AI Suggestions'}</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
-                  {workflowDeployMsg && (
-                    <div className="p-3 bg-stone-850 border border-amber-500/40 rounded-xl text-amber-200 text-xs font-mono">
-                      {workflowDeployMsg}
+                  {aiSuggestError && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                      {aiSuggestError}
                     </div>
                   )}
 
-                  {chunkedUploadProgress && (
-                    <div className="p-3.5 bg-stone-950 rounded-xl border border-red-500/50 space-y-2">
-                      <div className="flex justify-between items-center text-[11px]">
-                        <span className="text-red-300 font-bold">{chunkedUploadProgress.status}</span>
-                        <span className="font-mono text-white font-bold">{chunkedUploadProgress.percent}%</span>
+                  {aiSuggestion && (
+                    <div className="p-4 bg-white rounded-xl border border-amber-300 space-y-3 animate-fade-in shadow-xs text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px]">
+                            {aiSuggestion.categoryFa || aiSuggestion.category}
+                          </span>
+                          <span className="text-stone-500 font-mono text-[11px]">
+                            {aiSuggestion.locationFa} · {aiSuggestion.camera}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleApplyAiSuggestion}
+                          className="px-3 py-1 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
+                        >
+                          <Check className="w-3 h-3" />
+                          <span>{isFa ? 'اعمال تمام پیشنهادات در فرم' : 'Apply All to Form'}</span>
+                        </button>
                       </div>
-                      <div className="w-full bg-stone-800 h-2.5 rounded-full overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-red-600 to-amber-500 h-full transition-all duration-300"
-                          style={{ width: `${chunkedUploadProgress.percent}%` }}
-                        />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-stone-400 font-mono block">عنوان پیشنهادی فارسی:</span>
+                          <p className="font-bold text-stone-900 text-sm">«{aiSuggestion.titleFa}»</p>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] text-stone-400 font-mono block">English Title:</span>
+                          <p className="font-medium text-stone-800 text-xs italic">{aiSuggestion.titleEn}</p>
+                        </div>
                       </div>
+
+                      <div className="space-y-1 pt-1 border-t border-stone-100">
+                        <span className="text-[10px] text-stone-400 font-mono block">داستان و روایت پیشنهادی عکس:</span>
+                        <p className="text-stone-700 leading-relaxed text-xs">{aiSuggestion.descriptionFa}</p>
+                      </div>
+
+                      {aiSuggestion.tags && aiSuggestion.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {aiSuggestion.tags.map((tag, tIdx) => (
+                            <span key={tIdx} className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-[11px] text-stone-300">
-                    <div className="p-2.5 bg-stone-850/60 rounded-lg border border-stone-800">
-                      <span className="font-bold text-amber-400 block mb-0.5">۱. تقسیم به قطعات ۱۵MB:</span>
-                      <span>ویدیو بدون هنگ مرورگر به فایل‌های موقت در <code className="text-stone-300">temp_raw/</code> ارسال می‌شود.</span>
-                    </div>
-                    <div className="p-2.5 bg-stone-850/60 rounded-lg border border-stone-800">
-                      <span className="font-bold text-amber-400 block mb-0.5">۲. سیگنال READY_TO_PROCESS:</span>
-                      <span>ایجاد خودکار فایل جهت فعال‌سازی گیت‌هاب اکشن در پس‌زمینه.</span>
-                    </div>
-                    <div className="p-2.5 bg-stone-850/60 rounded-lg border border-stone-800">
-                      <span className="font-bold text-amber-400 block mb-0.5">۳. تبدیل به HLS و استریم:</span>
-                      <span>تبدیل به m3u8 و ts زیر ۱۰ مگابایت و پاکسازی تاریخچه با Orphan Commit.</span>
-                    </div>
-                  </div>
                 </div>
 
                 {/* فرم مشخصات اثر / آلبوم (همراه با دکمه‌های ترجمه Gemini AI) */}
@@ -3222,17 +2246,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <select
                         value={photoCategory}
                         onChange={(e) => setPhotoCategory(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-medium"
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                       >
-                        <option value="commercial-shoes">{isFa ? 'عکاسی صنعتی کفش (Footwear & Shoes)' : 'Commercial Shoes'}</option>
-                        <option value="commercial-jewelry">{isFa ? 'عکاسی صنعتی جواهرات (Jewelry & Gems)' : 'Commercial Jewelry'}</option>
-                        <option value="commercial-video">{isFa ? 'تیزر و ویدیوی صنعتی (Industrial Video)' : 'Commercial Video'}</option>
-                        <option value="video">{isFa ? 'ویدیو و تیزر سینمایی (Cinematography & Video)' : 'Video & Cinematography'}</option>
                         <option value="landscape">{isFa ? 'چشم‌انداز و کویر (Landscape)' : 'Landscape'}</option>
-                        <option value="aerial">{isFa ? 'دید ۳۶۰ و هوایی (Aerial & Drone)' : 'Aerial'}</option>
+                        <option value="aerial">{isFa ? 'هوایی و پهپاد (Aerial & Drone)' : 'Aerial'}</option>
                         <option value="architecture">{isFa ? 'معماری و ساختارها (Architecture)' : 'Architecture'}</option>
                         <option value="documentary">{isFa ? 'مستند و پرتره (Documentary)' : 'Documentary'}</option>
-                        <option value="portrait">{isFa ? 'پرتره و هایپرمکرو (Portrait & Macro)' : 'Portrait & Macro'}</option>
+                        <option value="portrait">{isFa ? 'پرتره محیطی (Portrait)' : 'Portrait'}</option>
                       </select>
                     </div>
 
@@ -3267,191 +2287,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="e.g. Lut Desert, Kerman"
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white"
                       />
-                    </div>
-                  </div>
-
-                  {/* سیستم دوحالته ویدیو و تنظیمات پلیر چندسروره (گیت‌هاب + آپارات + یوتیوب) */}
-                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-stone-200 pb-3 gap-2">
-                      <div className="font-bold text-stone-800 text-xs flex items-center gap-1.5">
-                        <Server className="w-3.5 h-3.5 text-amber-700" />
-                        <span>{isFa ? 'سیستم دوحالته ویدیو و پلیر هوشمند چندسروره:' : 'Dual-Mode Video Engine & Multi-Server Player:'}</span>
-                      </div>
-                      <span className="text-[10px] text-stone-500 font-mono">پشتیبانی کامل از HLS (.m3u8) + سوییچ خودکار ۴ ثانیه‌ای</span>
-                    </div>
-
-                    {/* تب‌های انتخاب سیستم دوحالته */}
-                    <div className="flex rounded-lg bg-stone-200/80 p-1 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVideoMode('github-chunked');
-                          setPhotoDefaultServer('github');
-                        }}
-                        className={`flex-1 py-1.5 px-3 rounded-md font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          videoMode === 'github-chunked'
-                            ? 'bg-white text-stone-900 shadow-sm'
-                            : 'text-stone-600 hover:text-stone-900'
-                        }`}
-                      >
-                        <Radio className="w-3.5 h-3.5 text-amber-600" />
-                        <span>{isFa ? '۱. نمونه‌کار اختصاصی (استریم HLS / گیت‌هاب)' : '1. Dedicated GitHub Stream (HLS)'}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setVideoMode('external-stream');
-                          if (!photoAparatUrl && !photoYoutubeUrl) {
-                            setPhotoDefaultServer('aparat');
-                          } else if (photoAparatUrl) {
-                            setPhotoDefaultServer('aparat');
-                          } else {
-                            setPhotoDefaultServer('youtube');
-                          }
-                        }}
-                        className={`flex-1 py-1.5 px-3 rounded-md font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          videoMode === 'external-stream'
-                            ? 'bg-white text-stone-900 shadow-sm'
-                            : 'text-stone-600 hover:text-stone-900'
-                        }`}
-                      >
-                        <Play className="w-3.5 h-3.5 text-red-600 fill-red-600" />
-                        <span>{isFa ? '۲. ویدیوی پلتفرم‌ها (لینک مستقیم آپارات / یوتیوب)' : '2. External Platform Video (Aparat / YouTube)'}</span>
-                      </button>
-                    </div>
-
-                    {videoMode === 'github-chunked' ? (
-                      <div className="space-y-3">
-                        <div className="p-2.5 bg-amber-50/60 border border-amber-200/70 rounded-lg text-xs text-amber-900 flex items-start gap-2">
-                          <Radio className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                          <div className="space-y-0.5">
-                            <div className="font-bold">{isFa ? 'حالت استریم اختصاصی گیت‌هاب (HLS / .m3u8 / MP4)' : 'GitHub Stream Mode:'}</div>
-                            <div className="text-[11px] text-stone-600">
-                              {isFa
-                                ? 'این ویدیوها با hls.js در اندروید و دسکتاپ و به شکل محلی در Safari آیفون پخش می‌شوند. جهت جلوگیری از فیلترینگ یا کندی، لینک آپارات را هم به عنوان بکاپ وارد کنید.'
-                                : 'Plays via hls.js on Chrome/Firefox and natively on iOS Safari. Add Aparat URL as automatic fallback.'}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                              <Radio className="w-3 h-3 text-amber-600" />
-                              <span>{isFa ? 'آدرس استریم گیت‌هاب (Direct MP4 یا .m3u8):' : 'GitHub Stream URL (MP4 / HLS):'}</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={photoGithubVideoUrl}
-                              onChange={(e) => setPhotoGithubVideoUrl(e.target.value)}
-                              placeholder="https://szarghami.github.io/video-portfolio/master.m3u8"
-                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                              <span>🇮🇷</span>
-                              <span>{isFa ? 'سرور پشتیبان ایران - آپارات (در صورت تاخیر یا قطعی):' : 'Iran Fallback Server (Aparat):'}</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={photoAparatUrl}
-                              onChange={(e) => setPhotoAparatUrl(e.target.value)}
-                              placeholder="https://www.aparat.com/v/XXXXX"
-                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div className="p-2.5 bg-red-50/60 border border-red-200/70 rounded-lg text-xs text-red-900 flex items-start gap-2">
-                          <Play className="w-4 h-4 text-red-600 fill-red-600 shrink-0 mt-0.5" />
-                          <div className="space-y-0.5">
-                            <div className="font-bold">{isFa ? 'حالت پلتفرم‌های خارجی (آپارات و یوتیوب)' : 'External Platform Video Mode:'}</div>
-                            <div className="text-[11px] text-stone-600">
-                              {isFa
-                                ? 'مناسب ویدیوهای بلندمدت، مصاحبه‌ها یا مستندها. کاربر داخل کشور آپارات بدون فیلتر و کاربر خارج از کشور یوتیوب 4K را تماشا خواهد کرد.'
-                                : 'Optimized for long-form films, interviews or documentaries. Plays Aparat in Iran & YouTube 4K internationally.'}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                              <span>🇮🇷</span>
-                              <span>{isFa ? 'لینک ویدیو در آپارات (Aparat URL / Code):' : 'Aparat URL / Code:'}</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={photoAparatUrl}
-                              onChange={(e) => setPhotoAparatUrl(e.target.value)}
-                              placeholder="https://www.aparat.com/v/XXXXX"
-                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-stone-700 mb-1 flex items-center gap-1">
-                              <Play className="w-3 h-3 text-red-600 fill-red-600" />
-                              <span>{isFa ? 'لینک ویدیو در یوتیوب (YouTube 4K):' : 'YouTube (4K):'}</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={photoYoutubeUrl}
-                              onChange={(e) => setPhotoYoutubeUrl(e.target.value)}
-                              placeholder="https://youtu.be/XXXXX"
-                              className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-stone-200/80 text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-stone-700">{isFa ? 'سرور پیش‌فرض برای پخش:' : 'Default Server:'}</span>
-                        <div className="flex items-center gap-3">
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="defaultServer"
-                              value="github"
-                              checked={photoDefaultServer === 'github'}
-                              onChange={() => setPhotoDefaultServer('github')}
-                              className="text-amber-700"
-                            />
-                            <span>{isFa ? 'گیت‌هاب (CDN اصلی)' : 'GitHub CDN'}</span>
-                          </label>
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="defaultServer"
-                              value="aparat"
-                              checked={photoDefaultServer === 'aparat'}
-                              onChange={() => setPhotoDefaultServer('aparat')}
-                              className="text-amber-700"
-                            />
-                            <span>{isFa ? 'آپارات (سرور سریع ایران)' : 'Aparat (Iran)'}</span>
-                          </label>
-                          <label className="flex items-center gap-1 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="defaultServer"
-                              value="youtube"
-                              checked={photoDefaultServer === 'youtube'}
-                              onChange={() => setPhotoDefaultServer('youtube')}
-                              className="text-amber-700"
-                            />
-                            <span>{isFa ? 'یوتیوب (4K)' : 'YouTube'}</span>
-                          </label>
-                        </div>
-                      </div>
-                      <div className="text-[10px] text-stone-500">
-                        {isFa ? 'در صورت باز نشدن سرور اصلی، بعد از ۴ ثانیه سرور پشتیبان لود می‌شود' : 'Auto fallbacks after 4s'}
-                      </div>
                     </div>
                   </div>
 
@@ -3564,6 +2399,231 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     </div>
                   </div>
 
+                  {/* تفکیک داینامیک CMS: محل نمایش، دسته‌بندی تجاری و کارفرما */}
+                  <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200/80 space-y-3.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                        <Bookmark className="w-3.5 h-3.5 text-amber-700" />
+                        <span>{isFa ? 'تنظیمات نوع اثر و محل نمایش (Dynamic CMS)' : 'Portfolio Scope & Showcase'}</span>
+                      </span>
+                      <span className="text-[11px] text-amber-800">
+                        {isFa ? 'تفکیک هوشمند نمونه‌کار تخصصی از عکس‌های سفر' : 'Commercial vs Travel'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1.5">{isFa ? 'محل نمایش اثر:' : 'Scope:'}</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPhotoPortfolioScope('commercial')}
+                            className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              photoPortfolioScope === 'commercial'
+                                ? 'bg-amber-700 text-white border-amber-700 shadow-xs'
+                                : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                            }`}
+                          >
+                            <Briefcase className="w-3.5 h-3.5" />
+                            <span>{isFa ? 'نمونه‌کار تخصصی' : 'Commercial'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPhotoPortfolioScope('travel')}
+                            className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                              photoPortfolioScope === 'travel'
+                                ? 'bg-amber-700 text-white border-amber-700 shadow-xs'
+                                : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+                            }`}
+                          >
+                            <Compass className="w-3.5 h-3.5" />
+                            <span>{isFa ? 'گالری و سفر' : 'Travel & Tour'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* نمایش در صفحه اصلی */}
+                      <div className="p-2.5 bg-white rounded-lg border border-stone-200 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-900">
+                          <input
+                            type="checkbox"
+                            checked={photoShowOnHome}
+                            onChange={(e) => setPhotoShowOnHome(e.target.checked)}
+                            className="rounded text-amber-700 w-4 h-4 cursor-pointer"
+                          />
+                          <span className="flex items-center gap-1">
+                            <Star className={`w-3.5 h-3.5 ${photoShowOnHome ? 'text-amber-500 fill-amber-500' : 'text-stone-400'}`} />
+                            <span>{isFa ? 'نمایش در پست‌های برگزیده صفحه اصلی' : 'Show on Homepage'}</span>
+                          </span>
+                        </label>
+                        {photoShowOnHome && (
+                          <div className="flex items-center gap-2 pt-1 border-t border-stone-100">
+                            <label className="text-[11px] text-stone-600 shrink-0">{isFa ? 'ترتیب در صفحه اصلی:' : 'Home Order:'}</label>
+                            <input
+                              type="number"
+                              value={photoHomeOrder}
+                              onChange={(e) => setPhotoHomeOrder(parseInt(e.target.value) || 0)}
+                              className="w-20 px-2 py-1 text-center border border-stone-300 rounded font-mono text-xs"
+                            />
+                            <span className="text-[10px] text-stone-400">{isFa ? '(عدد کمتر = نمایش اول)' : '(Lower = first)'}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {photoPortfolioScope === 'commercial' && (
+                      <div className="space-y-3 pt-2 border-t border-amber-200/60 animate-fade-in">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block font-bold text-stone-700 mb-1">
+                              {isFa ? 'دسته‌بندی تخصصی نمونه‌کار:' : 'Commercial Category:'}
+                            </label>
+                            <select
+                              value={photoCommercialCategory}
+                              onChange={(e) => setPhotoCommercialCategory(e.target.value)}
+                              className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                            >
+                              <option value="">{isFa ? '-- انتخاب دسته‌بندی تخصصی --' : '-- Select Category --'}</option>
+                              {(content.commercialCategories || []).map((cat) => (
+                                <option key={cat.id} value={cat.id}>
+                                  {isFa ? cat.titleFa || cat.nameFa : cat.titleEn || cat.nameEn}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block font-bold text-stone-700 mb-1">
+                              {isFa ? 'نام کارفرما یا شرکت سفارش‌دهنده:' : 'Client / Company Name:'}
+                            </label>
+                            <input
+                              type="text"
+                              value={photoClientName}
+                              onChange={(e) => setPhotoClientName(e.target.value)}
+                              placeholder="مثال: مپنا، کاله، شرکت نفت، ایران‌خودرو"
+                              className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">
+                            {isFa ? 'شرح خلاصه پروژه برای کارفرما:' : 'Client Project Brief:'}
+                          </label>
+                          <input
+                            type="text"
+                            value={photoClientInfo}
+                            onChange={(e) => setPhotoClientInfo(e.target.value)}
+                            placeholder="مثال: عکاسی صنعتی از خط تولید توربین و تهیه کتابچه گزارش سالانه"
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* اتصال به تجهیزات و تکنیک‌های عکاسی با تگ‌های چندانتخابی (Chips) */}
+                  <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3">
+                    <div className="font-bold text-stone-900 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5 text-amber-700" />
+                        <span>{isFa ? 'اتصال به تجهیزات و تکنیک‌های به‌کاررفته:' : 'Gear & Techniques Tagging:'}</span>
+                      </span>
+                      <span className="text-[11px] text-stone-500 font-normal">
+                        {isFa ? 'جهت نمایش خودکار در صفحات فیلتر (/filter)' : 'Used for dynamic filter page'}
+                      </span>
+                    </div>
+
+                    {/* انتخابگر تجهیزات استفاده‌شده */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-stone-700">{isFa ? 'تجهیزات به‌کاررفته:' : 'Associated Gear:'}</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(content.equipment || []).map((eq) => {
+                          const isSelected = photoGearIds.includes(eq.id) || photoGearIds.includes(eq.name);
+                          return (
+                            <button
+                              key={eq.id}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setPhotoGearIds(photoGearIds.filter((id) => id !== eq.id && id !== eq.name));
+                                } else {
+                                  setPhotoGearIds([...photoGearIds, eq.id]);
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                                  : 'bg-white text-stone-700 border-stone-300 hover:bg-stone-100'
+                              }`}
+                            >
+                              {eq.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* انتخابگر تکنیک‌های عکاسی + فیلد افزودن سریع */}
+                    <div className="space-y-2 pt-2 border-t border-stone-200/80">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[11px] font-bold text-stone-700">{isFa ? 'تکنیک‌های عکاسی و تصویربرداری:' : 'Techniques Used:'}</label>
+                        <span className="text-[10px] text-stone-400">{isFa ? 'برای افزودن روی چیپ کلیک کنید' : 'Click chip to toggle'}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(content.definedTechniques || []).map((tech) => {
+                          const isSelected = photoTechniques.includes(tech.nameFa) || photoTechniques.includes(tech.id);
+                          return (
+                            <button
+                              key={tech.id}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setPhotoTechniques(photoTechniques.filter((t) => t !== tech.nameFa && t !== tech.id));
+                                } else {
+                                  setPhotoTechniques([...photoTechniques, tech.nameFa]);
+                                }
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-amber-800 text-white border-amber-800 shadow-2xs'
+                                  : 'bg-white text-stone-700 border-stone-300 hover:bg-amber-50/60'
+                              }`}
+                            >
+                              {isFa ? tech.nameFa : tech.nameEn}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* فیلد افزودن سریع تکنیک جدید در همان فرم */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={quickNewTechInput}
+                          onChange={(e) => setQuickNewTechInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleQuickAddTechnique();
+                            }
+                          }}
+                          placeholder={isFa ? 'افزودن سریع تکنیک جدید (مثلاً: لانگ اکسپوژر در شب)...' : 'Quick add new technique...'}
+                          className="flex-1 px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleQuickAddTechnique}
+                          disabled={!quickNewTechInput.trim()}
+                          className="px-3 py-1.5 bg-stone-800 hover:bg-stone-900 text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{isFa ? 'افزودن تکنیک' : 'Add'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* قیمت چاپ و فروش نسخه اصل */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3 bg-stone-50 rounded-xl border border-stone-200 items-center">
                     <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-800">
@@ -3597,7 +2657,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     </div>
                   </div>
 
-
+                  {supabaseUploadMsg && (
+                    <div className="p-2.5 bg-amber-50 text-amber-900 rounded-lg text-xs font-mono border border-amber-200">
+                      {supabaseUploadMsg}
+                    </div>
+                  )}
 
                   <div className="flex gap-2 pt-2">
                     <button
@@ -3611,8 +2675,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           ? (isFa ? 'ذخیره تغییرات اثر' : 'Update Photo')
                           : (isFa
                               ? compressedResults.length > 1
-                                ? `🚀 ثبت و انتشار آلبوم گالری (${compressedResults.length} عکس)`
-                                : '💾 ثبت در گالری و انتشار فوری در سایت'
+                                ? `ثبت و انتشار آلبوم گالری (${compressedResults.length} عکس)`
+                                : 'ثبت و انتشار اثر در گالری'
                               : 'Publish to Gallery')}
                       </span>
                     </button>
@@ -3628,14 +2692,16 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </form>
 
-                {/* فهرست تمام عکس‌ها و آلبوم‌های موجود با قابلیت ویرایش، حذف و جابجایی */}
+                {/* فهرست تمام عکس‌ها و آلبوم‌های موجود با قابلیت ستاره سریع صفحه اصلی، ویرایش، حذف و جابجایی */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-xs font-bold text-stone-800">
                     <span>{isFa ? `فهرست آثار و آلبوم‌های گالری (${content.photos.length} اثر فعال):` : 'Active Gallery Items:'}</span>
-                    <span className="text-stone-400 font-normal">{isFa ? 'امکان ویرایش محتوا، حذف یا جابجایی ترتیب نمایش' : 'Edit, delete or reorder'}</span>
+                    <span className="text-stone-400 font-normal">
+                      {isFa ? 'ستاره ⭐ = نمایش برگزیده در صفحه اصلی | فلش‌ها = تغییر اولویت نمایش' : 'Star = Home Showcase | Arrows = Reorder'}
+                    </span>
                   </div>
 
-                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                  <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                     {content.photos.map((p, idx) => (
                       <div
                         key={p.id}
@@ -3644,6 +2710,20 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         }`}
                       >
                         <div className="flex items-center gap-3 overflow-hidden">
+                          {/* دکمه ستاره سریع برای انتخاب یا حذف از صفحه اصلی با ۱ کلیک */}
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePhotoShowOnHome(p.id)}
+                            title={p.showOnHome ? (isFa ? 'حذف از ویترین صفحه اصلی' : 'Remove from Home') : (isFa ? 'افزودن به ویترین صفحه اصلی' : 'Pin to Home')}
+                            className={`p-1.5 rounded-lg border transition-all cursor-pointer shrink-0 ${
+                              p.showOnHome
+                                ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                                : 'bg-white text-stone-300 border-stone-200 hover:text-stone-500 hover:border-stone-300'
+                            }`}
+                          >
+                            <Star className={`w-4 h-4 ${p.showOnHome ? 'fill-amber-500 text-amber-600' : ''}`} />
+                          </button>
+
                           <img
                             src={p.imageUrl}
                             alt=""
@@ -3651,16 +2731,33 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             referrerPolicy="no-referrer"
                           />
                           <div className="truncate">
-                            <div className="font-bold text-stone-900 flex items-center gap-2 truncate">
+                            <div className="font-bold text-stone-900 flex items-center gap-1.5 truncate">
                               <span className="truncate">{isFa ? p.titleFa : p.titleEn}</span>
                               {p.isAlbum && (
-                                <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-mono shrink-0">
+                                <span className="text-[10px] bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-mono shrink-0">
                                   آلبوم
                                 </span>
                               )}
+                              {p.portfolioScope === 'travel' ? (
+                                <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold shrink-0">
+                                  سفر
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded font-bold shrink-0">
+                                  تخصصی
+                                </span>
+                              )}
+                              {p.showOnHome && (
+                                <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-mono shrink-0">
+                                  ⭐ اصلی
+                                </span>
+                              )}
                             </div>
-                            <div className="text-[11px] text-stone-500 font-mono truncate">
-                              {p.category} · {p.locationFa} ({p.year})
+                            <div className="text-[11px] text-stone-500 font-mono truncate flex items-center gap-2">
+                              <span>{p.category} · {p.locationFa} ({p.year})</span>
+                              {p.clientName && (
+                                <span className="text-amber-800 font-sans font-bold">· کارفرما: {p.clientName}</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -3707,6 +2804,1186 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
               </div>
+            )}
+
+            {/* ============================================================== */}
+            {/* تب: مدیریت دسته‌بندی‌های نمونه‌کار و بانک تکنیک‌ها */}
+            {/* ============================================================== */}
+            {activeTab === 'categories_techniques' && (
+              <div className="p-4 sm:p-6 space-y-8">
+                {/* بخش اول: دسته‌بندی‌های نمونه‌کار تخصصی (Commercial Categories) */}
+                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-amber-700" />
+                        <span>{isFa ? 'دسته‌بندی‌های نمونه‌کار تخصصی و تجاری' : 'Commercial Categories'}</span>
+                        <span className="text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-mono">
+                          {(content.commercialCategories || []).length}
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        {isFa
+                          ? 'دسته‌بندی‌های فیلتر نمونه‌کارها در صفحه /portfolio بدون نیاز به کدنویسی (صنعتی، همایشی، تیزر، معماری...)'
+                          : 'Dynamic portfolio filter categories displayed on /portfolio'}
+                      </p>
+                    </div>
+
+                    {!editingCatId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingCatId('new');
+                          setCatId(`comm-${Date.now()}`);
+                          setCatTitleFa('');
+                          setCatTitleEn('');
+                          setCatDescFa('');
+                          setCatDescEn('');
+                          setCatIcon('Camera');
+                        }}
+                        className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isFa ? 'افزودن دسته‌بندی جدید' : 'Add Category'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* فرم افزودن یا ویرایش دسته‌بندی */}
+                  {editingCatId && (
+                    <form onSubmit={handleSaveCategory} className="p-4 bg-white rounded-xl border border-amber-300 space-y-3 animate-fade-in text-xs shadow-xs">
+                      <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                        <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                          <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                          <span>{editingCatId === 'new' ? (isFa ? 'افزودن دسته‌بندی تجاری جدید' : 'New Commercial Category') : (isFa ? 'ویرایش دسته‌بندی' : 'Edit Category')}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditCategory}
+                          className="text-stone-400 hover:text-stone-700 text-xs cursor-pointer"
+                        >
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'شناسه انگلیسی یکتا (ID/Slug):' : 'Slug / ID:'}</label>
+                          <input
+                            type="text"
+                            required
+                            value={catId}
+                            onChange={(e) => setCatId(e.target.value)}
+                            placeholder="e.g. industrial, conference, aerial"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-stone-50 font-mono text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'نام فارسی دسته‌بندی:' : 'Title (FA):'}</label>
+                          <input
+                            type="text"
+                            required
+                            value={catTitleFa}
+                            onChange={(e) => setCatTitleFa(e.target.value)}
+                            placeholder="مثال: عکاسی صنعتی و کارخانجات"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Title (English):' : 'Title (EN):'}</label>
+                          <input
+                            type="text"
+                            value={catTitleEn}
+                            onChange={(e) => setCatTitleEn(e.target.value)}
+                            placeholder="e.g. Industrial & Factory"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'توضیحات فارسی مختصر:' : 'Description (FA):'}</label>
+                          <input
+                            type="text"
+                            value={catDescFa}
+                            onChange={(e) => setCatDescFa(e.target.value)}
+                            placeholder="توضیح کوتاه که در بالای صفحه نمونه‌کارها نمایش داده می‌شود"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'نام آیکون نمایشی:' : 'Icon Name:'}</label>
+                          <input
+                            type="text"
+                            value={catIcon}
+                            onChange={(e) => setCatIcon(e.target.value)}
+                            placeholder="Camera, Factory, Building, Compass, Video"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg cursor-pointer transition-colors shadow-2xs"
+                        >
+                          {editingCatId === 'new' ? (isFa ? 'افزودن دسته‌بندی' : 'Save Category') : (isFa ? 'ذخیره تغییرات' : 'Update Category')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditCategory}
+                          className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-lg cursor-pointer"
+                        >
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* فهرست دسته‌بندی‌های تجاری همراه با جابجایی ترتیب، ویرایش و حذف */}
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {(content.commercialCategories || []).map((cat, idx) => (
+                      <div
+                        key={cat.id}
+                        className={`p-3 bg-white rounded-xl border transition-colors flex items-center justify-between gap-3 text-xs ${
+                          editingCatId === cat.id ? 'border-amber-600 bg-amber-50/40 ring-1 ring-amber-500' : 'border-stone-200 hover:border-stone-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <span className="w-6 h-6 rounded-md bg-amber-50 text-amber-800 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-amber-200">
+                            {idx + 1}
+                          </span>
+                          <div className="truncate">
+                            <div className="font-bold text-stone-900 flex items-center gap-2">
+                              <span>{isFa ? cat.titleFa || cat.nameFa : cat.titleEn || cat.nameEn}</span>
+                              <span className="text-[10px] text-stone-400 font-mono">({cat.id})</span>
+                            </div>
+                            {cat.descriptionFa && (
+                              <p className="text-[11px] text-stone-500 truncate mt-0.5">{cat.descriptionFa}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* دکمه‌های جابجایی ترتیب */}
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCategory(idx, 'up')}
+                            disabled={idx === 0}
+                            title={isFa ? 'انتقال به بالا' : 'Move Up'}
+                            className="p-1 text-stone-500 hover:text-stone-900 disabled:opacity-30 cursor-pointer"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveCategory(idx, 'down')}
+                            disabled={idx === (content.commercialCategories || []).length - 1}
+                            title={isFa ? 'انتقال به پایین' : 'Move Down'}
+                            className="p-1 text-stone-500 hover:text-stone-900 disabled:opacity-30 cursor-pointer"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* دکمه ویرایش */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditCategory(cat)}
+                            className="px-2 py-1 text-xs bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 rounded-md flex items-center gap-1 cursor-pointer font-medium"
+                          >
+                            <Edit3 className="w-3 h-3 text-amber-700" />
+                            <span>{isFa ? 'ویرایش' : 'Edit'}</span>
+                          </button>
+
+                          {/* دکمه حذف */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                            title={isFa ? 'حذف دسته‌بندی' : 'Delete'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* بخش دوم: مدیریت بانک تکنیک‌ها (Defined Techniques) */}
+                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-amber-700" />
+                        <span>{isFa ? 'بانک تکنیک‌های عکاسی و تصویربرداری' : 'Techniques Locker'}</span>
+                        <span className="text-[11px] bg-stone-200 text-stone-800 px-2 py-0.5 rounded-full font-mono">
+                          {(content.definedTechniques || []).length}
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        {isFa
+                          ? 'تکنیک‌های قابل انتساب به عکس‌ها که کاربران با کلیک روی آن‌ها آثار مرتبط را در /filter می‌بینند.'
+                          : 'Techniques associated with photos for dynamic filtering on /filter'}
+                      </p>
+                    </div>
+
+                    {!editingTechId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTechId('new');
+                          setTechId(`tech-${Date.now()}`);
+                          setTechNameFa('');
+                          setTechNameEn('');
+                          setTechDescFa('');
+                          setTechDescEn('');
+                        }}
+                        className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isFa ? 'افزودن تکنیک جدید' : 'Add Technique'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* فرم افزودن یا ویرایش تکنیک */}
+                  {editingTechId && (
+                    <form onSubmit={handleSaveTechnique} className="p-4 bg-white rounded-xl border border-stone-300 space-y-3 animate-fade-in text-xs shadow-xs">
+                      <div className="flex items-center justify-between border-b border-stone-100 pb-2">
+                        <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                          <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                          <span>{editingTechId === 'new' ? (isFa ? 'افزودن تکنیک جدید' : 'New Technique') : (isFa ? 'ویرایش تکنیک' : 'Edit Technique')}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditTechnique}
+                          className="text-stone-400 hover:text-stone-700 text-xs cursor-pointer"
+                        >
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'شناسه انگلیسی (ID/Slug):' : 'ID / Slug:'}</label>
+                          <input
+                            type="text"
+                            required
+                            value={techId}
+                            onChange={(e) => setTechId(e.target.value)}
+                            placeholder="e.g. long-exposure, timelapes"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-stone-50 font-mono text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'نام فارسی تکنیک:' : 'Technique Name (FA):'}</label>
+                          <input
+                            type="text"
+                            required
+                            value={techNameFa}
+                            onChange={(e) => setTechNameFa(e.target.value)}
+                            placeholder="مثال: نوردهی طولانی با فیلتر ND1000"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'نام انگلیسی (EN):' : 'Technique Name (EN):'}</label>
+                          <input
+                            type="text"
+                            value={techNameEn}
+                            onChange={(e) => setTechNameEn(e.target.value)}
+                            placeholder="e.g. Long Exposure with ND1000"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'توضیحات کاربردی تکنیک:' : 'Description:'}</label>
+                        <input
+                          type="text"
+                          value={techDescFa}
+                          onChange={(e) => setTechDescFa(e.target.value)}
+                          placeholder="توضیح فنی مختصر درباره نحوه اجرا، تنظیمات دیافراگم یا کاربرد این تکنیک"
+                          className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-lg cursor-pointer transition-colors shadow-2xs"
+                        >
+                          {editingTechId === 'new' ? (isFa ? 'ثبت در بانک تکنیک‌ها' : 'Save Technique') : (isFa ? 'ذخیره تغییرات' : 'Update Technique')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditTechnique}
+                          className="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-lg cursor-pointer"
+                        >
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* فهرست تکنیک‌ها */}
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {(content.definedTechniques || []).map((t, idx) => (
+                      <div
+                        key={t.id}
+                        className={`p-3 bg-white rounded-xl border transition-colors flex items-center justify-between gap-3 text-xs ${
+                          editingTechId === t.id ? 'border-amber-600 bg-amber-50/40 ring-1 ring-amber-500' : 'border-stone-200 hover:border-stone-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 truncate">
+                          <span className="w-6 h-6 rounded-md bg-stone-100 text-stone-700 font-mono text-[11px] font-bold flex items-center justify-center shrink-0 border border-stone-200">
+                            {idx + 1}
+                          </span>
+                          <div className="truncate">
+                            <div className="font-bold text-stone-900 flex items-center gap-2">
+                              <span>{isFa ? t.nameFa : t.nameEn}</span>
+                              <span className="text-[10px] text-stone-400 font-mono">({t.id})</span>
+                            </div>
+                            {t.descriptionFa && (
+                              <p className="text-[11px] text-stone-500 truncate mt-0.5">{t.descriptionFa}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {/* دکمه‌های جابجایی ترتیب */}
+                          <button
+                            type="button"
+                            onClick={() => handleMoveTechnique(idx, 'up')}
+                            disabled={idx === 0}
+                            title={isFa ? 'انتقال به بالا' : 'Move Up'}
+                            className="p-1 text-stone-500 hover:text-stone-900 disabled:opacity-30 cursor-pointer"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveTechnique(idx, 'down')}
+                            disabled={idx === (content.definedTechniques || []).length - 1}
+                            title={isFa ? 'انتقال به پایین' : 'Move Down'}
+                            className="p-1 text-stone-500 hover:text-stone-900 disabled:opacity-30 cursor-pointer"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* دکمه ویرایش */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditTechnique(t)}
+                            className="px-2 py-1 text-xs bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 rounded-md flex items-center gap-1 cursor-pointer font-medium"
+                          >
+                            <Edit3 className="w-3 h-3 text-amber-700" />
+                            <span>{isFa ? 'ویرایش' : 'Edit'}</span>
+                          </button>
+
+                          {/* دکمه حذف */}
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTechnique(t.id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                            title={isFa ? 'حذف تکنیک' : 'Delete'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================== */}
+            {/* تب: مدیریت مقالات سئو و وبلاگ آموزشی */}
+            {/* ============================================================== */}
+            {activeTab === 'articles' && (
+              <div className="p-4 sm:p-6 space-y-6">
+                <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200 pb-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-blue-700" />
+                        <span>{isFa ? 'مدیریت و انتشار مقالات سئو و وبلاگ' : 'Articles & SEO Editorial CMS'}</span>
+                        <span className="text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-mono">
+                          {(content.articles || []).length}
+                        </span>
+                      </h4>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        {isFa
+                          ? 'تولید و ویرایش مقالات فنی عکاسی، راهنماهای سفر، مستندسازی و تکنیک‌ها با کلمات کلیدی سئو'
+                          : 'Create, edit, and publish rich articles with SEO keywords and tags'}
+                      </p>
+                    </div>
+
+                    {!editingArticleId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingArticleId('new');
+                          setArtTitleFa('');
+                          setArtTitleEn('');
+                          setArtSlug(`article-${Date.now()}`);
+                          setArtExcerptFa('');
+                          setArtExcerptEn('');
+                          setArtContentFa('');
+                          setArtContentEn('');
+                          setArtCategoryFa('آموزش عکاسی');
+                          setArtCategoryEn('Tutorial');
+                          setArtCoverUrl('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80');
+                          setArtReadTime(6);
+                          setArtTags('عکاسی، آموزش، تکنیک');
+                          setArtSeoKeywords('آموزش عکاسی, سینا ضرغامی, تکنیک عکاسی');
+                          setArtIsPublished(true);
+                          setArtFeatured(false);
+                        }}
+                        className="px-3.5 py-1.5 bg-blue-700 hover:bg-blue-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{isFa ? 'افزودن مقاله جدید' : 'New Article'}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* فرم افزودن یا ویرایش مقاله */}
+                  {editingArticleId && (
+                    <form onSubmit={handleSaveArticle} className="p-5 bg-white rounded-xl border border-blue-300 space-y-4 animate-fade-in text-xs shadow-xs">
+                      <div className="flex items-center justify-between border-b border-stone-200 pb-2.5">
+                        <span className="font-bold text-stone-900 flex items-center gap-1.5">
+                          <Edit3 className="w-4 h-4 text-blue-700" />
+                          <span>{editingArticleId === 'new' ? (isFa ? 'نوشتن مقاله جدید' : 'Write New Article') : (isFa ? 'ویرایش مقاله' : 'Edit Article')}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditArticle}
+                          className="text-stone-500 hover:text-stone-800 text-xs cursor-pointer"
+                        >
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </div>
+
+                      {/* عنوان فارسی و انگلیسی به همراه دکمه ترجمه Gemini */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="font-bold text-stone-700">{isFa ? 'عنوان مقاله (فارسی):' : 'Title (FA):'}</label>
+                            <button
+                              type="button"
+                              onClick={() => handleAiTranslate(artTitleFa, setArtTitleEn, 'artTitle', 'title', artCategoryFa)}
+                              disabled={translatingField === 'artTitle' || !artTitleFa}
+                              className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            >
+                              <Wand2 className="w-3 h-3" />
+                              <span>{isFa ? 'ترجمه هوشمند' : 'AI Translate'}</span>
+                            </button>
+                          </div>
+                          <input
+                            type="text"
+                            required
+                            value={artTitleFa}
+                            onChange={(e) => setArtTitleFa(e.target.value)}
+                            placeholder="مثال: هنر دیدن در کویر: راهنمای عکاسی در تپه‌های شنی لوت"
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white text-xs font-bold"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی (EN):' : 'Title (EN):'}</label>
+                          <input
+                            type="text"
+                            value={artTitleEn}
+                            onChange={(e) => setArtTitleEn(e.target.value)}
+                            placeholder="e.g. The Art of Seeing: Desert Photography Guide in Lut Dunes"
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* نامک اسلاگ، دسته‌بندی و زمان مطالعه */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'اسلاگ آدرس (Slug / URL):' : 'Slug / URL:'}</label>
+                          <input
+                            type="text"
+                            value={artSlug}
+                            onChange={(e) => setArtSlug(e.target.value)}
+                            placeholder="desert-photography-guide"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-mono"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'دسته‌بندی مقاله:' : 'Category:'}</label>
+                          <input
+                            type="text"
+                            value={artCategoryFa}
+                            onChange={(e) => setArtCategoryFa(e.target.value)}
+                            placeholder="آموزش عکاسی، راهنمای سفر، تجهیزات"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'زمان تخمینی مطالعه (دقیقه):' : 'Read Time (min):'}</label>
+                          <input
+                            type="number"
+                            value={artReadTime}
+                            onChange={(e) => setArtReadTime(parseInt(e.target.value) || 5)}
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* آدرس عکس کاور */}
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'آدرس تصویر کاور (URL):' : 'Cover Image URL:'}</label>
+                        <input
+                          type="url"
+                          value={artCoverUrl}
+                          onChange={(e) => setArtCoverUrl(e.target.value)}
+                          placeholder="https://images.unsplash.com/..."
+                          className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-mono"
+                        />
+                      </div>
+
+                      {/* خلاصه فارسی و انگلیسی */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="font-bold text-stone-700">{isFa ? 'خلاصه مقاله (فارسی):' : 'Excerpt / Summary (FA):'}</label>
+                            <button
+                              type="button"
+                              onClick={() => handleAiTranslate(artExcerptFa, setArtExcerptEn, 'artExcerpt', 'description', artCategoryFa)}
+                              disabled={translatingField === 'artExcerpt' || !artExcerptFa}
+                              className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            >
+                              <Wand2 className="w-3 h-3" />
+                              <span>{isFa ? 'ترجمه خلاصه' : 'Translate'}</span>
+                            </button>
+                          </div>
+                          <textarea
+                            rows={2}
+                            value={artExcerptFa}
+                            onChange={(e) => setArtExcerptFa(e.target.value)}
+                            placeholder="خلاصه ۲ تا ۳ جمله‌ای مقاله برای پیش‌نمایش در کارت‌ها و نتایج جستجوی گوگل..."
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Summary (English):' : 'Summary (EN):'}</label>
+                          <textarea
+                            rows={2}
+                            value={artExcerptEn}
+                            onChange={(e) => setArtExcerptEn(e.target.value)}
+                            placeholder="Short 2-3 sentence summary in English..."
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs resize-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* متن کامل مقاله */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="font-bold text-stone-700">{isFa ? 'متن کامل مقاله (فارسی):' : 'Full Content (FA):'}</label>
+                            <VoiceDictationButton
+                              onTranscript={(t) => setArtContentFa((prev) => (prev ? prev + '\n' + t : t))}
+                              title={isFa ? 'دیکته صوتی متن مقاله' : 'Dictate article'}
+                            />
+                          </div>
+                          <textarea
+                            rows={6}
+                            value={artContentFa}
+                            onChange={(e) => setArtContentFa(e.target.value)}
+                            placeholder="متن کامل مقاله آموزشی، بخش‌ها، راهکارها و تجربیات..."
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs leading-relaxed"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Full Content (EN):' : 'Full Content (EN):'}</label>
+                          <textarea
+                            rows={6}
+                            value={artContentEn}
+                            onChange={(e) => setArtContentEn(e.target.value)}
+                            placeholder="Full English article text..."
+                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs leading-relaxed"
+                          />
+                        </div>
+                      </div>
+
+                      {/* برچسب‌ها و کلمات کلیدی سئو */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-stone-50 rounded-xl border border-stone-200">
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'تگ‌ها (با ویرگول جدا کنید):' : 'Tags (comma separated):'}</label>
+                          <input
+                            type="text"
+                            value={artTags}
+                            onChange={(e) => setArtTags(e.target.value)}
+                            placeholder="عکاسی طبیعت، کویر لوت، نورپردازی"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'کلمات کلیدی سئو (SEO Keywords):' : 'SEO Keywords:'}</label>
+                          <input
+                            type="text"
+                            value={artSeoKeywords}
+                            onChange={(e) => setArtSeoKeywords(e.target.value)}
+                            placeholder="عکاسی کویر, تنظیم دیافراگم در نور شدید, سینا ضرغامی"
+                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* وضعیت انتشار */}
+                      <div className="flex items-center gap-4 pt-1">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-800">
+                          <input
+                            type="checkbox"
+                            checked={artIsPublished}
+                            onChange={(e) => setArtIsPublished(e.target.checked)}
+                            className="rounded text-blue-700 w-4 h-4 cursor-pointer"
+                          />
+                          <span>{isFa ? 'منتشر شده (نمایش عمومی در سایت)' : 'Published'}</span>
+                        </label>
+
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-800">
+                          <input
+                            type="checkbox"
+                            checked={artFeatured}
+                            onChange={(e) => setArtFeatured(e.target.checked)}
+                            className="rounded text-amber-700 w-4 h-4 cursor-pointer"
+                          />
+                          <span>{isFa ? 'مقاله ویژه (Featured Article)' : 'Featured Article'}</span>
+                        </label>
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl cursor-pointer transition-colors shadow-xs"
+                        >
+                          {editingArticleId === 'new' ? (isFa ? 'انتشار مقاله' : 'Publish Article') : (isFa ? 'ذخیره تغییرات مقاله' : 'Update Article')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEditArticle}
+                          className="px-4 py-2.5 bg-stone-200 hover:bg-stone-300 text-stone-700 font-bold rounded-xl cursor-pointer"
+                        >
+                          {isFa ? 'انصراف' : 'Cancel'}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+
+                  {/* فهرست مقالات ثبت‌شده با امکان ویرایش، حذف و جابجایی */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-stone-800 flex justify-between">
+                      <span>{isFa ? `فهرست مقالات منتشرشده (${(content.articles || []).length} مقاله):` : 'Articles List:'}</span>
+                      <span className="text-stone-400 font-normal">{isFa ? 'جابجایی ترتیب اولویت نمایش با فلش‌ها' : 'Reorder using arrows'}</span>
+                    </div>
+
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {(content.articles || []).map((art, idx) => (
+                        <div
+                          key={art.id}
+                          className={`p-3 bg-white rounded-xl border transition-colors flex items-center justify-between gap-3 text-xs ${
+                            editingArticleId === art.id ? 'border-blue-600 bg-blue-50/40 ring-1 ring-blue-500' : 'border-stone-200 hover:border-stone-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 truncate">
+                            <img
+                              src={art.coverImage || art.coverUrl}
+                              alt=""
+                              className="w-12 h-10 object-cover rounded-md bg-stone-200 shrink-0 border border-stone-300"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="truncate">
+                              <div className="font-bold text-stone-900 flex items-center gap-2 truncate">
+                                <span className="truncate">{isFa ? art.titleFa : art.titleEn}</span>
+                                {art.isPublished === false ? (
+                                  <span className="text-[10px] bg-stone-200 text-stone-700 px-1.5 py-0.2 rounded font-mono shrink-0">
+                                    پیش‌نویس
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-mono shrink-0">
+                                    منتشر شده
+                                  </span>
+                                )}
+                                {art.featured && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-mono shrink-0">
+                                    ⭐ ویژه
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-stone-500 font-mono truncate mt-0.5">
+                                {art.categoryFa || art.category} · {art.readTimeMinutes || 5} {isFa ? 'دقیقه' : 'min'} · slug: /{art.slug}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {/* دکمه‌های جابجایی ترتیب */}
+                            <button
+                              type="button"
+                              onClick={() => handleMoveArticle(idx, 'up')}
+                              disabled={idx === 0}
+                              title={isFa ? 'انتقال به بالا' : 'Move Up'}
+                              className="p-1.5 text-stone-500 hover:text-stone-900 disabled:opacity-30 cursor-pointer"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveArticle(idx, 'down')}
+                              disabled={idx === (content.articles || []).length - 1}
+                              title={isFa ? 'انتقال به پایین' : 'Move Down'}
+                              className="p-1.5 text-stone-500 hover:text-stone-900 disabled:opacity-30 cursor-pointer"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* دکمه ویرایش */}
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditArticle(art)}
+                              className="px-2.5 py-1 text-xs bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-800 rounded-md flex items-center gap-1 cursor-pointer font-medium"
+                            >
+                              <Edit3 className="w-3.5 h-3.5 text-blue-700" />
+                              <span>{isFa ? 'ویرایش' : 'Edit'}</span>
+                            </button>
+
+                            {/* دکمه حذف */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteArticle(art.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                              title={isFa ? 'حذف مقاله' : 'Delete'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ============================================================== */}
+            {/* تب: مدیریت صفحه درباره من، ویترین صفحه اصلی و منوهای ناوبری */}
+            {/* ============================================================== */}
+            {activeTab === 'about_and_home' && (
+              <form onSubmit={handleSaveAboutAndLayout} className="p-4 sm:p-6 space-y-6 text-xs">
+                {/* بخش اول: محتوای کامل صفحه درباره من (aboutPage) */}
+                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
+                  <div className="border-b border-stone-200 pb-2.5">
+                    <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-emerald-700" />
+                      <span>{isFa ? 'مدیریت محتوای صفحه درباره من (/about)' : 'About Me Page Content'}</span>
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      {isFa
+                        ? 'بیوگرافی، فلسفه بصری، تحصیلات، افتخارات و راه‌های ارتباطی در صفحه اختصاصی درباره من'
+                        : 'Biography, visual philosophy, education, achievements, and social links'}
+                    </p>
+                  </div>
+
+                  {/* بیوگرافی هیرو فارسی و انگلیسی */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'بیوگرافی کوتاه هیرو (فارسی):' : 'Hero Bio (FA):'}</label>
+                      <textarea
+                        rows={3}
+                        value={aboutPageForm.heroBioFa}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, heroBioFa: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Hero Bio (EN):' : 'Hero Bio (EN):'}</label>
+                      <textarea
+                        rows={3}
+                        value={aboutPageForm.heroBioEn}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, heroBioEn: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* بیوگرافی جامع و تفصیلی */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'روایت تفصیلی زندگی و مسیر هنری (فارسی):' : 'Detailed Narrative (FA):'}</label>
+                      <textarea
+                        rows={5}
+                        value={aboutPageForm.detailedBioFa}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, detailedBioFa: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white leading-relaxed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Detailed Narrative (EN):' : 'Detailed Narrative (EN):'}</label>
+                      <textarea
+                        rows={5}
+                        value={aboutPageForm.detailedBioEn}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, detailedBioEn: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white leading-relaxed"
+                      />
+                    </div>
+                  </div>
+
+                  {/* فلسفه بصری */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'مانیفست و فلسفه بصری (فارسی):' : 'Visual Philosophy (FA):'}</label>
+                      <textarea
+                        rows={3}
+                        value={aboutPageForm.philosophyFa || ''}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, philosophyFa: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Visual Philosophy (EN):' : 'Visual Philosophy (EN):'}</label>
+                      <textarea
+                        rows={3}
+                        value={aboutPageForm.philosophyEn || ''}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, philosophyEn: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* تحصیلات و مهارت‌ها */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'تحصیلات و مدارک (هر خط یک مورد):' : 'Education (one per line):'}</label>
+                      <textarea
+                        rows={3}
+                        value={aboutEduFaText}
+                        onChange={(e) => setAboutEduFaText(e.target.value)}
+                        placeholder="کارشناسی مهندسی نرم‌افزار&#10;دوره بین‌المللی مستندسازی حیات‌وحش"
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'تخصص‌های کلیدی (با ویرگول جدا کنید):' : 'Specialties (comma-separated):'}</label>
+                      <textarea
+                        rows={3}
+                        value={aboutSpecFaText}
+                        onChange={(e) => setAboutSpecFaText(e.target.value)}
+                        placeholder="عکاسی نجومی, تصویربرداری هوایی با پهپاد, کالر گریدینگ سینمایی"
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* تصاویر آواتار و شبکه‌های اجتماعی اختصاصی */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عکس پرتره آواتار (URL):' : 'Avatar Photo URL:'}</label>
+                      <input
+                        type="url"
+                        value={aboutPageForm.avatarUrl}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, avatarUrl: e.target.value })}
+                        className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'کانال آپارات (Aparat URL):' : 'Aparat URL:'}</label>
+                      <input
+                        type="url"
+                        value={aboutPageForm.aparatUrl || ''}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, aparatUrl: e.target.value })}
+                        placeholder="https://www.aparat.com/sinazarghami"
+                        className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'کانال یوتیوب (YouTube URL):' : 'YouTube URL:'}</label>
+                      <input
+                        type="url"
+                        value={aboutPageForm.youtubeUrl || ''}
+                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, youtubeUrl: e.target.value })}
+                        placeholder="https://www.youtube.com/@sina.zarghami"
+                        className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* بخش دوم: تنظیمات ویترین صفحه اصلی (homeShowcaseConfig) */}
+                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
+                  <div className="border-b border-stone-200 pb-2.5">
+                    <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                      <Sliders className="w-4 h-4 text-amber-700" />
+                      <span>{isFa ? 'تنظیمات ویترین و کارت‌های صفحه اصلی (Home Showcase)' : 'Home Showcase Configuration'}</span>
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      {isFa ? 'عناوین و سرتیترهای بخش نمونه‌کارها و سفرهای برگزیده در صفحه اصلی' : 'Headlines & display limits on home page'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'تیتر بخش آثار منتخب (فارسی):' : 'Showcase Title (FA):'}</label>
+                      <input
+                        type="text"
+                        value={homeShowcaseForm.titleFa}
+                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, titleFa: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Showcase Title (EN):' : 'Showcase Title (EN):'}</label>
+                      <input
+                        type="text"
+                        value={homeShowcaseForm.titleEn}
+                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, titleEn: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'زیرعنوان بخش آثار منتخب (فارسی):' : 'Showcase Subtitle (FA):'}</label>
+                      <input
+                        type="text"
+                        value={homeShowcaseForm.subtitleFa}
+                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, subtitleFa: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Showcase Subtitle (EN):' : 'Showcase Subtitle (EN):'}</label>
+                      <input
+                        type="text"
+                        value={homeShowcaseForm.subtitleEn}
+                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, subtitleEn: e.target.value })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'حداکثر عکس‌های برگزیده در صفحه اصلی:' : 'Max Home Photos:'}</label>
+                      <input
+                        type="number"
+                        value={homeShowcaseForm.maxHomePhotos || 8}
+                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, maxHomePhotos: parseInt(e.target.value) || 8 })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'حداکثر سفرهای برگزیده در صفحه اصلی:' : 'Max Home Trips:'}</label>
+                      <input
+                        type="number"
+                        value={homeShowcaseForm.maxHomeTrips || 4}
+                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, maxHomeTrips: parseInt(e.target.value) || 4 })}
+                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* بخش سوم: عناوین منوی اصلی وب‌سایت (navLabels) */}
+                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
+                  <div className="border-b border-stone-200 pb-2.5">
+                    <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                      <Type className="w-4 h-4 text-indigo-700" />
+                      <span>{isFa ? 'عناوین داینامیک منوی اصلی وب‌سایت (Navigation Labels)' : 'Menu & Navigation Labels'}</span>
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      {isFa ? 'امکان تغییر کامل نام منوها به فارسی و انگلیسی بدون نیاز به دست زدن به کدها' : 'Customize navbar menu labels in FA and EN'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {/* Home */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۱. صفحه اصلی (/)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.homeFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, homeFa: e.target.value })}
+                        placeholder="فارسی: صفحه اصلی"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.homeEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, homeEn: e.target.value })}
+                        placeholder="English: Home"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Portfolio */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۲. نمونه‌کارها (/portfolio)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.portfolioFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, portfolioFa: e.target.value })}
+                        placeholder="فارسی: نمونه‌کارها"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.portfolioEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, portfolioEn: e.target.value })}
+                        placeholder="English: Portfolio"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Trips */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۳. سفر و تورها (/trips)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.tripsFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, tripsFa: e.target.value })}
+                        placeholder="فارسی: سفر و تورها"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.tripsEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, tripsEn: e.target.value })}
+                        placeholder="English: Trips & Tours"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Gear */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۴. تجهیزات (/gear)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.gearFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, gearFa: e.target.value })}
+                        placeholder="فارسی: تجهیزات"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.gearEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, gearEn: e.target.value })}
+                        placeholder="English: Gear"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Articles */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۵. مقالات (/articles)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.articlesFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, articlesFa: e.target.value })}
+                        placeholder="فارسی: مقالات"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.articlesEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, articlesEn: e.target.value })}
+                        placeholder="English: Articles"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Resume */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۶. رزومه (/resume)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.resumeFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, resumeFa: e.target.value })}
+                        placeholder="فارسی: رزومه"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.resumeEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, resumeEn: e.target.value })}
+                        placeholder="English: Resume"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* About */}
+                    <div className="p-3 bg-white rounded-lg border border-stone-200 space-y-1.5">
+                      <span className="font-bold text-stone-800 text-[11px]">۷. درباره من (/about)</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.aboutFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, aboutFa: e.target.value })}
+                        placeholder="فارسی: درباره من"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.aboutEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, aboutEn: e.target.value })}
+                        placeholder="English: About"
+                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Order CTA */}
+                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-300 space-y-1.5">
+                      <span className="font-bold text-amber-900 text-[11px]">۸. دکمه سفارش پروژه</span>
+                      <input
+                        type="text"
+                        value={navLabelsForm.orderFa || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, orderFa: e.target.value })}
+                        placeholder="فارسی: ثبت سفارش پروژه"
+                        className="w-full px-2 py-1 border border-amber-300 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={navLabelsForm.orderEn || ''}
+                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, orderEn: e.target.value })}
+                        placeholder="English: Hire Me"
+                        className="w-full px-2 py-1 border border-amber-300 rounded text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* دکمه ذخیره سراسری تنظیمات درباره من و چیدمان */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-sm text-sm"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{isFa ? 'ذخیره تنظیمات صفحه درباره من، ویترین اصلی و عناوین منو' : 'Save About, Showcase & Menu Settings'}</span>
+                  </button>
+                </div>
+              </form>
             )}
 
             {/* ============================================================== */}
@@ -4892,33 +5169,33 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
 
-                {/* گاوصندوق رمزنگاری‌شده کلیدها (Web Crypto AES-256-GCM Vault) و اتصال مستقیم به GitHub و Gemini */}
-                <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-4 text-stone-700">
+                {/* اتصال و همگام‌سازی مستقیم با گیت‌هاب */}
+                <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-3.5 text-stone-700">
                   <div className="flex items-center justify-between">
                     <div className="font-bold flex items-center gap-2 text-stone-900">
-                      <Lock className="w-4 h-4 text-amber-700" />
-                      <span>{isFa ? 'گاوصندوق رمزنگاری‌شده کلیدها (AES-256 Vault)' : 'AES-256 Crypto Vault'}</span>
+                      <Github className="w-4 h-4 text-stone-900" />
+                      <span>{isFa ? 'همگام‌سازی با مخزن گیت‌هاب (szarghami/sinazarghami.ir)' : 'GitHub Repository Sync'}</span>
                     </div>
-                    {content.encryptedVault && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        {isFa ? '🔒 گاوصندوق فعال' : 'Vault Active'}
-                      </span>
-                    )}
+                    <a
+                      href="https://github.com/szarghami/sinazarghami.ir"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-amber-800 hover:underline flex items-center gap-1"
+                    >
+                      <span>{isFa ? 'مشاهده در گیت‌هاب' : 'View on GitHub'}</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </div>
 
                   <p className="text-[11px] text-stone-600 leading-relaxed">
                     {isFa
-                      ? 'کلیدهای محرمانه شما (توکن گیت‌هاب و کلید Gemini API) با الگوریتم استاندارد و بومی مرورگر (AES-256-GCM و PBKDF2 با ۱۰۰,۰۰۰ دور تکرار) توسط رمز عبور ادمین رمزنگاری شده و داخل دیتای سایت ذخیره می‌شوند. بدین ترتیب در هر دستگاه جدیدی فقط با زدن رمز عبور ادمین، همه کلیدها در حافظه موقت (sessionStorage) بازگشایی می‌شوند و با بستن تب مرورگر محو خواهند شد.'
-                      : 'Your secrets are client-side encrypted with AES-256-GCM using your admin password.'}
+                      ? 'برای همگام‌سازی خودکار و کامیت داده‌های سایت در مخزن گیت‌هاب، توکن شخصی گیت‌هاب (Personal Access Token با دسترسی repo) را در کادر زیر وارد کنید:'
+                      : 'Enter your GitHub Personal Access Token with repo scope for automated commits:'}
                   </p>
 
-                  <div className="space-y-3 pt-1">
-                    {/* فیلد توکن گیت‌هاب */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
-                        {isFa ? 'توکن شخصی گیت‌هاب (Personal Access Token با دسترسی repo):' : 'GitHub Token:'}
-                      </label>
-                      <div className="relative">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
                         <input
                           type={showGithubToken ? 'text' : 'password'}
                           value={githubToken}
@@ -4938,103 +5215,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </div>
-
-                    {/* فیلد مخزن اصلی گیت‌هاب */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
-                        {isFa ? 'نام ریپازیتوری اصلی گیت‌هاب (Owner/Repo):' : 'GitHub Repository:'}
-                      </label>
-                      <input
-                        type="text"
-                        value={mainRepo}
-                        onChange={(e) => {
-                          setMainRepoState(e.target.value);
-                          saveMainRepo(e.target.value);
-                        }}
-                        placeholder="szarghami/sinazarghami.ir"
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
-                      />
-                    </div>
-
-                    {/* فیلد کلید اختصاصی Google Gemini API */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="block text-[11px] font-bold text-stone-800">
-                          {isFa ? 'کلید اختصاصی Google Gemini API (مدل gemini-2.5-flash مستقیم در کلاینت):' : 'Gemini API Key:'}
-                        </label>
-                        <a
-                          href="https://aistudio.google.com/app/apikey"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-amber-700 hover:underline flex items-center gap-1 font-medium"
-                        >
-                          <span>{isFa ? 'دریافت کلید رایگان از گوگل' : 'Get Free Key'}</span>
-                          <ExternalLink className="w-2.5 h-2.5" />
-                        </a>
-                      </div>
-                      <div className="relative">
-                        <input
-                          type={showGeminiApiKey ? 'text' : 'password'}
-                          value={geminiApiKey}
-                          onChange={(e) => {
-                            setGeminiApiKey(e.target.value);
-                            saveLocalGeminiKey(e.target.value);
-                          }}
-                          placeholder="AIzaSyxxxxxxxxxxxxxxxxxxxx"
-                          className="w-full px-3 py-2 pr-9 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowGeminiApiKey(!showGeminiApiKey)}
-                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
-                          title={showGeminiApiKey ? 'پنهان‌سازی' : 'نمایش'}
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* فیلد رمز عبور ادمین برای قفل‌گذاری گاوصندوق */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-stone-800 mb-1">
-                        {isFa ? 'رمز عبور ثابت ادمین جهت قفل‌گذاری AES-256 گاوصندوق:' : 'Admin Passcode for Encryption:'}
-                      </label>
-                      <input
-                        type="password"
-                        value={vaultPasscode}
-                        onChange={(e) => setVaultPasscode(e.target.value)}
-                        placeholder={isFa ? 'رمز عبور پنل خود را وارد کنید' : 'Enter admin passcode'}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
-                      />
-                    </div>
-
-                    {/* دکمه‌های عملیات گاوصندوق و کامیت */}
-                    <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={handleSaveAndEncryptVault}
-                        disabled={isEncryptingVault || !githubToken.trim()}
-                        className="flex-1 py-2.5 px-3 bg-amber-800 hover:bg-amber-900 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                      >
-                        {isEncryptingVault ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>{isFa ? 'در حال رمزنگاری و کامیت...' : 'Encrypting & Committing...'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <Lock className="w-3.5 h-3.5 text-amber-200" />
-                            <span>{isFa ? '🔒 قفل‌گذاری در گاوصندوق و کامیت امن به گیت‌هاب' : 'Encrypt & Save to Vault'}</span>
-                          </>
-                        )}
-                      </button>
 
                       <button
                         type="button"
                         onClick={handleManualGithubSync}
                         disabled={isSyncingGithub || !githubToken.trim()}
-                        className="py-2.5 px-4 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shadow-xs"
+                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap"
                       >
                         {isSyncingGithub ? (
                           <>
@@ -5044,23 +5230,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         ) : (
                           <>
                             <CloudUpload className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>{isFa ? 'همگام‌سازی دستی داده‌ها' : 'Manual Sync'}</span>
+                            <span>{isFa ? 'کامیت به گیت‌هاب' : 'Sync to GitHub'}</span>
                           </>
                         )}
                       </button>
                     </div>
-
-                    {vaultStatus && (
-                      <div
-                        className={`p-3 rounded-lg text-xs font-medium border leading-relaxed ${
-                          vaultStatus.success
-                            ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                            : 'bg-red-50 text-red-900 border-red-300'
-                        }`}
-                      >
-                        {vaultStatus.msg}
-                      </div>
-                    )}
 
                     {githubSyncStatus && (
                       <div
@@ -5105,29 +5279,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   <button
                     onClick={async () => {
                       if (newPin.trim().length >= 4) {
-                        const updatedPin = newPin.trim();
-                        await updateAdminPasscode(updatedPin);
-                        if (githubToken.trim()) {
-                          try {
-                            const secrets: AdminSecrets = {
-                              githubToken: githubToken.trim(),
-                              githubRepo: mainRepo.trim() || DEFAULT_MAIN_REPO,
-                              geminiApiKey: geminiApiKey.trim(),
-                            };
-                            const newVault = await encryptAdminSecrets(secrets, updatedPin);
-                            saveSessionVault(secrets);
-                            const updatedContent = { ...content, encryptedVault: newVault };
-                            onUpdateContent(updatedContent);
-                            saveSiteContent(updatedContent);
-                            publishSiteDataToGitHub(updatedContent, githubToken.trim(), mainRepo.trim()).catch(() => {});
-                          } catch (e) {
-                            console.warn('Vault re-encryption failed:', e);
-                          }
-                        }
+                        await updateAdminPasscode(newPin.trim());
                         alert(
                           isFa
-                            ? 'رمز عبور جدید با موفقیت ذخیره شد، گاوصندوق کلیدها با رمز جدید قفل‌گذاری گردید و به تلگرام ارسال شد.'
-                            : 'Password updated, vault re-encrypted & sent to Telegram.'
+                            ? 'رمز عبور جدید با موفقیت ذخیره شد و به تلگرام شما ارسال گردید.'
+                            : 'Password updated & sent to Telegram.'
                         );
                         setNewPin('');
                       } else {
@@ -5136,7 +5292,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     }}
                     className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
                   >
-                    {isFa ? 'ذخیره رمز جدید، قفل‌گذاری مجدد گاوصندوق و ارسال به تلگرام' : 'Update, Re-encrypt Vault & Send'}
+                    {isFa ? 'ذخیره رمز جدید و ارسال به تلگرام' : 'Update & Send to Telegram'}
                   </button>
                 </div>
 
@@ -5168,61 +5324,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 </div>
               </div>
             )}
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* دیالوگ نمایش و کپی کد ورک‌فلو گیت‌هاب اکشن (.github/workflows/video-processor.yml) */}
-        {/* ============================================================== */}
-        {showWorkflowCodeModal && (
-          <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-stone-900 border border-stone-800 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl text-white">
-              <div className="p-4 border-b border-stone-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Code2 className="w-5 h-5 text-amber-500" />
-                  <span className="font-bold text-sm">
-                    {isFa ? 'کد ورک‌فلو پردازش و استریم ویدیو (.github/workflows/video-processor.yml)' : 'GitHub Actions Workflow YAML'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowWorkflowCodeModal(false)}
-                  className="p-1.5 rounded-lg text-stone-400 hover:text-white hover:bg-stone-800 cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-4 flex-1 overflow-y-auto font-mono text-xs bg-stone-950 text-stone-200 space-y-2 select-all">
-                <pre className="whitespace-pre-wrap">{getVideoProcessorWorkflowYaml()}</pre>
-              </div>
-
-              <div className="p-4 border-t border-stone-800 flex items-center justify-between gap-3 bg-stone-900">
-                <span className="text-[11px] text-stone-400">
-                  {isFa ? 'این فایل به محض ارسال قطعات و دیدن READY_TO_PROCESS فعال می‌شود.' : 'Triggers on READY_TO_PROCESS.json'}
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(getVideoProcessorWorkflowYaml());
-                      alert(isFa ? 'کد ورک‌فلو با موفقیت در کلیپ‌بورد کپی شد!' : 'Workflow code copied!');
-                    }}
-                    className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm"
-                  >
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>{isFa ? 'کپی تمام کد' : 'Copy All'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowWorkflowCodeModal(false)}
-                    className="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-300 font-bold text-xs rounded-xl cursor-pointer"
-                  >
-                    {isFa ? 'بستن' : 'Close'}
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

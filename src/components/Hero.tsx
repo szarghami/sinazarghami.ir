@@ -147,20 +147,28 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* ستون قاب تصویر شاخص */}
           <div className="lg:col-span-5 relative flex flex-col justify-center">
-            <div className="relative group rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80 shadow-md">
+            <div className="relative group rounded-2xl overflow-hidden bg-stone-900 border border-stone-200/80 shadow-md">
+              <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-stone-300">
+                <Camera className="w-12 h-12 text-amber-500/70 mb-3" />
+                <span className="text-sm font-semibold">{content.photos[0]?.titleFa || 'آثار برگزیده سینا ضرغامی'}</span>
+              </div>
               <img
-                src={getReliableImageUrl(content.photos[0]?.imageUrl || '')}
+                src={getReliableImageUrl(content.photos[0]?.imageUrl || "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=85")}
                 alt="Sina Zarghami Photography Showcase"
-                className="w-full h-84 sm:h-96 lg:h-[430px] object-cover transition-transform duration-700 group-hover:scale-102"
+                className="relative w-full h-84 sm:h-96 lg:h-[430px] object-cover transition-transform duration-700 group-hover:scale-102 z-10"
                 loading="eager"
                 referrerPolicy="no-referrer"
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent pointer-events-none z-10" />
 
-              <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1">
+              <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1 z-20">
                 <div className="flex items-center justify-between text-xs font-mono text-stone-300">
-                  <span>{content.photos[0]?.locationFa || 'LUT DESERT, IRAN'}</span>
-                  <span>{content.photos[0]?.camera || 'SONY A7R V'}</span>
+                  <span>{content.photos[0]?.locationFa || 'کویر لوت، ایران'}</span>
+                  <span>{content.photos[0]?.camera || 'Canon R8'}</span>
                 </div>
                 <h3 className="text-lg font-semibold tracking-tight text-white">
                   {isFa ? (content.photos[0]?.titleFa || 'کلوت‌های شهداد در غروب آفتاب') : (content.photos[0]?.titleEn || 'Shahdad Kaluts at Twilight')}

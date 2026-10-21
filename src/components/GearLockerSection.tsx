@@ -14,14 +14,20 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  Eye,
 } from 'lucide-react';
 
 interface GearLockerSectionProps {
   equipment: EquipmentItem[];
   language: Language;
+  onNavigate?: (path: string) => void;
 }
 
-export const GearLockerSection: React.FC<GearLockerSectionProps> = ({ equipment, language }) => {
+export const GearLockerSection: React.FC<GearLockerSectionProps> = ({
+  equipment,
+  language,
+  onNavigate = () => {},
+}) => {
   const isFa = language === 'fa';
 
   const [activeCategory, setActiveCategory] = useState<EquipmentCategory | 'all'>('all');
@@ -254,6 +260,17 @@ export const GearLockerSection: React.FC<GearLockerSectionProps> = ({ equipment,
                       </span>
                     ))}
                   </div>
+                </div>
+
+                {/* Link to /filter */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => onNavigate(`/filter?type=gear&val=${encodeURIComponent(item.id)}`)}
+                    className="w-full py-2 bg-stone-900 hover:bg-amber-600 hover:text-white text-stone-300 text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer border border-stone-800"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{isFa ? 'مشاهده آثار و مقالات با این تجهیز' : 'View Works Shot with This Gear'}</span>
+                  </button>
                 </div>
               </div>
             );

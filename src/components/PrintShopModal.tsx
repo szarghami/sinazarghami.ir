@@ -32,14 +32,8 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
 }) => {
   const isFa = language === 'fa';
 
-  const isVideoMedia = Boolean(
-    photo?.isVideo ||
-    photo?.category === 'video' ||
-    photo?.category === 'commercial-video'
-  );
-
-  // نوع خرید: چاپ دیواری یا لایسنس فایل دیجیتال (برای ویدیو فقط دیجیتال)
-  const [purchaseType, setPurchaseType] = useState<'print' | 'digital'>(() => (isVideoMedia ? 'digital' : 'print'));
+  // نوع خرید: چاپ دیواری یا لایسنس فایل دیجیتال
+  const [purchaseType, setPurchaseType] = useState<'print' | 'digital'>('print');
 
   // گزینه‌های چاپ
   const [selectedSize, setSelectedSize] = useState<'30x45' | '50x75' | '70x105' | '100x150'>('50x75');
@@ -158,10 +152,8 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
       photoTitle: photo.titleFa,
       priceToman: activeFinalToman,
       priceUsd: activeFinalUsd,
-      clientName: customerName || 'خریدار آنلاین',
-      contact: customerContact,
       selectedFormat: purchaseType,
-      details: `چاپ: ${selectedSize} ${paperName} | خریدار: ${customerName || 'ناشناس'} (${customerCity || 'ایران'})`,
+      details: `خریدار: ${customerName || 'ناشناس'} | تماس: ${customerContact}`,
     });
 
     // ارسال اعلان آنی به ربات تلگرام سینا ضرغامی
@@ -192,12 +184,10 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
             <ShoppingBag className="w-5 h-5 text-amber-700" />
             <div>
               <h3 className="text-base sm:text-lg font-bold text-stone-900">
-                {isVideoMedia
-                  ? (isFa ? 'سفارش لایسنس ویدیوی سینمایی و فوتیج اختصاصی' : 'Video Footage Licensing & Master File')
-                  : (isFa ? 'سفارش خرید اثر و صدور فاکتور رسمی' : 'Purchase Artwork & Fine-Art Licensing')}
+                {isFa ? 'سفارش خرید اثر و صدور فاکتور رسمی' : 'Purchase Artwork & Fine-Art Licensing'}
               </h3>
               <p className="text-xs text-stone-500 font-mono">
-                {photoTitle} · {photo.camera} {photo.videoQuality ? `· ${photo.videoQuality}` : ''}
+                {photoTitle} · {photo.camera}
               </p>
             </div>
           </div>
@@ -284,45 +274,34 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
           ) : (
             /* Order Formulation Form */
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Selector Tabs: Print vs Digital License (فقط برای عکس‌ها انتخاب چاپ وجود دارد؛ برای ویدیو فقط لایسنس دیجیتال) */}
-              {!isVideoMedia ? (
-                <div className="flex p-1 bg-stone-100 rounded-xl border border-stone-200">
-                  <button
-                    type="button"
-                    onClick={() => setPurchaseType('print')}
-                    className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      purchaseType === 'print'
-                        ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    <ShoppingBag className="w-4 h-4 text-amber-600" />
-                    <span>{isFa ? '۱. چاپ نفیس فاین‌آرت موزه و شاسی دیواری' : '1. Archival Fine-Art Print'}</span>
-                  </button>
+              {/* Selector Tabs: Print vs Digital License */}
+              <div className="flex p-1 bg-stone-100 rounded-xl border border-stone-200">
+                <button
+                  type="button"
+                  onClick={() => setPurchaseType('print')}
+                  className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    purchaseType === 'print'
+                      ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <ShoppingBag className="w-4 h-4 text-amber-600" />
+                  <span>{isFa ? '۱. چاپ نفیس فاین‌آرت موزه و شاسی دیواری' : '1. Archival Fine-Art Print'}</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setPurchaseType('digital')}
-                    className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      purchaseType === 'digital'
-                        ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    <Download className="w-4 h-4 text-indigo-600" />
-                    <span>{isFa ? '۲. خرید لایسنس و دانلود فایل باکیفیت اصلی' : '2. High-Res Digital License'}</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-900 font-bold">
-                  <Download className="w-4 h-4 text-red-600 shrink-0" />
-                  <span>
-                    {isFa
-                      ? 'لایسنس فوتیج سینمایی و ویدیوی 4K (دانلود مستقیم فایل مستر با کیفیت اصلی بدون افت کیفیت)'
-                      : 'Cinematic 4K Master Video Footage License (Direct Master File Download)'}
-                  </span>
-                </div>
-              )}
+                <button
+                  type="button"
+                  onClick={() => setPurchaseType('digital')}
+                  className={`flex-1 py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                    purchaseType === 'digital'
+                      ? 'bg-white text-stone-900 shadow-xs border border-stone-200/80'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  <Download className="w-4 h-4 text-indigo-600" />
+                  <span>{isFa ? '۲. خرید لایسنس و دانلود فایل باکیفیت اصلی' : '2. High-Res Digital License'}</span>
+                </button>
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
                 {/* Photo Preview & Guarantees */}
@@ -333,12 +312,6 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
                       alt={photoTitle}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (photo.imageUrl && target.src !== photo.imageUrl) {
-                          target.src = photo.imageUrl;
-                        }
-                      }}
                     />
                   </div>
 
