@@ -63,21 +63,9 @@ export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
 }
 
 /**
- * همگام‌سازی رمز عبور از سرور به منظور یکسان بودن در گوشی و لپ‌تاپ
+ * بازیابی رمز عبور امن پنل استودیو
  */
 export async function syncPasscodeFromServer(): Promise<string> {
-  try {
-    const res = await fetch(`/api/passcode?t=${Date.now()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.passcode && typeof data.passcode === 'string') {
-        localStorage.setItem(PASSCODE_KEY, data.passcode);
-        return data.passcode;
-      }
-    }
-  } catch (e) {
-    // استفاده از رمز موجود در لوکال
-  }
   return localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
 }
 
@@ -211,11 +199,38 @@ export function setSessionAuthenticated(auth: boolean): void {
 }
 
 /**
- * بررسی رمز عبور ورودی
+ * بررسی رمز عبور ورودی به صورت محلی
  */
 export function checkAdminPasscode(pin: string): boolean {
   const stored = localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
   return pin.trim() === stored.trim();
+}
+
+/**
+ * بررسی امن رمز عبور در سرور از طریق POST /api/auth/verify (بدون افشای رمز عبور متن خام)
+ */
+export async function verifyAdminPasscodeWithServer(pin: string): Promise<boolean> {
+  const cleanPin = pin.trim();
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passcode: cleanPin }),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && typeof data.authenticated === 'boolean') {
+        if (data.authenticated) {
+          localStorage.setItem(PASSCODE_KEY, cleanPin);
+        }
+        return data.authenticated;
+      }
+    }
+  } catch (err) {
+    console.warn('اعتبارسنجی سروری رمز انجام نشد:', err);
+  }
+  // در صورت عدم دسترسی به سرور یا اجرای سایت در هاست استاتیک
+  return checkAdminPasscode(cleanPin);
 }
 
 /**

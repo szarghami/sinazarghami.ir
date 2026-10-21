@@ -29,6 +29,7 @@ export const ResumeBooksSection: React.FC<ResumeBooksSectionProps> = ({
   const [activeTab, setActiveTab] = useState<'all' | 'experience' | 'exhibition' | 'award' | 'education'>('all');
   const [bookInterestEmail, setBookInterestEmail] = useState('');
   const [bookInterestRegistered, setBookInterestRegistered] = useState(false);
+  const [failedBookCovers, setFailedBookCovers] = useState<Record<string, boolean>>({});
 
   const filteredResume = activeTab === 'all'
     ? resume
@@ -164,28 +165,29 @@ export const ResumeBooksSection: React.FC<ResumeBooksSectionProps> = ({
                 className="bg-stone-50/80 rounded-2xl p-6 sm:p-8 border border-stone-200/90 flex flex-col sm:flex-row gap-6 items-start justify-between shadow-2xs hover:shadow-md transition-shadow"
               >
                 {/* Book Cover Container */}
-                <div className="w-full sm:w-44 shrink-0 aspect-3/4 rounded-xl overflow-hidden bg-white shadow-md border border-stone-200 relative group">
-                  <img
-                    src={getReliableImageUrl(book.coverImage)}
-                    alt={isFa ? book.titleFa : book.titleEn}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const target = e.currentTarget as HTMLImageElement;
-                      if (book.coverImage && target.src !== book.coverImage) {
-                        target.src = book.coverImage;
-                        return;
-                      }
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      if (parent) {
-                        parent.classList.add('bg-stone-800', 'flex', 'items-center', 'justify-center', 'p-4', 'text-white', 'text-center');
-                        parent.innerHTML = `<span class="text-xs font-mono">${book.titleFa}</span>`;
-                      }
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-stone-950/15 pointer-events-none" />
-                </div>
+                {failedBookCovers[book.id] ? (
+                  <div className="w-full sm:w-44 shrink-0 aspect-3/4 rounded-xl overflow-hidden bg-stone-800 flex items-center justify-center p-4 text-white text-center shadow-md border border-stone-700">
+                    <span className="text-xs font-mono select-none">{isFa ? book.titleFa : book.titleEn}</span>
+                  </div>
+                ) : (
+                  <div className="w-full sm:w-44 shrink-0 aspect-3/4 rounded-xl overflow-hidden bg-white shadow-md border border-stone-200 relative group">
+                    <img
+                      src={getReliableImageUrl(book.coverImage)}
+                      alt={isFa ? book.titleFa : book.titleEn}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (book.coverImage && target.src !== book.coverImage) {
+                          target.src = book.coverImage;
+                          return;
+                        }
+                        setFailedBookCovers((prev) => ({ ...prev, [book.id]: true }));
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-stone-950/15 pointer-events-none" />
+                  </div>
+                )}
 
                 {/* Book Content */}
                 <div className="space-y-4 flex-1 flex flex-col justify-between h-full">

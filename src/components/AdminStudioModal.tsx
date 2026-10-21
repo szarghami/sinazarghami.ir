@@ -24,6 +24,7 @@ import {
 } from '../types';
 import {
   checkAdminPasscode,
+  verifyAdminPasscodeWithServer,
   getCurrentPasscode,
   updateAdminPasscode,
   requestPasswordRecoveryToTelegram,
@@ -809,8 +810,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         }
       }
 
-      // ۲. بررسی با رمز عبور ثابت
-      if (checkAdminPasscode(enteredPin)) {
+      // ۲. بررسی با رمز عبور ثابت (محلی و امن سروری)
+      let isPinValid = checkAdminPasscode(enteredPin);
+      if (!isPinValid) {
+        isPinValid = await verifyAdminPasscodeWithServer(enteredPin);
+      }
+      if (isPinValid) {
         setIsAuthenticated(true);
         setSessionAuthenticated(true);
         setPinError(false);

@@ -10,3 +10,5 @@ coverage/
 studio-settings.json
 admin-passcode.json
 *.local
+bun.lock
+bun.lockb

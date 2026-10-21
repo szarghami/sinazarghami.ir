@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { Language, PhotoItem, SiteContent } from './types';
 import { loadSiteContent, saveSiteContent, fetchRemoteSiteData, syncPasscodeFromServer, syncStudioSettingsFromServer } from './utils/storage';
 import { trackEvent } from './utils/analytics';
@@ -15,10 +15,18 @@ import { ExpeditionsSection } from './components/ExpeditionsSection';
 import { SoftwareShowcase } from './components/SoftwareShowcase';
 import { ProductionServices } from './components/ProductionServices';
 import { ResumeBooksSection } from './components/ResumeBooksSection';
-import { PrintShopModal } from './components/PrintShopModal';
-import { AdminStudioModal } from './components/AdminStudioModal';
-import { SeoDocumentationModal } from './components/SeoDocumentationModal';
 import { Footer } from './components/Footer';
+
+// بارگذاری تنبل (Lazy Loading) مودال‌های سنگین جهت کاهش بیش از ۳۰۰ کیلوبایت از باندل اولیه
+const PrintShopModal = lazy(() =>
+  import('./components/PrintShopModal').then((m) => ({ default: m.PrintShopModal }))
+);
+const AdminStudioModal = lazy(() =>
+  import('./components/AdminStudioModal').then((m) => ({ default: m.AdminStudioModal }))
+);
+const SeoDocumentationModal = lazy(() =>
+  import('./components/SeoDocumentationModal').then((m) => ({ default: m.SeoDocumentationModal }))
+);
 
 export default function App() {
   const [language, setLanguage] = useState<Language>('fa');
@@ -148,27 +156,46 @@ export default function App() {
         onOpenSeo={() => setIsSeoOpen(true)}
       />
 
-      {/* Modals */}
-      <PrintShopModal
-        photo={selectedPrintPhoto}
-        language={language}
-        onClose={() => setSelectedPrintPhoto(null)}
-      />
+      {/* Modals with Lazy Loading & Code Splitting */}
+      {selectedPrintPhoto && (
+        <Suspense fallback={null}>
+          <PrintShopModal
+            photo={selectedPrintPhoto}
+            language={language}
+            onClose={() => setSelectedPrintPhoto(null)}
+          />
+        </Suspense>
+      )}
 
       {isAdminOpen && (
-        <AdminStudioModal
-          content={content}
-          onUpdateContent={handleUpdateContent}
-          language={language}
-          onClose={() => setIsAdminOpen(false)}
-        />
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fade-in">
+              <div className="bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3 text-center max-w-xs">
+                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs font-mono text-stone-300">
+                  {language === 'fa' ? 'در حال بارگذاری استودیو مدیریت...' : 'Loading Studio Admin Panel...'}
+                </p>
+              </div>
+            </div>
+          }
+        >
+          <AdminStudioModal
+            content={content}
+            onUpdateContent={handleUpdateContent}
+            language={language}
+            onClose={() => setIsAdminOpen(false)}
+          />
+        </Suspense>
       )}
 
       {isSeoOpen && (
-        <SeoDocumentationModal
-          language={language}
-          onClose={() => setIsSeoOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <SeoDocumentationModal
+            language={language}
+            onClose={() => setIsSeoOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

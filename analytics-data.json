@@ -4,5 +4,24 @@
     "browser": "Microsoft Edge",
     "device": "desktop",
     "referrer": "Google Search"
+  },
+  {
+    "id": "evt_1792548233835_xsmr",
+    "sessionId": "sess_lp8g7mj_mvhgsb7j",
+    "eventType": "page_view",
+    "path": "/",
+    "referrer": "جستجوی گوگل (Google Search)",
+    "browser": "Chrome",
+    "exactBrowser": "Chrome",
+    "deviceModel": "Windows PC",
+    "os": "Windows",
+    "device": "desktop",
+    "screenResolution": "1165x765",
+    "clientTimestamp": "2026-10-21T02:03:53.824Z",
+    "persianDate": "۱۴۰۵/۷/۲۹, ۰۵:۳۳:۵۳"
+  },
+  {
+    "eventType": "page_view",
+    "browser": "Chrome"
   }
 ]

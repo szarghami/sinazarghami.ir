@@ -345,12 +345,11 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
     if (ev.eventType === 'gear_view') sectionCounts['کمد تجهیزات (Gear Locker)']++;
   });
 
-  // پایه پیش‌فرض واقع‌گرایانه برای استودیو
-  const baseViews = 1420;
-  const totalPageViews = pageViews > 0 ? pageViews + baseViews : baseViews + 18;
-  const totalSessions = sessions.size > 0 ? sessions.size + 420 : 438;
-  const computedTodayViews = todayViews > 0 ? todayViews + 45 : 48;
-  const computedYesterdayViews = yesterdayViews > 0 ? yesterdayViews + 39 : 42;
+  // آمار دقیق و واقعی بازدیدها (بدون هیچ عدد ساختگی)
+  const totalPageViews = pageViews;
+  const totalSessions = sessions.size;
+  const computedTodayViews = todayViews;
+  const computedYesterdayViews = yesterdayViews;
 
   // تبدیل شمارش‌ها به لیست مرتب با درصد
   const toSortedList = (map: Record<string, number>, total: number) => {
@@ -366,78 +365,15 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   };
 
   const topBrowsers = toSortedList(browserCounts, allEvents.length || 1);
-  if (topBrowsers.length === 0) {
-    topBrowsers.push(
-      { name: 'Safari', count: 284, percent: 52 },
-      { name: 'Chrome', count: 182, percent: 33 },
-      { name: 'Instagram In-App', count: 48, percent: 9 },
-      { name: 'Telegram In-App', count: 32, percent: 6 }
-    );
-  }
-
   const topDeviceModels = toSortedList(deviceModelCounts, allEvents.length || 1);
-  if (topDeviceModels.length === 0) {
-    topDeviceModels.push(
-      { name: 'iPhone', count: 312, percent: 57 },
-      { name: 'Mac', count: 145, percent: 26 },
-      { name: 'Windows PC', count: 58, percent: 11 },
-      { name: 'Android Phone', count: 32, percent: 6 }
-    );
-  }
-
   const topDevices = toSortedList(deviceCatCounts, allEvents.length || 1);
-  if (topDevices.length === 0) {
-    topDevices.push(
-      { name: 'موبایل (Mobile)', count: 344, percent: 63 },
-      { name: 'رایانه رومیزی / لپ‌تاپ (Desktop)', count: 203, percent: 37 }
-    );
-  }
-
   const topReferrers = toSortedList(referrerCounts, allEvents.length || 1);
-  if (topReferrers.length === 0) {
-    topReferrers.push(
-      { name: 'اینستاگرام (@sina.zarghami)', count: 248, percent: 45 },
-      { name: 'جستجوی گوگل (Google Search)', count: 182, percent: 33 },
-      { name: 'ورود مستقیم (Direct URL)', count: 88, percent: 16 },
-      { name: 'کانال یا پیام تلگرام', count: 34, percent: 6 }
-    );
-  }
-
   const topSections = toSortedList(sectionCounts, allEvents.length || 1);
 
-  // فهرست سفارشات قطعی و استعلام‌ها
+  // فهرست سفارشات قطعی و استعلام‌ها (صرفاً بر پایه سفارشات واقعی)
   const completedOrdersList: AnalyticsSummary['completedOrdersList'] = localOrders.length > 0
     ? localOrders
-    : [
-        {
-          id: 'ord_sample_1',
-          type: 'print_shop',
-          title: 'سکوت افق‌ها در لوت (نسخه لوکس موزه)',
-          priceToman: 3800000,
-          priceUsd: 55,
-          clientName: 'دکتر علیرضا کاظمی',
-          contact: '۰۹۱۲۳۴۵۶۷۸۹',
-          device: 'iPhone 15 Pro · Safari',
-          browser: 'Safari',
-          timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-          persianDate: 'امروز، ساعت ۱۴:۲۰',
-          details: 'چاپ فاین‌آرت روی بوم کتان خالص ۸۰×۱۲۰ سانتی‌متر',
-        },
-        {
-          id: 'ord_sample_2',
-          type: 'service_commission',
-          title: 'خدمات تصویربرداری هوایی پروژه هرمز',
-          priceToman: 18500000,
-          priceUsd: 280,
-          clientName: 'مهندس حسینی (پتروشیمی)',
-          contact: '۰۹۱۲۹۸۷۶۵۴۳',
-          device: 'MacBook Pro · Chrome',
-          browser: 'Chrome',
-          timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-          persianDate: 'پریروز، ساعت ۱۱:۴۵',
-          details: 'مستندسازی صنعتی با هلی‌شات 4K و دوربین سینمایی',
-        },
-      ];
+    : serverSummary?.completedOrdersList || [];
 
   const abandonedCartList = localAbandoned.length > 0
     ? localAbandoned
@@ -447,23 +383,11 @@ export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
   const abandonedCheckoutsCount = abandonedCartList.length;
   const abandonmentRate = completedOrdersCount + abandonedCheckoutsCount > 0
     ? Math.round((abandonedCheckoutsCount / (completedOrdersCount + abandonedCheckoutsCount)) * 100)
-    : 24;
+    : 0;
 
   const recentEvents: AnalyticsEvent[] = allEvents.length > 0
     ? allEvents.slice(0, 40)
-    : [
-        {
-          id: 'ev_demo_1',
-          sessionId: 'sess_live',
-          eventType: 'page_view',
-          deviceModel: 'iPhone',
-          browser: 'Safari',
-          device: 'mobile',
-          referrer: 'اینستاگرام (@sina.zarghami)',
-          clientTimestamp: new Date().toISOString(),
-          persianDate: 'هم‌اکنون',
-        },
-      ];
+    : [];
 
   return {
     totalPageViews,

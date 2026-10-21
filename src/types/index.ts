@@ -75,6 +75,14 @@ export interface PhotoItem {
   featured?: boolean;
   galleryImages?: string[]; // تصاویر آلبوم (برای پست کردن چند عکس به صورت یک گالری)
   isAlbum?: boolean; // آیا این پست یک آلبوم چندعکسی است؟
+  // فیلدهای معماری چندصفحه‌ای و تفکیک نمونه‌کارها
+  showOnHome?: boolean; // مشخص می‌کند آیا این پست در ۴ پست برگزیده صفحه اصلی نمایش داده شود یا خیر
+  portfolioScope?: 'commercial' | 'travel'; // برای جداسازی کامل نمونه‌کارهای تخصصی/شرکتی از عکس‌های سفر
+  commercialCategory?: string; // دسته‌بندی کارهای تخصصی: مانند «صنعتی»، «همایش و رویداد»، «آموزشی»، «تبلیغاتی»
+  clientName?: string; // نام شرکت/کارفرما برای نمایش در کنار نمونه‌کارهای تجاری
+  clientInfo?: string; // توضیحات پروژه برای نمایش در کنار نمونه‌کارهای تجاری
+  gearIds?: string[]; // نام یا شناسه تجهیزات استفاده‌شده در این عکس
+  techniques?: string[]; // تکنیک‌های عکاسی/فیلمبرداری به‌کاررفته در این عکس
 }
 
 // ساختار اطلاعات تجهیزات و ابزارهای تولید (Production Gear Locker)
@@ -121,6 +129,9 @@ export interface ExpeditionItem {
   bookingOpen: boolean; // آیا ثبت‌نام باز است؟
   difficultyFa: string; // درجه سختی (آسان، متوسط، سخت)
   difficultyEn: string;
+  // فیلدهای فاز ۶
+  tripType?: 'travelogue' | 'tour'; // تفکیک «سفرهای رفته‌شده/سفرنامه» از «تورهای اجرایی/در حال ثبت‌نام»
+  galleryPhotos?: string[]; // آلبوم عکس‌های اختصاصی این سفر
 }
 
 // ساختار اطلاعات پروژه‌های نرم‌افزاری و وب‌سایت‌های ساخته‌شده
@@ -208,6 +219,29 @@ export interface ProfileContent {
   stats: StatItem[];
 }
 
+// ساختار تکنیک‌های تعریف‌شده عکاسی و فیلمبرداری
+export interface DefinedTechnique {
+  id: string;
+  nameFa: string; // نام فارسی (مثلاً هایپرمکرو با لنز معکوس)
+  nameEn: string;
+  descriptionFa?: string; // توضیحات تخصصی متد عکاسی
+  descriptionEn?: string;
+  badge?: string;
+}
+
+// ساختار کارت‌های متحرک دسته‌بندی در صفحه اصلی (Interactive Category Cards Carousel)
+export interface HomeCategoryCard {
+  id: string;
+  titleFa: string; // عنوان دسته‌بندی (مثلاً: عکاسی و تیزرهای صنعتی)
+  titleEn: string;
+  subtitleFa: string; // زیرعنوان جذاب
+  subtitleEn: string;
+  coverUrl: string; // عکس نمادین باکیفیت برای کارت
+  targetPath: string; // مقصد ناوبری (مثلاً /portfolio?cat=industrial)
+  badgeFa?: string;
+  badgeEn?: string;
+}
+
 // کل محتوای پویای وب‌سایت
 export interface SiteContent {
   profile: ProfileContent;
@@ -217,6 +251,8 @@ export interface SiteContent {
   resume: ResumeEntry[];
   books: BookItem[];
   equipment: EquipmentItem[];
+  definedTechniques?: DefinedTechnique[];
+  homeCategoryCards?: HomeCategoryCard[];
   encryptedVault?: string; // گاوصندوق رمزنگاری‌شده AES-256 کلیدها با رمز ثابت ادمین
 }
 
