@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -17,16 +17,6 @@ import { Hero } from './components/Hero';
 import { HomeCategoryCards } from './components/HomeCategoryCards';
 import { HomeFeaturedWorks } from './components/HomeFeaturedWorks';
 import { PhotographyGallery } from './components/PhotographyGallery';
-<<<<<<< HEAD
-import { GearLockerSection } from './components/GearLockerSection';
-import { ExpeditionsSection } from './components/ExpeditionsSection';
-import { SoftwareShowcase } from './components/SoftwareShowcase';
-import { ProductionServices } from './components/ProductionServices';
-import { ResumeBooksSection } from './components/ResumeBooksSection';
-import { ArticlesSection } from './components/ArticlesSection';
-import { AboutPage } from './components/AboutPage';
-import { DynamicFilterArchive } from './components/DynamicFilterArchive';
-=======
 import React, { lazy, Suspense } from 'react';
 
 const GearLockerSection = lazy(() => import('./components/GearLockerSection'));
@@ -40,7 +30,6 @@ const LoadingFallback = () => (
     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
   </div>
 );
->>>>>>> a4427df (feat: apply claude updates and fixes)
 import { PrintShopModal } from './components/PrintShopModal';
 import { AdminStudioModal } from './components/AdminStudioModal';
 import { SeoDocumentationModal } from './components/SeoDocumentationModal';

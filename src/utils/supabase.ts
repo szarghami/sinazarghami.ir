@@ -1,4 +1,4 @@
-// =====================================================================
+﻿// =====================================================================
 // ماژول اتصال به فضای ابری Supabase Storage و پشتیبان محلی سرور
 // باکت ذخیره‌سازی: sina_site
 // آدرس پروژه: https://hvuguccbyyttxiyytsbk.supabase.co
@@ -168,21 +168,8 @@ export async function smartUploadImage(
  */
 export function getReliableImageUrl(url?: string): string {
   if (!url) return '';
-<<<<<<< HEAD
-  if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/uploads/') || url.startsWith('/')) {
-    return url;
-  }
-  // برای دامنه‌های خارجی نظیر Unsplash یا Supabase که ممکن است در ایران یا Edge با محدودیت مواجه شوند:
-  if (
-    url.includes('images.unsplash.com') ||
-    url.includes('unsplash.com') ||
-    url.includes('supabase.co')
-  ) {
-    return `/api/image-proxy?url=${encodeURIComponent(url)}`;
-=======
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     throw new Error('Invalid URL format');
->>>>>>> a4427df (feat: apply claude updates and fixes)
   }
   return url;
 }

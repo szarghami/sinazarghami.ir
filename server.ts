@@ -3,14 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-<<<<<<< HEAD
 import helmet from 'helmet';
-=======
-import rateLimit from 'express-rate-limit';
-import { body, validationResult } from 'express-validator';
-import csrf from 'csurf';
-import { createLogger, transports, format } from 'winston';
->>>>>>> a4427df (feat: apply claude updates and fixes)
 import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
@@ -336,13 +329,8 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
 });
 
 // توکن و چت‌آیدی تلگرام سینا ضرغامی جهت ارسال خودکار اعلانات
-<<<<<<< HEAD
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8961351294:AAGqsMYUXBFS38uhdMvJjwnRh1FbxGdRGkQ';
 const SINA_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '86050350';
-=======
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const SINA_CHAT_ID = process.env.SINA_CHAT_ID;
->>>>>>> a4427df (feat: apply claude updates and fixes)
 
 async function sendTelegramMessage(text: string): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !SINA_CHAT_ID) {
