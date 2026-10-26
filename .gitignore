@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 build/
 dist/
 coverage/
@@ -10,13 +10,10 @@ coverage/
 studio-settings.json
 admin-passcode.json
 *.local
-<<<<<<< HEAD
 bun.lock
 bun.lockb
-=======
 .env
 *.key
 *credentials*.json
 .cloudcode/
 node_modules/
->>>>>>> 7a12a56 (chore: update workspace and gitignore)
