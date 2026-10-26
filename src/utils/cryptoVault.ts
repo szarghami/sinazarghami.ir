@@ -81,8 +81,8 @@ export async function encryptAdminSecrets(
   secretsObj: AdminSecrets,
   adminPasscode: string
 ): Promise<string> {
-  if (!adminPasscode || !adminPasscode.trim()) {
-    throw new Error('رمز عبور ادمین برای قفل‌گذاری گاوصندوق الزامی است.');
+  if (!adminPasscode || !adminPasscode.trim() || adminPasscode.length < 8) {
+    throw new Error('رمز عبور ادمین باید حداقل ۸ کاراکتر داشته باشد.');
   }
 
   const cryptoObj = typeof window !== 'undefined' ? window.crypto : (globalThis as any).crypto;
@@ -117,7 +117,7 @@ export async function decryptAdminSecrets(
   encryptedVaultBase64: string,
   adminPasscode: string
 ): Promise<AdminSecrets | null> {
-  if (!encryptedVaultBase64 || !adminPasscode || !adminPasscode.trim()) {
+  if (!encryptedVaultBase64 || !adminPasscode || !adminPasscode.trim() || adminPasscode.length < 8) {
     return null;
   }
 

@@ -3,10 +3,44 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+<<<<<<< HEAD
 import helmet from 'helmet';
+=======
+import rateLimit from 'express-rate-limit';
+import { body, validationResult } from 'express-validator';
+import csrf from 'csurf';
+import { createLogger, transports, format } from 'winston';
+>>>>>>> a4427df (feat: apply claude updates and fixes)
 import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
+
+const logger = createLogger({
+  level: 'info',
+  format: format.combine(
+    format.timestamp(),
+    format.json()
+  ),
+  transports: [
+    new transports.File({ filename: 'error.log', level: 'error' }),
+    new transports.File({ filename: 'combined.log' })
+  ]
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+const csrfProtection = csrf({ cookie: true });
+
+// Apply CSRF protection to all routes that need it
+app.use(csrfProtection);
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api/', apiLimiter);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,7 +66,7 @@ const PASSCODE_FILE = path.join(__dirname, 'admin-passcode.json');
 const SETTINGS_FILE = path.join(__dirname, 'studio-settings.json');
 const ANALYTICS_FILE = path.join(__dirname, 'analytics-data.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const DEFAULT_PASSCODE = 'sina2026';
+const DEFAULT_PASSCODE = process.env.DEFAULT_PASSCODE || 'sina2026';
 
 // =========================================================================
 // توابع کمکی امنیتی و احراز هویت
@@ -302,8 +336,13 @@ app.use((err: any, _req: express.Request, res: express.Response, next: express.N
 });
 
 // توکن و چت‌آیدی تلگرام سینا ضرغامی جهت ارسال خودکار اعلانات
+<<<<<<< HEAD
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8961351294:AAGqsMYUXBFS38uhdMvJjwnRh1FbxGdRGkQ';
 const SINA_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '86050350';
+=======
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const SINA_CHAT_ID = process.env.SINA_CHAT_ID;
+>>>>>>> a4427df (feat: apply claude updates and fixes)
 
 async function sendTelegramMessage(text: string): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !SINA_CHAT_ID) {
@@ -1223,6 +1262,23 @@ if (process.env.NODE_ENV === 'production') {
   app.use(vite.middlewares);
 }
 
+function rotateAnalyticsData() {
+  try {
+    const events = readAnalyticsEvents();
+    if (events.length > 5000) {
+      const rotatedEvents = events.slice(-3000); // Keep last 3000 events
+      writeAnalyticsEvents(rotatedEvents);
+      logger.info('Analytics data rotated', { timestamp: new Date().toISOString() });
+    }
+  } catch (err) {
+    logger.error('Error rotating analytics data:', err);
+  }
+}
+
+// Call this periodically
+setInterval(rotateAnalyticsData, 24 * 60 * 60 * 1000); // Daily
+
 app.listen(PORT, '0.0.0.0', () => {
+  logger.info('Server started', { port: PORT, env: process.env.NODE_ENV });
   console.log(`Server listening on http://0.0.0.0:${PORT}`);
 });

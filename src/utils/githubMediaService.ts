@@ -23,12 +23,25 @@ const STORAGE_KEY_FORCE_ALL_VIDEOS = 'sina_github_force_all_videos_to_video_repo
  */
 export function getSavedGitHubToken(): string {
   if (typeof window === 'undefined') return '';
-  return localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN) || '';
+  const encryptedToken = localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN);
+  if (!encryptedToken) return '';
+  try {
+    return CryptoJS.AES.decrypt(encryptedToken, process.env.ENCRYPTION_KEY!).toString(CryptoJS.enc.Utf8);
+  } catch {
+    return '';
+  }
 }
 
 export function saveGitHubToken(token: string): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN, token.trim());
+  if (!token || !token.trim()) {
+    throw new Error('GitHub token cannot be empty');
+  }
+  if (!process.env.ENCRYPTION_KEY) {
+    throw new Error('Encryption key not configured');
+  }
+  const encryptedToken = CryptoJS.AES.encrypt(token.trim(), process.env.ENCRYPTION_KEY).toString();
+  localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN, encryptedToken);
 }
 
 /**

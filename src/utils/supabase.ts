@@ -13,6 +13,10 @@ const BUCKET_NAME = 'sina_site';
  * تبدیل Data URL (Base64) به شیء Blob جهت ارسال استاندارد به فضای ابری
  */
 export function dataUrlToBlob(dataUrl: string): { blob: Blob; contentType: string } {
+  if (!dataUrl || !dataUrl.includes(';base64,')) {
+    throw new Error('Invalid data URL format');
+  }
+
   const parts = dataUrl.split(';base64,');
   const contentType = parts[0].split(':')[1] || 'image/webp';
   const raw = window.atob(parts[1]);
@@ -164,6 +168,7 @@ export async function smartUploadImage(
  */
 export function getReliableImageUrl(url?: string): string {
   if (!url) return '';
+<<<<<<< HEAD
   if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/uploads/') || url.startsWith('/')) {
     return url;
   }
@@ -174,6 +179,10 @@ export function getReliableImageUrl(url?: string): string {
     url.includes('supabase.co')
   ) {
     return `/api/image-proxy?url=${encodeURIComponent(url)}`;
+=======
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    throw new Error('Invalid URL format');
+>>>>>>> a4427df (feat: apply claude updates and fixes)
   }
   return url;
 }

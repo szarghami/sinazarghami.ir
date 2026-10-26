@@ -13,7 +13,7 @@ const SESSION_AUTH_KEY = 'sina_admin_session_auth_v4';
 const GITHUB_TOKEN_KEY = 'sina_github_token_saved';
 
 // رمز عبور پیش‌فرض
-const DEFAULT_PASSCODE = 'sina2026';
+const DEFAULT_PASSCODE = process.env.DEFAULT_PASSCODE || 'sina2026';
 
 /**
  * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
@@ -159,6 +159,9 @@ export function setSessionAuthenticated(auth: boolean): void {
  * بررسی رمز عبور ورودی
  */
 export function checkAdminPasscode(pin: string): boolean {
+  if (!pin || pin.trim().length < 4) {
+    return false;
+  }
   const stored = localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
   return pin.trim() === stored.trim();
 }

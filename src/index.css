@@ -4,6 +4,71 @@
   :root {
     --font-fa: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-en: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Color Palette */
+    --color-text: #121316;
+    --color-text-secondary: #4a4b50;
+    --color-background: #FCFCFD;
+    --color-surface: #FFFFFF;
+    --color-primary: #000000;
+    --color-secondary: #71717A;
+    --color-accent: #FF6B00;
+    --color-border: rgba(0, 0, 0, 0.1);
+    --color-shadow: rgba(0, 0, 0, 0.05);
+    --color-overlay: rgba(0, 0, 0, 0.5);
+
+    /* Dark Mode */
+    --color-text-dark: #F5F5F7;
+    --color-text-secondary-dark: #A8A8B3;
+    --color-background-dark: #0A0A0A;
+    --color-surface-dark: #121316;
+    --color-primary-dark: #FFFFFF;
+    --color-secondary-dark: #71717A;
+    --color-accent-dark: #FF6B00;
+    --color-border-dark: rgba(255, 255, 255, 0.1);
+    --color-shadow-dark: rgba(0, 0, 0, 0.2);
+    --color-overlay-dark: rgba(0, 0, 0, 0.7);
+
+    /* Typography */
+    --font-size-base: 1rem;
+    --font-size-sm: 0.875rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    --font-size-5xl: 3rem;
+    --font-size-6xl: 3.75rem;
+    --font-size-7xl: 4.5rem;
+    --font-size-8xl: 6rem;
+    --font-size-9xl: 8rem;
+
+    --line-height-base: 1.5;
+    --line-height-heading: 1.2;
+
+    --font-weight-regular: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    /* Border Radius */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast: 0.15s ease-in-out;
+    --transition-medium: 0.3s ease-in-out;
+    --transition-slow: 0.5s ease-in-out;
   }
 
   html {
