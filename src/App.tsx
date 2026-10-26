@@ -17,7 +17,7 @@ import { Hero } from './components/Hero';
 import { HomeCategoryCards } from './components/HomeCategoryCards';
 import { HomeFeaturedWorks } from './components/HomeFeaturedWorks';
 import { PhotographyGallery } from './components/PhotographyGallery';
-import React, { lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 
 const GearLockerSection = lazy(() => import('./components/GearLockerSection'));
 const ExpeditionsSection = lazy(() => import('./components/ExpeditionsSection'));
