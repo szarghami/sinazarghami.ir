@@ -26,7 +26,7 @@ export function getSavedGitHubToken(): string {
   const encryptedToken = localStorage.getItem(STORAGE_KEY_GITHUB_TOKEN);
   if (!encryptedToken) return '';
   try {
-    return CryptoJS.AES.decrypt(encryptedToken, process.env.ENCRYPTION_KEY!).toString(CryptoJS.enc.Utf8);
+    return CryptoJS.AES.decrypt(encryptedToken, ((import.meta as any).env || {}).ENCRYPTION_KEY!).toString(CryptoJS.enc.Utf8);
   } catch {
     return '';
   }
@@ -37,10 +37,10 @@ export function saveGitHubToken(token: string): void {
   if (!token || !token.trim()) {
     throw new Error('GitHub token cannot be empty');
   }
-  if (!process.env.ENCRYPTION_KEY) {
+  if (!((import.meta as any).env || {}).ENCRYPTION_KEY) {
     throw new Error('Encryption key not configured');
   }
-  const encryptedToken = CryptoJS.AES.encrypt(token.trim(), process.env.ENCRYPTION_KEY).toString();
+  const encryptedToken = CryptoJS.AES.encrypt(token.trim(), ((import.meta as any).env || {}).ENCRYPTION_KEY).toString();
   localStorage.setItem(STORAGE_KEY_GITHUB_TOKEN, encryptedToken);
 }
 

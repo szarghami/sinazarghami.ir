@@ -13,7 +13,7 @@ const SESSION_AUTH_KEY = 'sina_admin_session_auth_v4';
 const GITHUB_TOKEN_KEY = 'sina_github_token_saved';
 
 // رمز عبور پیش‌فرض
-const DEFAULT_PASSCODE = process.env.DEFAULT_PASSCODE || 'sina2026';
+const DEFAULT_PASSCODE = ((import.meta as any).env || {}).DEFAULT_PASSCODE || 'sina2026';
 
 /**
  * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی

@@ -4,10 +4,8 @@
 // Chat ID: 86050350 (@sina_zarghami)
 // =====================================================================
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8961351294:AAGqsMYUXBFS38uhdMvJjwnRh1FbxGdRGkQ';
-const SINA_CHAT_ID = process.env.SINA_CHAT_ID || '86050350';
-
-/**
+const TELEGRAM_BOT_TOKEN = (import.meta as any).env?.VITE_TELEGRAM_BOT_TOKEN || '8961351294:AAGqsMYUXBFS38uhdMvJjwnRh1FbxGdRGkQ';
+const SINA_CHAT_ID = (import.meta as any).env?.VITE_SINA_CHAT_ID || '86050350';/**
  * تابع ارسال پیام متنی با فرمت‌بندی HTML به تلگرام سینا ضرغامی
  */
 export async function sendTelegramNotification(messageHtml: string): Promise<boolean> {
