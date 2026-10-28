@@ -169,7 +169,7 @@ export async function smartUploadImage(
 export function getReliableImageUrl(url?: string): string {
   if (!url) return '';
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    throw new Error('Invalid URL format');
+    return url;
   }
   return url;
 }

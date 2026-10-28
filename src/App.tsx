@@ -17,13 +17,11 @@ import { Hero } from './components/Hero';
 import { HomeCategoryCards } from './components/HomeCategoryCards';
 import { HomeFeaturedWorks } from './components/HomeFeaturedWorks';
 import { PhotographyGallery } from './components/PhotographyGallery';
-import { lazy, Suspense } from 'react';
-
-const GearLockerSection = lazy(() => import('./components/GearLockerSection'));
-const ExpeditionsSection = lazy(() => import('./components/ExpeditionsSection'));
-const SoftwareShowcase = lazy(() => import('./components/SoftwareShowcase'));
-const ProductionServices = lazy(() => import('./components/ProductionServices'));
-const ResumeBooksSection = lazy(() => import('./components/ResumeBooksSection'));
+import { GearLockerSection } from './components/GearLockerSection';
+import { ExpeditionsSection } from './components/ExpeditionsSection';
+import { SoftwareShowcase } from './components/SoftwareShowcase';
+import { ProductionServices } from './components/ProductionServices';
+import { ResumeBooksSection } from './components/ResumeBooksSection';
 
 const LoadingFallback = () => (
   <div className="h-64 flex items-center justify-center">

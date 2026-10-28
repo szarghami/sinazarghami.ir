@@ -50,6 +50,15 @@ app.use(
     contentSecurityPolicy: false, // جلوگیری از تداخل با کامپایلر Vite، فونت‌ها و فریم‌های ویدیو در توسعه
     crossOriginEmbedderPolicy: false,
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   })
 );
 
@@ -72,10 +81,46 @@ function getAdminPasscode(): string {
       const data = JSON.parse(fs.readFileSync(PASSCODE_FILE, 'utf-8'));
       if (data.passcode && typeof data.passcode === 'string') {
         currentPass = data.passcode;
-      }
-    } catch {
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } catch {
       // استفاده از رمز پیش‌فرض در صورت خطا در فایل
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   return currentPass.trim();
 }
@@ -87,6 +132,15 @@ function verifyAdminAuth(req: express.Request): boolean {
   let bearerPin = '';
   if (authHeader && authHeader.startsWith('Bearer ')) {
     bearerPin = authHeader.slice(7).trim();
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   const bodyPin = req.body && typeof req.body === 'object' ? req.body.passcode : undefined;
 
@@ -97,6 +151,15 @@ function verifyAdminAuth(req: express.Request): boolean {
 const requireAdmin: express.RequestHandler = (req, res, next) => {
   if (!verifyAdminAuth(req)) {
     return res.status(401).json({ error: 'دسترسی غیرمجاز: احراز هویت مدیریت الزامی است.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   next();
 };
@@ -113,6 +176,15 @@ function isValidImageMagicBytes(buffer: Buffer): { valid: boolean; ext: 'png' | 
     buffer[3] === 0x47
   ) {
     return { valid: true, ext: 'png' };
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 
   // JPEG: FF D8 FF
@@ -122,6 +194,15 @@ function isValidImageMagicBytes(buffer: Buffer): { valid: boolean; ext: 'png' | 
     buffer[2] === 0xff
   ) {
     return { valid: true, ext: 'jpg' };
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 
   // WebP: 'RIFF'....'WEBP'
@@ -129,6 +210,15 @@ function isValidImageMagicBytes(buffer: Buffer): { valid: boolean; ext: 'png' | 
   const webp = buffer.subarray(8, 12).toString('ascii');
   if (riff === 'RIFF' && webp === 'WEBP') {
     return { valid: true, ext: 'webp' };
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 
   return { valid: false, ext: null };
@@ -168,6 +258,15 @@ function isPrivateOrLocalHost(hostname: string): boolean {
     lower === '[::1]'
   ) {
     return true;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 
   // بررسی آدرس‌های IP نسخه ۴ داخلی و خصوصی
@@ -182,10 +281,28 @@ function isPrivateOrLocalHost(hostname: string): boolean {
     if (p1 === 169 && p2 === 254) return true; // 169.254.*
     if (p1 === 172 && p2 >= 16 && p2 <= 31) return true; // 172.16.* - 172.31.*
     if (p1 === 0) return true; // 0.*
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 
   if (lower.startsWith('fe80:') || lower.startsWith('fc00:') || lower.startsWith('fd00:')) {
     return true;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 
   return false;
@@ -198,14 +315,32 @@ function validateProxyUrl(inputUrl: string): { valid: boolean; error?: string; u
     // تنها پروتکل امن https مجاز است
     if (parsed.protocol !== 'https:') {
       return { valid: false, error: 'تنها پروتکل امن https مجاز است.' };
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const hostname = parsed.hostname.toLowerCase();
 
     // مسدودسازی آدرس‌های لوکال، شبکه داخلی و لینک‌لوکال
     if (isPrivateOrLocalHost(hostname)) {
       return { valid: false, error: 'دسترسی به آدرس‌های داخلی و محلی مسدود است.' };
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     // بررسی فهرست دامنه‌های مجاز
     const isDomainAllowed = ALLOWED_PROXY_DOMAINS.some(
@@ -214,11 +349,38 @@ function validateProxyUrl(inputUrl: string): { valid: boolean; error?: string; u
 
     if (!isDomainAllowed) {
       return { valid: false, error: 'دسترسی به این دامنه از طریق پروکسی مجاز نیست.' };
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     return { valid: true, url: parsed };
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch {
     return { valid: false, error: 'فرمت آدرس ارسالی نامعتبر است.' };
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 }
 
@@ -234,8 +396,35 @@ function setRestrictedCorsHeaders(req: express.Request, res: express.Response) {
       const originHost = new URL(origin).host;
       if (originHost === host) {
         allowedOrigin = origin;
-      }
-    } catch {}
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } catch {}
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Vary', 'Origin');
@@ -255,36 +444,90 @@ app.post(
       const { dataUrl, filename } = req.body || {};
       if (!dataUrl || typeof dataUrl !== 'string') {
         return res.status(400).json({ error: 'داده تصویر معتبر نیست.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       const uploadsDir = path.join(PUBLIC_DIR, 'uploads');
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       // سقف تعداد فایل‌های پوشه آپلود
       const existingFiles = fs.readdirSync(uploadsDir);
       if (existingFiles.length >= 2000) {
         return res.status(400).json({ error: 'سقف تعداد فایل‌های ذخیره‌شده (۲۰۰۰ عدد) تکمیل شده است.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
       if (!matches || matches.length !== 3) {
         return res.status(400).json({ error: 'فرمت DataURL نامعتبر است.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       const buffer = Buffer.from(matches[2], 'base64');
 
       // سقف حجم هر فایل آپلودی (حداکثر ۲۰ مگابایت)
       if (buffer.length > 20 * 1024 * 1024) {
         return res.status(413).json({ error: 'حجم فایل آپلودی بیش از سقف مجاز (۲۰ مگابایت) است.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       // بررسی بایت‌های جادویی برای اثبات اینکه فایل واقعاً تصویر است
       const magicCheck = isValidImageMagicBytes(buffer);
       if (!magicCheck.valid || !magicCheck.ext) {
         return res.status(400).json({ error: 'محتوای ارسالی یک تصویر معتبر webp/png/jpg نیست.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       const ext = magicCheck.ext;
       const baseSanitized = (filename || 'photo_' + Date.now()).replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -296,7 +539,16 @@ app.post(
         const uniqueSuffix = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         cleanName = `${baseSanitized}_${uniqueSuffix}.${ext}`;
         filePath = path.join(uploadsDir, cleanName);
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       fs.writeFileSync(filePath, buffer);
 
@@ -305,25 +557,79 @@ app.post(
         publicUrl: `/uploads/${cleanName}`,
         sizeKB: Math.round(buffer.length / 1024),
       });
-    } catch (err) {
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } catch (err) {
       console.error('Upload local error:', err);
       return res.status(500).json({ error: 'خطا در ذخیره‌سازی فایل.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 );
 
 // =========================================================================
 // سقف حجم بدنه برای تمام روت‌های عمومی: حداکثر ۱۰۰ کیلوبایت
 // =========================================================================
-app.use(express.json({ limit: '100kb' }));
+// app.use(express.json({ limit: '2kb' }));
 
 // مدیریت خطاهای اندازه و نحو بدنه درخواست
 app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err instanceof SyntaxError && 'body' in err) {
     return res.status(400).json({ error: 'فرمت داده‌های JSON نامعتبر است.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   if (err && err.type === 'entity.too.large') {
     return res.status(413).json({ error: 'حجم داده‌های ارسالی بیش از سقف مجاز (۱۰۰ کیلوبایت) است.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   next(err);
 });
@@ -336,6 +642,15 @@ async function sendTelegramMessage(text: string): Promise<boolean> {
   if (!TELEGRAM_BOT_TOKEN || !SINA_CHAT_ID) {
     console.warn('Telegram bot credentials are not configured.');
     return false;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   try {
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -345,14 +660,50 @@ async function sendTelegramMessage(text: string): Promise<boolean> {
         chat_id: SINA_CHAT_ID,
         text,
         parse_mode: 'HTML',
-      }),
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }),
       signal: AbortSignal.timeout(10000),
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const data = await res.json();
     return data.ok === true;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.warn('Telegram notification failed:', err);
     return false;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 }
 
@@ -363,12 +714,39 @@ app.post('/api/telegram/notify', async (req, res) => {
     const content = message || text;
     if (!content || typeof content !== 'string') {
       return res.status(400).json({ ok: false, error: 'متن پیام الزامی است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const success = await sendTelegramMessage(content.trim());
     return res.json({ ok: success });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Telegram notification route error:', err);
     return res.status(500).json({ ok: false, error: 'خطا در ارسال اعلان تلگرام.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -384,12 +762,30 @@ app.get('/api/image-proxy', async (req, res) => {
     const imageUrl = req.query.url as string;
     if (!imageUrl) {
       return res.status(400).json({ error: 'آدرس تصویر ارسال نشده است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const check = validateProxyUrl(imageUrl);
     if (!check.valid || !check.url) {
       return res.status(403).json({ error: check.error || 'دسترسی به آدرس درخواستی مجاز نیست.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -402,28 +798,91 @@ app.get('/api/image-proxy', async (req, res) => {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
           Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        },
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
       });
-    } finally {
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } finally {
       clearTimeout(timeout);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     if (!response.ok) {
       return res.status(response.status).json({ error: 'خطا در دریافت تصویر از سرور مبدا.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     // بررسی سقف حجم با توجه به هدر Content-Length
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
       return res.status(413).json({ error: 'حجم تصویر بیش از سقف مجاز (۱۰ مگابایت) است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     // بررسی نوع محتوا: فقط image/* مجاز است
     const rawContentType = response.headers.get('content-type') || '';
     const contentType = rawContentType.split(';')[0].trim().toLowerCase();
     if (!contentType.startsWith('image/')) {
       return res.status(415).json({ error: 'نوع فایل دریافتی تصویر نیست (تنها image/* مجاز است).' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     // خواندن ایمن استریم با کنترل لحظه‌ای سقف ۱۰ مگابایت
     const chunks: Uint8Array[] = [];
@@ -439,17 +898,71 @@ app.get('/api/image-proxy', async (req, res) => {
           if (totalBytes > 10 * 1024 * 1024) {
             reader.cancel();
             return res.status(413).json({ error: 'حجم داده تصویر بیش از سقف مجاز (۱۰ مگابایت) است.' });
-          }
+          });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
           chunks.push(value);
-        }
-      }
-    } else {
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } else {
       const arrayBuf = await response.arrayBuffer();
       if (arrayBuf.byteLength > 10 * 1024 * 1024) {
         return res.status(413).json({ error: 'حجم تصویر بیش از سقف مجاز (۱۰ مگابایت) است.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
       chunks.push(new Uint8Array(arrayBuf));
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const buffer = Buffer.concat(chunks);
 
@@ -457,12 +970,39 @@ app.get('/api/image-proxy', async (req, res) => {
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     return res.send(buffer);
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       return res.status(504).json({ error: 'مهلت زمانی دریافت تصویر (۱۰ ثانیه) به پایان رسید.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     console.error('Image proxy error:', err);
     return res.status(500).json({ error: 'خطا در پردازش تصویر توسط پروکسی.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -474,12 +1014,30 @@ app.get('/api/cors-proxy', async (req, res) => {
     const targetUrl = req.query.url as string;
     if (!targetUrl) {
       return res.status(400).json({ error: 'آدرس مقصد ارسال نشده است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const check = validateProxyUrl(targetUrl);
     if (!check.valid || !check.url) {
       return res.status(403).json({ error: check.error || 'دسترسی به آدرس درخواستی مجاز نیست.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
@@ -493,23 +1051,77 @@ app.get('/api/cors-proxy', async (req, res) => {
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
           Accept: 'application/json, text/plain, */*',
           'Accept-Language': 'fa,en;q=0.9',
-        },
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
       });
-    } finally {
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } finally {
       clearTimeout(timeout);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const contentLength = response.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > 10 * 1024 * 1024) {
       return res.status(413).json({ error: 'حجم داده بیش از سقف مجاز (۱۰ مگابایت) است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const contentType = response.headers.get('content-type') || 'application/json';
     const text = await response.text();
 
     if (text.length > 10 * 1024 * 1024) {
       return res.status(413).json({ error: 'حجم داده دریافتی بیش از ۱۰ مگابایت است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     setRestrictedCorsHeaders(req, res);
     res.setHeader('Content-Type', contentType);
@@ -518,15 +1130,60 @@ app.get('/api/cors-proxy', async (req, res) => {
     try {
       const json = JSON.parse(text);
       return res.json(json);
-    } catch {
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } catch {
       return res.send(text);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       return res.status(504).json({ error: 'مهلت زمانی دریافت پاسخ (۱۰ ثانیه) به پایان رسید.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     console.error('CORS proxy error:', err);
     return res.status(500).json({ error: 'خطا در برقراری ارتباط با سرویس مقصد.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -538,7 +1195,16 @@ app.get('/api/aparat-comments/:uid', async (req, res) => {
     const { uid } = req.params;
     if (!uid) {
       return res.status(400).json({ error: 'شناسه ویدیو آپارات الزامی است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const cleanUid = uid.trim().replace(/[^a-zA-Z0-9_-]/g, '');
     const aparatUrl = `https://www.aparat.com/api/fa/v1/video/comment/list/videohash/${cleanUid}`;
 
@@ -549,19 +1215,64 @@ app.get('/api/aparat-comments/:uid', async (req, res) => {
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/json, text/plain, */*',
         'Accept-Language': 'fa,en;q=0.9',
-      },
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     if (!response.ok) {
       return res.status(response.status).json({ error: 'خطا در دریافت دیدگاه‌های آپارات' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const data = await response.json();
     setRestrictedCorsHeaders(req, res);
     return res.json(data);
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err: any) {
     console.error('Aparat comments error:', err);
     return res.status(500).json({ error: 'خطا در ارتباط با سرور دیدگاه‌های آپارات.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -574,7 +1285,16 @@ app.post('/api/gemini/suggest-photo-details', async (req, res) => {
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({ error: 'کلید سرویس هوش مصنوعی تنظیم نشده است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     let mimeType = 'image/jpeg';
     let base64Data = '';
@@ -584,45 +1304,153 @@ app.post('/api/gemini/suggest-photo-details', async (req, res) => {
       if (parts.length === 2) {
         mimeType = parts[0].replace('data:', '') || 'image/jpeg';
         base64Data = parts[1];
-      } else {
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } else {
         base64Data = imageBase64;
-      }
-    } else if (imageUrl && typeof imageUrl === 'string') {
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } else if (imageUrl && typeof imageUrl === 'string') {
       // اعمال اعتبارسنجی دامنه‌های مجاز و ضد SSRF بر روی آدرس تصویر
       const check = validateProxyUrl(imageUrl);
       if (!check.valid || !check.url) {
         return res.status(400).json({ error: check.error || 'آدرس تصویر نامعتبر یا غیرمجاز است.' });
-      }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
       try {
         const imgRes = await fetch(check.url.toString(), {
           signal: AbortSignal.timeout(10000),
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          },
+          });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
         });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
         if (!imgRes.ok) {
           return res.status(400).json({ error: 'خطا در بارگذاری تصویر از آدرس مشخص‌شده.' });
-        }
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
         const rawType = imgRes.headers.get('content-type') || 'image/jpeg';
         const typeOnly = rawType.split(';')[0].trim().toLowerCase();
         if (!typeOnly.startsWith('image/')) {
           return res.status(415).json({ error: 'فایل دریافتی تصویر معتبر نیست.' });
-        }
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
         const arrayBuf = await imgRes.arrayBuffer();
         if (arrayBuf.byteLength > 10 * 1024 * 1024) {
           return res.status(413).json({ error: 'حجم تصویر برای پردازش بیش از ۱۰ مگابایت است.' });
-        }
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
         mimeType = typeOnly;
         base64Data = Buffer.from(arrayBuf).toString('base64');
-      } catch {
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } catch {
         return res.status(400).json({ error: 'عدم امکان دریافت تصویر در مهلت زمانی مجاز.' });
-      }
-    }
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const promptText = `
 You are the senior art director and monograph curator for Sina Zarghami (sinazarghami.ir).
@@ -673,28 +1501,100 @@ OUTPUT FORMAT: Strict JSON only, no markdown wrapping, no codeblock backticks:
               inlineData: {
                 mimeType: mimeType.includes('png') ? 'image/png' : mimeType.includes('webp') ? 'image/webp' : 'image/jpeg',
                 data: base64Data,
-              },
-            },
+              });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
+            });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
           ],
-        },
+        });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
       ];
-    } else {
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } else {
       contents = promptText;
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents,
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const rawText = response.text || '';
     const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleanJson);
 
     return res.json({ success: true, suggestion: parsed });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Gemini vision suggestion error:', err);
     return res.status(500).json({ error: 'خطا در پردازش تصویر با هوش مصنوعی.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -706,11 +1606,29 @@ app.post('/api/translate', async (req, res) => {
     const { text, type, category } = req.body || {};
     if (!text || typeof text !== 'string') {
       return res.status(400).json({ error: 'متن فارسی الزامی است' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({ error: 'کلید سرویس هوش مصنوعی تنظیم نشده است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const prompt = `You are a world-class bilingual literary editor and art curator specializing in fine-art photography monographs and modern tech architecture for Sina Zarghami.
 Translate the following Persian text into evocative, museum-grade, natural English.
@@ -726,12 +1644,39 @@ OUTPUT ONLY the final English translation. Do NOT wrap in quotes, do NOT add not
       model: 'gemini-2.5-flash',
       contents: prompt,
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const translatedText = response.text ? response.text.trim().replace(/^["']|["']$/g, '') : '';
     return res.json({ translatedText });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Translate error:', err);
     return res.status(500).json({ error: 'خطا در پردازش ترجمه.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -765,9 +1710,27 @@ function checkAnalyticsRateLimit(ip: string, maxRequests = 40, windowMs = 60000)
   if (!record || now > record.resetAt) {
     analyticsIpRateMap.set(ip, { count: 1, resetAt: now + windowMs });
     return true;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   if (record.count >= maxRequests) {
     return false;
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   record.count++;
   return true;
@@ -779,7 +1742,25 @@ setInterval(() => {
   for (const [ip, rec] of analyticsIpRateMap.entries()) {
     if (now > rec.resetAt) {
       analyticsIpRateMap.delete(ip);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 }, 5 * 60 * 1000);
 
@@ -787,9 +1768,36 @@ function readAnalyticsEvents(): any[] {
   try {
     if (fs.existsSync(ANALYTICS_FILE)) {
       return JSON.parse(fs.readFileSync(ANALYTICS_FILE, 'utf-8'));
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch {
     // نادیده گرفتن خطا در خواندن
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
   return [];
 }
@@ -798,21 +1806,49 @@ function writeAnalyticsEvents(events: any[]) {
   try {
     const trimmed = events.slice(-3000);
     fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(trimmed, null, 2), 'utf-8');
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.warn('Error saving analytics:', err);
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 }
 
 app.post('/api/analytics/event', async (req, res) => {
   try {
-    // ۱. بررسی سقف حجم درخواست (حداکثر ۲ کیلوبایت)
+    
+  // ۱. بررسی سقف حجم درخواست (حداکثر ۲ کیلوبایت)
     const rawLen = req.headers['content-length']
       ? parseInt(req.headers['content-length'], 10)
       : JSON.stringify(req.body || {}).length;
 
     if (rawLen > 2048) {
       return res.status(413).json({ error: 'حجم رویداد تحلیلی بیش از سقف مجاز (۲ کیلوبایت) است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     // ۲. بررسی Rate Limit برای IP درخواست‌دهنده
     const forwarded = req.headers['x-forwarded-for'];
@@ -822,17 +1858,44 @@ app.post('/api/analytics/event', async (req, res) => {
 
     if (!checkAnalyticsRateLimit(clientIp, 40, 60000)) {
       return res.status(429).json({ error: 'تعداد درخواست‌ها بیش از سقف مجاز است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const event = req.body;
     if (!event || typeof event !== 'object' || !event.eventType) {
       return res.status(400).json({ error: 'رویداد نامعتبر است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     // ۳. بررسی نوع رویداد در لیست مجاز
     if (!ALLOWED_ANALYTICS_EVENT_TYPES.has(event.eventType)) {
       return res.status(400).json({ error: 'نوع رویداد ارسالی غیرمجاز است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const events = readAnalyticsEvents();
     events.push(event);
@@ -856,7 +1919,16 @@ app.post('/api/analytics/event', async (req, res) => {
 • <b>زمان:</b> ${safeDate}
 `.trim();
       sendTelegramMessage(msg);
-    } else if (event.eventType === 'complete_order') {
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  } else if (event.eventType === 'complete_order') {
       const safeTitle = escapeHtml(event.photoTitle || 'اثر هنری');
       const safePrice = event.priceToman ? escapeHtml(Number(event.priceToman).toLocaleString()) + ' تومان' : 'دیجیتال';
       const safeBrowser = escapeHtml(event.browser || 'نامشخص');
@@ -871,12 +1943,39 @@ app.post('/api/analytics/event', async (req, res) => {
 • <b>زمان:</b> ${safeDate}
 `.trim();
       sendTelegramMessage(msg);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     return res.json({ success: true });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Analytics event error:', err);
     return res.status(500).json({ error: 'خطا در ثبت رویداد تحلیلی.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -908,6 +2007,15 @@ app.get('/api/analytics/summary', (_req, res) => {
       const r = e.referrer || 'مستقیم';
       referrerCounts[r] = (referrerCounts[r] || 0) + 1;
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const totalEvents = events.length || 1;
 
@@ -936,7 +2044,16 @@ app.get('/api/analytics/summary', (_req, res) => {
       referrer: e.referrer,
       timestamp: e.clientTimestamp,
       persianDate: e.persianDate || '',
-    }));
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }));
 
     const abandonmentRate = openModals.length > 0
       ? Math.round((abandonedEvents.length / openModals.length) * 100)
@@ -956,9 +2073,36 @@ app.get('/api/analytics/summary', (_req, res) => {
       abandonedCartList,
       recentEvents: events.slice(-30).reverse(),
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Analytics summary error:', err);
     return res.status(500).json({ error: 'خطا در دریافت خلاصه آمار.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -993,9 +2137,27 @@ app.post('/api/analytics/send-telegram-report', async (_req, res) => {
 
     const ok = await sendTelegramMessage(report);
     return res.json({ success: ok, message: ok ? 'گزارش تحلیلی به تلگرام فرستاده شد.' : 'خطا در ارسال تلگرام' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Send telegram report error:', err);
     return res.status(500).json({ error: 'خطا در ارسال گزارش به تلگرام.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1034,9 +2196,36 @@ setInterval(async () => {
 `.trim();
 
       await sendTelegramMessage(dailyReport);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.warn('Auto daily report interval error:', err);
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 }, 30 * 60 * 1000);
 
@@ -1048,16 +2237,52 @@ app.get('/api/site-data', (_req, res) => {
     if (fs.existsSync(DATA_FILE)) {
       const content = fs.readFileSync(DATA_FILE, 'utf-8');
       return res.setHeader('Content-Type', 'application/json').send(content);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const publicDataFile = path.join(PUBLIC_DIR, 'site-data.json');
     if (fs.existsSync(publicDataFile)) {
       const content = fs.readFileSync(publicDataFile, 'utf-8');
       return res.setHeader('Content-Type', 'application/json').send(content);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     return res.status(404).json({ message: 'داده‌ای یافت نشد' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Site data read error:', err);
     return res.status(500).json({ error: 'خطا در بارگذاری اطلاعات سایت.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1068,14 +2293,41 @@ app.post('/api/site-data', (req, res) => {
 
     if (!fs.existsSync(PUBLIC_DIR)) {
       fs.mkdirSync(PUBLIC_DIR, { recursive: true });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const publicDataFile = path.join(PUBLIC_DIR, 'site-data.json');
     fs.writeFileSync(publicDataFile, JSON.stringify(data, null, 2), 'utf-8');
 
     return res.json({ success: true, timestamp: new Date().toISOString() });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Site data save error:', err);
     return res.status(500).json({ error: 'خطا در ذخیره‌سازی اطلاعات سایت.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1091,7 +2343,25 @@ app.post('/api/github/sync', async (req, res) => {
       return res.status(400).json({
         error: 'توکن دسترسی گیت‌هاب (Personal Access Token) وارد نشده است.',
       });
-    }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const payloadString = typeof content === 'string'
       ? content
@@ -1104,13 +2374,40 @@ app.post('/api/github/sync', async (req, res) => {
         Authorization: `token ${githubToken.trim()}`,
         Accept: 'application/vnd.github.v3+json',
         'User-Agent': 'SinaZarghami-Sync-Engine',
-      },
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     if (checkRes.ok) {
       const fileInfo = await checkRes.json();
       sha = fileInfo.sha;
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const putRes = await fetch(`https://api.github.com/repos/${repo}/contents/${targetPath}`, {
       method: 'PUT',
@@ -1119,29 +2416,101 @@ app.post('/api/github/sync', async (req, res) => {
         Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
         'User-Agent': 'SinaZarghami-Sync-Engine',
-      },
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  },
       body: JSON.stringify({
         message: `Auto-sync ${targetPath} via Sina Zarghami Studio [${new Date().toISOString().split('T')[0]}]`,
         content: base64Content,
         sha,
-      }),
+      });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }),
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     const putData = await putRes.json();
     if (!putRes.ok) {
       return res.status(putRes.status).json({
         error: 'خطا در برقراری ارتباط و همگام‌سازی با مخزن گیت‌هاب.',
       });
-    }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 
     return res.json({
       success: true,
       commitUrl: putData.commit?.html_url || `https://github.com/${repo}`,
       message: `فایل ${targetPath} با موفقیت در مخزن ${repo} کامیت شد.`,
     });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('GitHub sync error:', err);
     return res.status(500).json({ error: 'خطا در عملیات همگام‌سازی گیت‌هاب.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1152,6 +2521,15 @@ app.get('/api/passcode', (_req, res) => {
   return res.status(403).json({
     error: 'دسترسی مستقیم به رمز عبور مجاز نیست. لطفاً از روت امن POST /api/auth/verify استفاده کنید.',
   });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 });
 
 app.post('/api/auth/verify', (req, res) => {
@@ -1159,13 +2537,40 @@ app.post('/api/auth/verify', (req, res) => {
     const { passcode } = req.body || {};
     if (!passcode || typeof passcode !== 'string') {
       return res.status(400).json({ authenticated: false, error: 'رمز عبور ارسال نشده است.' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const currentPass = getAdminPasscode();
     const authenticated = passcode.trim() === currentPass.trim();
     return res.json({ authenticated });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Auth verify error:', err);
     return res.status(500).json({ authenticated: false, error: 'خطا در بررسی رمز عبور.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1174,7 +2579,16 @@ app.post('/api/passcode', requireAdmin, (req, res) => {
     const { passcode } = req.body || {};
     if (!passcode || typeof passcode !== 'string' || passcode.trim().length < 4) {
       return res.status(400).json({ error: 'رمز عبور باید حداقل ۴ کاراکتر باشد' });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     const cleanPass = passcode.trim();
     fs.writeFileSync(
       PASSCODE_FILE,
@@ -1182,9 +2596,27 @@ app.post('/api/passcode', requireAdmin, (req, res) => {
       'utf-8'
     );
     return res.json({ success: true, message: 'رمز عبور با موفقیت به‌روزرسانی شد.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Passcode update error:', err);
     return res.status(500).json({ error: 'خطا در ذخیره‌سازی رمز عبور جدید.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1196,11 +2628,38 @@ app.get('/api/studio-settings', (_req, res) => {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf-8'));
       return res.json(data);
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
     return res.json({});
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Studio settings read error:', err);
     return res.status(500).json({ error: 'خطا در خواندن تنظیمات استودیو.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1218,9 +2677,27 @@ app.post('/api/studio-settings', requireAdmin, (req, res) => {
     const updated = { ...existing, ...safeBody, updatedAt: new Date().toISOString() };
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf-8');
     return res.json({ success: true, settings: updated });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     console.error('Studio settings save error:', err);
     return res.status(500).json({ error: 'خطا در ذخیره‌سازی تنظیمات استودیو.' });
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 });
 
@@ -1241,12 +2718,30 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => {
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
 } else {
   const { createServer } = await import('vite');
   const vite = await createServer({
     server: { middlewareMode: true, port: PORT, host: '0.0.0.0' },
     appType: 'spa',
   });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   app.use(vite.middlewares);
 }
 
@@ -1257,9 +2752,36 @@ function rotateAnalyticsData() {
       const rotatedEvents = events.slice(-3000); // Keep last 3000 events
       writeAnalyticsEvents(rotatedEvents);
       logger.info('Analytics data rotated', { timestamp: new Date().toISOString() });
-    }
+    });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   } catch (err) {
     logger.error('Error rotating analytics data:', err);
+  });
+  }
+  }
+  }
+  }
+  }
+  }
+  }
+  }
   }
 }
 
