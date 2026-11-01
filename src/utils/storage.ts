@@ -5,15 +5,10 @@
 
 import { SiteContent } from '../types';
 import { initialSiteContent } from '../data/initialData';
-import { notifyPasswordChanged, sendPasswordRecoveryTelegram } from './telegram';
+import { Env } from '../../functions/api/_shared/runtime';
 
 const STORAGE_KEY = 'sina_portfolio_site_data_v4';
-const PASSCODE_KEY = 'sina_portfolio_admin_pin_v4';
 const SESSION_AUTH_KEY = 'sina_admin_session_auth_v4';
-const GITHUB_TOKEN_KEY = 'sina_github_token_saved';
-
-// رمز عبور پیش‌فرض
-const DEFAULT_PASSCODE = ((import.meta as any).env || {}).DEFAULT_PASSCODE || 'sina2026';
 
 /**
  * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
@@ -54,19 +49,8 @@ export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
  * همگام‌سازی رمز عبور از سرور به منظور یکسان بودن در گوشی و لپ‌تاپ
  */
 export async function syncPasscodeFromServer(): Promise<string> {
-  try {
-    const res = await fetch(`/api/passcode?t=${Date.now()}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.passcode && typeof data.passcode === 'string') {
-        localStorage.setItem(PASSCODE_KEY, data.passcode);
-        return data.passcode;
-      }
-    }
-  } catch (e) {
-    // استفاده از رمز موجود در لوکال
-  }
-  return localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
+  // رمز عبور هرگز از API دریافت یا در مرورگر ذخیره نمی‌شود.
+  return '';
 }
 
 /**
@@ -140,15 +124,15 @@ export function resetSiteContent(): SiteContent {
 /**
  * بررسی احراز هویت در سشن فعلی مرورگر
  */
-export function isSessionAuthenticated(): boolean {
-  return sessionStorage.getItem(SESSION_AUTH_KEY) === 'true';
+export function isSessionAuthenticated(env: Env): boolean {
+  return sessionStorage.getItem(SESSION_AUTH_KEY) === 'true' && env.ADMIN_EMAIL;
 }
 
 /**
  * ثبت ورود موفق در سشن
  */
-export function setSessionAuthenticated(auth: boolean): void {
-  if (auth) {
+export function setSessionAuthenticated(auth: boolean, env: Env): void {
+  if (auth && env.ADMIN_EMAIL) {
     sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
   } else {
     sessionStorage.removeItem(SESSION_AUTH_KEY);
@@ -158,64 +142,65 @@ export function setSessionAuthenticated(auth: boolean): void {
 /**
  * بررسی رمز عبور ورودی
  */
-export function checkAdminPasscode(pin: string): boolean {
-  if (!pin || pin.trim().length < 4) {
+export async function checkAdminPasscode(pin: string): Promise<boolean> {
+  if (!pin?.trim()) return false;
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ passcode: pin.trim() }),
+    });
+    return res.ok && (await res.json()).authenticated === true;
+  } catch {
     return false;
   }
-  const stored = localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
-  return pin.trim() === stored.trim();
 }
 
 /**
  * دریافت رمز فعلی جهت ارسال به تلگرام در صورت فراموشی
  */
 export function getCurrentPasscode(): string {
-  return localStorage.getItem(PASSCODE_KEY) || DEFAULT_PASSCODE;
+  return '';
 }
 
 /**
  * تغییر رمز عبور و ذخیره همزمان در سرور، لوکال‌استوریج و ارسال به تلگرام شخصی سینا ضرغامی
  */
 export async function updateAdminPasscode(newPin: string): Promise<boolean> {
-  if (newPin && newPin.trim().length >= 4) {
-    const cleanPin = newPin.trim();
-    localStorage.setItem(PASSCODE_KEY, cleanPin);
-
-    // ذخیره در سرور برای هماهنگی بین گوشی و لپ‌تاپ
-    try {
-      await fetch('/api/passcode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passcode: cleanPin }),
-      });
-    } catch (err) {
-      console.warn('عدم امکان ذخیره رمز در سرور:', err);
-    }
-
-    // ارسال آنی رمز جدید به تلگرام
-    await notifyPasswordChanged(cleanPin);
-    return true;
+  const cleanPin = newPin.trim();
+  if (cleanPin.length < 8 || cleanPin.length > 128) return false;
+  try {
+    const res = await fetch('/api/passcode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ passcode: cleanPin }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('عدم امکان ذخیره رمز در سرور:', err);
+    return false;
   }
-  return false;
 }
 
 /**
  * درخواست بازیابی و ارسال رمز به تلگرام در صورت فراموشی
  */
 export async function requestPasswordRecoveryToTelegram(): Promise<boolean> {
-  const currentPin = getCurrentPasscode();
-  return sendPasswordRecoveryTelegram(currentPin);
+  // Stored credentials cannot be retrieved or sent back to a messaging service.
+  return false;
 }
 
 /**
  * دریافت توکن ذخیره‌شده گیت‌هاب جهت انتشار خودکار
  */
 export function getSavedGitHubToken(): string {
-  return localStorage.getItem(GITHUB_TOKEN_KEY) || '';
+  return '';
 }
 
-export function saveGitHubToken(token: string): void {
-  localStorage.setItem(GITHUB_TOKEN_KEY, token.trim());
+export function saveGitHubToken(_token: string): void {
+  // Privileged GitHub credentials must be configured as server-side Cloudflare Secrets.
 }
 
 /**

@@ -28,17 +28,14 @@ import {
 import {
   checkAdminPasscode,
   updateAdminPasscode,
-  requestPasswordRecoveryToTelegram,
   exportSiteContentToJson,
   compressMultipleImagesToWebP,
   CompressedImageResult,
-  getSavedGitHubToken,
-  saveGitHubToken,
   isSessionAuthenticated,
   setSessionAuthenticated,
   saveSiteContent,
 } from '../utils/storage';
-import { uploadToSupabaseStorage, smartUploadImage } from '../utils/supabase';
+import { smartUploadImage } from '../utils/supabase';
 import { translateToArtisticEnglish } from '../utils/aiTranslator';
 import { sendTelegramNotification } from '../utils/telegram';
 import { VoiceDictationButton } from './VoiceDictationButton';
@@ -108,7 +105,22 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
   const [newPin, setNewPin] = useState('');
-  const [recoverySent, setRecoverySent] = useState(false);
+
+  useEffect(() => {
+    if (!isSessionAuthenticated()) return;
+    fetch('/api/auth/verify', { credentials: 'same-origin' })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!data.authenticated) {
+          setIsAuthenticated(false);
+          setSessionAuthenticated(false);
+        }
+      })
+      .catch(() => {
+        setIsAuthenticated(false);
+        setSessionAuthenticated(false);
+      });
+  }, []);
 
   // تب فعال در پنل استودیو
   const [activeTab, setActiveTab] = useState<
@@ -133,7 +145,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [rawFiles, setRawFiles] = useState<File[]>([]);
   const [compressedResults, setCompressedResults] = useState<CompressedImageResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadToCloud, setUploadToCloud] = useState(true);
   const [supabaseUploadMsg, setSupabaseUploadMsg] = useState<string | null>(null);
   const [compressQuality, setCompressQuality] = useState<number>(0.68);
   const [compressMaxDim, setCompressMaxDim] = useState<number>(1400);
@@ -333,12 +344,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [resType, setResType] = useState<'experience' | 'education' | 'exhibition' | 'award' | 'publication'>('experience');
 
   // استیت‌های انتشار ابری و پشتیبان‌گیری
-  const [githubToken, setGithubToken] = useState(getSavedGitHubToken());
-  const [githubRepo, setGithubRepo] = useState('szarghami/sinazarghami.ir');
+  const githubRepo = 'szarghami/sinazarghami-aistudio-site';
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSyncingGithub, setIsSyncingGithub] = useState(false);
   const [githubSyncStatus, setGithubSyncStatus] = useState<{ success: boolean; msg: string } | null>(null);
-  const [showGithubToken, setShowGithubToken] = useState(false);
   const [publishStatus, setPublishStatus] = useState<{ success: boolean; msg: string } | null>(null);
   const [telegramTestStatus, setTelegramTestStatus] = useState<string | null>(null);
 
@@ -349,24 +358,15 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    * همگام‌سازی دستی و مستقیم فایل‌ها با مخزن گیت‌هاب
    */
   const handleManualGithubSync = async () => {
-    if (!githubToken.trim()) {
-      alert(isFa ? 'لطفاً ابتدا توکن دسترسی گیت‌هاب (Personal Access Token) خود را وارد کنید.' : 'Please enter your GitHub token first.');
-      return;
-    }
     try {
       setIsSyncingGithub(true);
       setGithubSyncStatus(null);
-      saveGitHubToken(githubToken.trim());
 
       const res = await fetch('/api/github/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: githubToken.trim(),
-          repo: githubRepo.trim(),
-          path: 'site-data.json',
-          content: content,
-        }),
+        credentials: 'same-origin',
+        body: JSON.stringify({ content }),
       });
 
       const data = await res.json();
@@ -430,9 +430,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   /**
    * بررسی رمز ورود
    */
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (checkAdminPasscode(pinInput)) {
+    if (await checkAdminPasscode(pinInput)) {
       setIsAuthenticated(true);
       setSessionAuthenticated(true);
       setPinError(false);
@@ -445,22 +445,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    * خروج از پنل مدیریت
    */
   const handleLogout = () => {
+    fetch('/api/auth/verify', { method: 'DELETE', credentials: 'same-origin' }).catch(() => {});
     setIsAuthenticated(false);
     setSessionAuthenticated(false);
     setPinInput('');
-  };
-
-  /**
-   * ارسال آنی رمز به تلگرام سینا در صورت فراموشی
-   */
-  const handleRequestTelegramRecovery = async () => {
-    const ok = await requestPasswordRecoveryToTelegram();
-    if (ok) {
-      setRecoverySent(true);
-      setTimeout(() => setRecoverySent(false), 8000);
-    } else {
-      alert('خطا در ارسال پیام به تلگرام');
-    }
   };
 
   // =========================================================================
@@ -620,24 +608,17 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       let mainImageUrl = photoImageUrl;
       let additionalImages: string[] = [];
 
-      // اگر کاربر فایل جدیدی انتخاب کرده باشد، آن را فشرده و آپلود می‌کنیم
+      // تصاویر جدید فقط پس از ذخیره موفق در R2 به محتوا اضافه می‌شوند.
       if (compressedResults.length > 0) {
-        if (uploadToCloud) {
-          setSupabaseUploadMsg('در حال بارگذاری هوشمند در Supabase Storage و سرور...');
-          const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
-          mainImageUrl = mainUpload.success && mainUpload.publicUrl ? mainUpload.publicUrl : compressedResults[0].dataUrl;
+        setSupabaseUploadMsg('در حال بارگذاری تصاویر در فضای ابری...');
+        const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
+        if (!mainUpload.success || !mainUpload.publicUrl) throw new Error(mainUpload.error || 'بارگذاری تصویر اصلی ناموفق بود.');
+        mainImageUrl = mainUpload.publicUrl;
 
-          if (compressedResults.length > 1) {
-            for (let i = 1; i < compressedResults.length; i++) {
-              const subUpload = await smartUploadImage(compressedResults[i].dataUrl, `sub_${Date.now()}_${i}`);
-              additionalImages.push(subUpload.success && subUpload.publicUrl ? subUpload.publicUrl : compressedResults[i].dataUrl);
-            }
-          }
-        } else {
-          mainImageUrl = compressedResults[0].dataUrl;
-          if (compressedResults.length > 1) {
-            additionalImages = compressedResults.slice(1).map((r) => r.dataUrl);
-          }
+        for (let i = 1; i < compressedResults.length; i++) {
+          const subUpload = await smartUploadImage(compressedResults[i].dataUrl, `sub_${Date.now()}_${i}`);
+          if (!subUpload.success || !subUpload.publicUrl) throw new Error(subUpload.error || `بارگذاری تصویر ${i + 1} ناموفق بود.`);
+          additionalImages.push(subUpload.publicUrl);
         }
       }
 
@@ -1547,8 +1528,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     try {
       setIsPublishing(true);
       setPublishStatus(null);
-      saveGitHubToken(githubToken);
-
       // ۱. ذخیره فوری در کش لوکال استوریج
       saveSiteContent(content);
 
@@ -1560,8 +1539,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       });
 
       if (!serverRes.ok) {
-        throw new Error('سرور در ذخیره‌سازی داده با خطا مواجه شد.');
+        const saveError = await serverRes.json().catch(() => ({}));
+        throw new Error(saveError.error || 'سرور در ذخیره‌سازی داده با خطا مواجه شد.');
       }
+      const savedData = await serverRes.json().catch(() => ({}));
+      if (savedData.content) onUpdateContent(savedData.content as SiteContent);
 
       // ۳. ارسال اعلان انتشار به تلگرام سینا ضرغامی
       await sendTelegramNotification(
@@ -1569,33 +1551,23 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         `سینا جان، تمام تغییرات، آثار جدید، پروژه‌ها و متون در سرور ابری ذخیره شدند و اکنون در تمام گوشی‌ها و لپ‌تاپ‌ها به صورت هماهنگ نمایش داده می‌شوند.`
       );
 
-      // ۴. در صورتی که توکن گیت‌هاب وارد شده باشد، همگام‌سازی با مخزن szarghami/sinazarghami.ir انجام می‌شود
+      // ۴. همگام‌سازی اختیاری با Secret سمت سرور (توکنی به مرورگر ارسال نمی‌شود)
       let githubMsg = '';
-      if (githubToken && githubToken.trim()) {
-        try {
-          const syncRes = await fetch('/api/github/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token: githubToken.trim(),
-              repo: 'szarghami/sinazarghami.ir',
-              path: 'site-data.json',
-              content: content,
-            }),
-          });
-          const syncData = await syncRes.json();
-          if (syncRes.ok && syncData.success) {
-            githubMsg = isFa
-              ? ' همچنین همگام‌سازی با مخزن گیت‌هاب szarghami/sinazarghami.ir با موفقیت انجام شد.'
-              : ' and repository szarghami/sinazarghami.ir was successfully synchronized.';
-          } else if (syncData.error) {
-            githubMsg = isFa
-              ? ` (توجه: ذخیره در سرور انجام شد، اما گیت‌هاب: ${syncData.error})`
-              : ` (Server updated, GitHub notice: ${syncData.error})`;
-          }
-        } catch (gitErr) {
-          console.warn('GitHub sync optional warning:', gitErr);
+      try {
+        const syncRes = await fetch('/api/github/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ content: savedData.content || content }),
+        });
+        const syncData = await syncRes.json();
+        if (syncRes.ok && syncData.success) {
+          githubMsg = isFa ? ' مخزن گیت‌هاب نیز همگام شد.' : ' GitHub repository synchronized.';
+        } else if (syncRes.status !== 503) {
+          githubMsg = isFa ? ` (همگام‌سازی گیت‌هاب انجام نشد: ${syncData.error || 'خطا'})` : ` (GitHub sync failed: ${syncData.error || 'error'})`;
         }
+      } catch (gitErr) {
+        console.warn('GitHub sync optional warning:', gitErr);
       }
 
       setInstantPublishSuccess(true);
@@ -1758,22 +1730,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
               </button>
             </form>
 
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleRequestTelegramRecovery}
-                className="text-[11px] text-stone-500 hover:text-amber-800 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <Send className="w-3 h-3" />
-                <span>{isFa ? 'ارسال محرمانه رمز عبور به تلگرام من (@sina_zarghami)' : 'Send recovery to my Telegram'}</span>
-              </button>
-
-              {recoverySent && (
-                <p className="text-xs text-emerald-600 mt-2 font-medium">
-                  {isFa ? 'رمز عبور با موفقیت به تلگرام شما ارسال شد.' : 'Password sent to Telegram.'}
-                </p>
-              )}
-            </div>
+            <p className="pt-2 text-[11px] text-stone-500">
+              {isFa ? 'رمز عبور به دلایل امنیتی قابل بازیابی نیست؛ در صورت فراموشی، رمز جدید را از تنظیمات امن Cloudflare تعیین کنید.' : 'For security, passwords cannot be recovered. If forgotten, set a new one through the secured Cloudflare configuration.'}
+            </p>
           </div>
         ) : (
           /* ================================================================ */
@@ -1960,15 +1919,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <Images className="w-4 h-4 text-amber-700" />
                         <span>{isFa ? 'انتخاب عکس یا مجموعه عکس (آلبوم چندعکسی)' : 'Upload Photo(s)'}</span>
                       </h4>
-                      <label className="flex items-center gap-1.5 text-xs text-stone-700 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={uploadToCloud}
-                          onChange={(e) => setUploadToCloud(e.target.checked)}
-                          className="rounded text-amber-700 focus:ring-amber-600"
-                        />
-                        <span>{isFa ? 'آپلود در باکت ابری (sina_site)' : 'Supabase Cloud'}</span>
-                      </label>
+                      <span className="text-xs text-emerald-800">{isFa ? 'ذخیره امن در Cloudflare R2' : 'Secure Cloudflare R2 storage'}</span>
                     </div>
 
                     <input
@@ -5174,10 +5125,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="font-bold flex items-center gap-2 text-stone-900">
                       <Github className="w-4 h-4 text-stone-900" />
-                      <span>{isFa ? 'همگام‌سازی با مخزن گیت‌هاب (szarghami/sinazarghami.ir)' : 'GitHub Repository Sync'}</span>
+                      <span>{isFa ? 'همگام‌سازی با مخزن گیت‌هاب (szarghami/sinazarghami-aistudio-site)' : 'GitHub Repository Sync'}</span>
                     </div>
                     <a
-                      href="https://github.com/szarghami/sinazarghami.ir"
+                      href="https://github.com/szarghami/sinazarghami-aistudio-site"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] text-amber-800 hover:underline flex items-center gap-1"
@@ -5189,52 +5140,23 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
                   <p className="text-[11px] text-stone-600 leading-relaxed">
                     {isFa
-                      ? 'برای همگام‌سازی خودکار و کامیت داده‌های سایت در مخزن گیت‌هاب، توکن شخصی گیت‌هاب (Personal Access Token با دسترسی repo) را در کادر زیر وارد کنید:'
-                      : 'Enter your GitHub Personal Access Token with repo scope for automated commits:'}
+                      ? 'اعتبارنامه گیت‌هاب فقط در Cloudflare به‌صورت Secret تنظیم می‌شود و هرگز در مرورگر وارد یا ذخیره نمی‌شود.'
+                      : 'GitHub credentials are configured only as Cloudflare Secrets and are never entered or stored in this browser.'}
                   </p>
 
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type={showGithubToken ? 'text' : 'password'}
-                          value={githubToken}
-                          onChange={(e) => {
-                            setGithubToken(e.target.value);
-                            saveGitHubToken(e.target.value);
-                          }}
-                          placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                          className="w-full px-3 py-2 pr-9 border border-stone-300 rounded-lg bg-white font-mono text-xs focus:outline-none focus:ring-1 focus:ring-amber-600"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowGithubToken(!showGithubToken)}
-                          className="absolute right-2.5 top-2.5 text-stone-400 hover:text-stone-700 cursor-pointer"
-                          title={showGithubToken ? 'پنهان‌سازی' : 'نمایش'}
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleManualGithubSync}
-                        disabled={isSyncingGithub || !githubToken.trim()}
-                        className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap"
-                      >
-                        {isSyncingGithub ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>{isFa ? 'در حال کامیت...' : 'Syncing...'}</span>
-                          </>
-                        ) : (
-                          <>
-                            <CloudUpload className="w-3.5 h-3.5 text-emerald-400" />
-                            <span>{isFa ? 'کامیت به گیت‌هاب' : 'Sync to GitHub'}</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleManualGithubSync}
+                      disabled={isSyncingGithub}
+                      className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                    >
+                      {isSyncingGithub ? (
+                        <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>{isFa ? 'در حال همگام‌سازی...' : 'Syncing...'}</span></>
+                      ) : (
+                        <><CloudUpload className="w-3.5 h-3.5 text-emerald-400" /><span>{isFa ? 'همگام‌سازی امن با گیت‌هاب' : 'Secure GitHub sync'}</span></>
+                      )}
+                    </button>
 
                     {githubSyncStatus && (
                       <div
@@ -5263,36 +5185,36 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </h4>
                   <p className="text-xs text-stone-600 leading-relaxed">
                     {isFa
-                      ? 'رمز جدید را وارد کنید. پس از ثبت، رمز جدید فوراً در سرور ذخیره شده، در گوشی و لپ‌تاپ همگام گردیده و به اکانت تلگرام شخصی شما نیز فرستاده می‌شود.'
-                      : 'Set new pin code.'}
+                      ? 'رمز جدید حداقل ۸ نویسه‌ای انتخاب کنید. رمز در مرورگر ذخیره یا از سرور بازیابی نمی‌شود.'
+                      : 'Choose a password with at least 8 characters. It is never stored in browser storage or retrievable from the server.'}
                   </p>
                 </div>
 
                 <div className="space-y-3">
                   <input
                     type="password"
-                    placeholder={isFa ? 'رمز عبور جدید (حداقل ۴ کاراکتر)' : 'New password'}
+                    placeholder={isFa ? 'رمز عبور جدید (حداقل ۸ نویسه)' : 'New password (8+ characters)'}
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value)}
                     className="w-full px-4 py-2.5 text-sm border border-stone-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-600 font-mono"
                   />
                   <button
                     onClick={async () => {
-                      if (newPin.trim().length >= 4) {
-                        await updateAdminPasscode(newPin.trim());
-                        alert(
-                          isFa
-                            ? 'رمز عبور جدید با موفقیت ذخیره شد و به تلگرام شما ارسال گردید.'
-                            : 'Password updated & sent to Telegram.'
-                        );
+                      if (newPin.trim().length >= 8) {
+                        const updated = await updateAdminPasscode(newPin.trim());
+                        if (!updated) {
+                          alert(isFa ? 'ذخیره رمز ناموفق بود؛ ورود مدیر یا اتصال سرور را بررسی کنید.' : 'Password update failed. Check your admin session and server connection.');
+                          return;
+                        }
+                        alert(isFa ? 'رمز جدید به‌صورت امن ذخیره شد.' : 'Password updated securely.');
                         setNewPin('');
                       } else {
-                        alert(isFa ? 'رمز باید حداقل ۴ کاراکتر باشد.' : 'Min 4 characters.');
+                        alert(isFa ? 'رمز باید حداقل ۸ نویسه باشد.' : 'Password must be at least 8 characters.');
                       }
                     }}
                     className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
                   >
-                    {isFa ? 'ذخیره رمز جدید و ارسال به تلگرام' : 'Update & Send to Telegram'}
+                    {isFa ? 'ذخیره امن رمز جدید' : 'Save new password securely'}
                   </button>
                 </div>
 

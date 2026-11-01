@@ -9,7 +9,6 @@ import {
   loadSiteContent,
   saveSiteContent,
   fetchRemoteSiteData,
-  syncPasscodeFromServer,
 } from './utils/storage';
 import { trackEvent } from './utils/analytics';
 import { Navbar } from './components/Navbar';
@@ -44,7 +43,7 @@ export default function App() {
 
   // Modal states
   const [selectedPrintPhoto, setSelectedPrintPhoto] = useState<PhotoItem | null>(null);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(isSessionAuthenticated());
   const [isSeoOpen, setIsSeoOpen] = useState(false);
 
   // مدیریت رویداد popstate مرورگر جهت ناوبری Back و Forward
@@ -64,14 +63,13 @@ export default function App() {
     trackEvent('page_view', { path });
   };
 
-  // دریافت اطلاعات هماهنگ‌شده و رمز عبور از سرور جهت یکی بودن نسخه موبایل و لپ‌تاپ
+  // دریافت اطلاعات هماهنگ‌شده از سرور
   useEffect(() => {
     fetchRemoteSiteData().then((remoteData) => {
       if (remoteData) {
         setContent(remoteData);
       }
     });
-    syncPasscodeFromServer();
     trackEvent('page_view', { path: currentPath });
   }, []);
 
@@ -145,7 +143,7 @@ export default function App() {
         navLabels={content.navLabels}
         language={language}
         onToggleLanguage={handleToggleLanguage}
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(isSessionAuthenticated())}
         onOpenContact={() => navigateTo('/order')}
       />
 
@@ -275,7 +273,7 @@ export default function App() {
       {/* Minimal Dynamic Footer */}
       <Footer
         language={language}
-        onOpenAdmin={() => setIsAdminOpen(true)}
+        onOpenAdmin={() => setIsAdminOpen(isSessionAuthenticated())}
         onOpenSeo={() => setIsSeoOpen(true)}
         onNavigate={navigateTo}
         aboutBio={content.aboutBio}

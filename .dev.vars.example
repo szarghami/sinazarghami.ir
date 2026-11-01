@@ -1,0 +1,9 @@
+# Copy to .dev.vars (ignored by Git), then replace values for local testing.
+ADMIN_INITIAL_PASSCODE=replace-with-a-long-random-password
+ADMIN_SESSION_SECRET=replace-with-at-least-32-random-bytes
+GEMINI_API_KEY=
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+GITHUB_TOKEN=
+GITHUB_REPOSITORY=szarghami/sinazarghami-aistudio-site
+MEDIA_PUBLIC_URL=https://media.example.com

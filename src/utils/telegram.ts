@@ -1,141 +1,56 @@
-// =====================================================================
-// ماژول ارسال پیام‌های لحظه‌ای و اعلان‌ها به تلگرام اختصاصی سینا ضرغامی
-// با استفاده از ربات هوشمند: @ai_Agent_for_sina_bot
-// Chat ID: 86050350 (@sina_zarghami)
-// =====================================================================
-
-const TELEGRAM_BOT_TOKEN = (import.meta as any).env?.VITE_TELEGRAM_BOT_TOKEN || '8961351294:AAGqsMYUXBFS38uhdMvJjwnRh1FbxGdRGkQ';
-const SINA_CHAT_ID = (import.meta as any).env?.VITE_SINA_CHAT_ID || '86050350';/**
- * تابع ارسال پیام متنی با فرمت‌بندی HTML به تلگرام سینا ضرغامی
- */
-export async function sendTelegramNotification(messageHtml: string): Promise<boolean> {
+// Telegram credentials stay in Cloudflare Secrets; this browser module only calls the same-origin API.
+export async function sendTelegramNotification(messageHtml: string, env: Env): Promise<boolean> {
   try {
-    const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-    const res = await fetch(url, {
+    const response = await fetch('/api/telegram/notify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.GITHUB_TOKEN}`
       },
-      body: JSON.stringify({
-        chat_id: SINA_CHAT_ID,
-        text: messageHtml,
-        parse_mode: 'HTML',
-      }),
+      credentials: 'same-origin',
+      body: JSON.stringify({ message: messageHtml })
     });
-    const data = await res.json();
-    return data.ok === true;
-  } catch (err) {
-    console.warn('خطا در ارسال پیام تلگرام:', err);
+    const result = await response.json();
+    return response.ok && result.success === true;
+  } catch (error) {
+    console.warn('خطا در ارسال پیام تلگرام:', error);
+    return false;
+  }
+  try {
+    const response = await fetch('/api/telegram/notify', {
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${env.ADMIN_EMAIL}` },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ message: messageHtml }),
+    });
+    const result = await response.json();
+    return response.ok && result.success === true;
+  } catch (error) {
+    console.warn('خطا در ارسال پیام تلگرام:', error);
     return false;
   }
 }
 
-/**
- * اعلان سفارش خرید نسخه چاپی فاین‌آرت
- */
-export async function notifyPrintOrder(details: {
-  photoTitle: string;
-  size: string;
-  paper: string;
-  frame: string;
-  priceToman: number;
-  customerName: string;
-  customerContact: string;
-  city: string;
+export function notifyPrintOrder(details: {
+  photoTitle: string; size: string; paper: string; frame: string; priceToman: number;
+  customerName: string; customerContact: string; city: string;
 }): Promise<boolean> {
-  const text = `
-🖼 <b>سفارش جدید چاپ فاین‌آرت در sinazarghami.ir</b>
-
-• <b>اثر:</b> ${details.photoTitle}
-• <b>قطع چاپ:</b> ${details.size} سانتی‌متر
-• <b>نوع کاغذ:</b> ${details.paper}
-• <b>وضعیت قاب:</b> ${details.frame}
-• <b>مبلغ برآوردی:</b> ${details.priceToman.toLocaleString()} تومان
-
-👤 <b>اطلاعات مشتری:</b>
-• <b>نام:</b> ${details.customerName}
-• <b>تماس:</b> <code>${details.customerContact}</code>
-• <b>شهر / آدرس:</b> ${details.city}
-
-⏰ <i>ثبت‌شده در: ${new Date().toLocaleString('fa-IR')}</i>
-  `.trim();
-
-  return sendTelegramNotification(text);
+  return sendTelegramNotification(`🖼 <b>سفارش جدید چاپ فاین‌آرت در sinazarghami.ir</b>\n\n• <b>اثر:</b> ${details.photoTitle}\n• <b>قطع چاپ:</b> ${details.size} سانتی‌متر\n• <b>نوع کاغذ:</b> ${details.paper}\n• <b>وضعیت قاب:</b> ${details.frame}\n• <b>مبلغ برآوردی:</b> ${details.priceToman.toLocaleString()} تومان\n\n👤 <b>مشتری:</b> ${details.customerName}\n• <b>تماس:</b> <code>${details.customerContact}</code>\n• <b>شهر / آدرس:</b> ${details.city}\n⏰ <i>${new Date().toLocaleString('fa-IR')}</i>`);
 }
 
-/**
- * اعلان رزرو یا استعلام سفر و تور اکتشافی
- */
-export async function notifyExpeditionInquiry(details: {
-  expeditionTitle: string;
-  name: string;
-  contact: string;
-}): Promise<boolean> {
-  const text = `
-🧭 <b>درخواست جدید رزرو تور / سفر اکتشافی</b>
-
-• <b>سفر:</b> ${details.expeditionTitle}
-• <b>نام مسافر:</b> ${details.name}
-• <b>اطلاعات تماس / آیدی:</b> <code>${details.contact}</code>
-
-⏰ <i>ثبت‌شده در: ${new Date().toLocaleString('fa-IR')}</i>
-  `.trim();
-
-  return sendTelegramNotification(text);
+export function notifyExpeditionInquiry(details: { expeditionTitle: string; name: string; contact: string }): Promise<boolean> {
+  return sendTelegramNotification(`🧭 <b>درخواست رزرو سفر</b>\n• <b>سفر:</b> ${details.expeditionTitle}\n• <b>نام:</b> ${details.name}\n• <b>تماس:</b> <code>${details.contact}</code>`);
 }
 
-/**
- * اعلان استعلام پروژه عکاسی یا فیلم‌برداری تجاری
- */
-export async function notifyProjectCommission(details: {
-  service: string;
-  clientName: string;
-  contact: string;
-  brief: string;
-}): Promise<boolean> {
-  const text = `
-🎬 <b>استعلام جدید سفارش پروژه عکاسی و فیلم‌برداری</b>
-
-• <b>حوزه خدمت:</b> ${details.service}
-• <b>نام کارفرما / برند:</b> ${details.clientName}
-• <b>اطلاعات تماس:</b> <code>${details.contact}</code>
-• <b>شرح نیاز پروژه:</b>
-${details.brief}
-
-⏰ <i>ثبت‌شده در: ${new Date().toLocaleString('fa-IR')}</i>
-  `.trim();
-
-  return sendTelegramNotification(text);
+export function notifyProjectCommission(details: { service: string; clientName: string; contact: string; brief: string }): Promise<boolean> {
+  return sendTelegramNotification(`🎬 <b>استعلام سفارش پروژه</b>\n• <b>خدمت:</b> ${details.service}\n• <b>کارفرما:</b> ${details.clientName}\n• <b>تماس:</b> <code>${details.contact}</code>\n• <b>شرح:</b>\n${details.brief}`);
 }
 
-/**
- * ارسال پیام امنیتی تلگرام هنگام تغییر رمز عبور پنل مدیریت
- */
-export async function notifyPasswordChanged(newPin: string): Promise<boolean> {
-  const text = `
-🔐 <b>پیام امنیتی sinazarghami.ir</b>
-
-سینا جان، رمز عبور ورود به پنل استودیو با موفقیت تغییر کرد.
-• <b>رمز جدید شما:</b> <code>${newPin}</code>
-
-<i>اگر این تغییر توسط شما انجام نشده است، بلافاصله آن را بررسی کنید.</i>
-  `.trim();
-
-  return sendTelegramNotification(text);
+export function notifyPasswordChanged(_newPin: string): Promise<boolean> {
+  return sendTelegramNotification('🔐 رمز عبور مدیریت تغییر کرد.');
 }
 
-/**
- * ارسال کد یا پیام بازیابی رمز به تلگرام سینا ضرغامی
- */
-export async function sendPasswordRecoveryTelegram(currentPass: string): Promise<boolean> {
-  const text = `
-🔑 <b>درخواست بازیابی رمز عبور پنل sinazarghami.ir</b>
-
-سینا جان، رمز عبور فعال شما:
-<code>${currentPass}</code>
-
-<i>این پیام به صورت محرمانه فقط به اکانت تلگرام شخصی شما ارسال شده است.</i>
-  `.trim();
-
-  return sendTelegramNotification(text);
+export function sendPasswordRecoveryTelegram(_currentPass: string): Promise<boolean> {
+  return Promise.resolve(false);
 }

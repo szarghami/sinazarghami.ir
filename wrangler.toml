@@ -1,0 +1,14 @@
+name = "sinazarghami-site"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-10-31"
+
+# Replace the placeholder with the database ID from Cloudflare before deploying.
+[[d1_databases]]
+binding = "DB"
+database_name = "sina-site-data"
+database_id = "REPLACE_WITH_CLOUDFLARE_D1_DATABASE_ID"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "sina-site-images"
