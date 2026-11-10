@@ -189,3 +189,11 @@ export function clearSessionVault(): void {
     sessionStorage.removeItem(SESSION_VAULT_KEY);
   } catch (_) {}
 }
+
+export function isSessionAuthenticated(): boolean {
+  try {
+    return Boolean(sessionStorage.getItem('vault_session_key') || localStorage.getItem('admin_passcode') || localStorage.getItem('sina_admin_auth'));
+  } catch {
+    return false;
+  }
+}
