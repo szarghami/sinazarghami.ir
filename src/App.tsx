@@ -21,6 +21,9 @@ import { ExpeditionsSection } from './components/ExpeditionsSection';
 import { SoftwareShowcase } from './components/SoftwareShowcase';
 import { ProductionServices } from './components/ProductionServices';
 import { ResumeBooksSection } from './components/ResumeBooksSection';
+import { ArticlesSection } from './components/ArticlesSection';
+import { AboutPage } from './components/AboutPage';
+import { DynamicFilterArchive } from './components/DynamicFilterArchive';
 
 const LoadingFallback = () => (
   <div className="h-64 flex items-center justify-center">
@@ -32,18 +35,34 @@ import { AdminStudioModal } from './components/AdminStudioModal';
 import { SeoDocumentationModal } from './components/SeoDocumentationModal';
 import { Footer } from './components/Footer';
 
+const isSessionAuthenticated = () => {
+  try {
+    const authValues = [
+      sessionStorage.getItem('site_admin_session'),
+      localStorage.getItem('site_admin_session'),
+      sessionStorage.getItem('admin_session'),
+      localStorage.getItem('admin_session'),
+    ].filter((value): value is string => Boolean(value));
+
+    return authValues.some((value) => ['true', '1', 'authenticated'].includes(value));
+  } catch {
+    return false;
+  }
+};
+
 export default function App() {
   const [language, setLanguage] = useState<Language>('fa');
-  const [content, setContent] = useState<SiteContent>(loadSiteContent);
+  const [content, setContent] = useState<SiteContent>(() => loadSiteContent());
 
   // سیستم مسیریابی چندصفحه‌ای واقعی مبتنی بر History API
   const [currentPath, setCurrentPath] = useState<string>(() => {
-    return window.location.pathname + window.location.search || '/';
+    const path = window.location.pathname + window.location.search;
+    return path && path !== '' ? path : '/';
   });
 
   // Modal states
   const [selectedPrintPhoto, setSelectedPrintPhoto] = useState<PhotoItem | null>(null);
-  const [isAdminOpen, setIsAdminOpen] = useState(isSessionAuthenticated());
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isSeoOpen, setIsSeoOpen] = useState(false);
 
   // مدیریت رویداد popstate مرورگر جهت ناوبری Back و Forward
@@ -62,7 +81,6 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     trackEvent('page_view', { path });
   };
-
   // دریافت اطلاعات هماهنگ‌شده از سرور
   useEffect(() => {
     fetchRemoteSiteData().then((remoteData) => {
@@ -71,7 +89,7 @@ export default function App() {
       }
     });
     trackEvent('page_view', { path: currentPath });
-  }, []);
+  }, [currentPath]);
 
   // بروزرسانی تایتل تب مرورگر و صفات lang / dir
   useEffect(() => {
@@ -190,8 +208,8 @@ export default function App() {
             onSelectPrint={(photo) => setSelectedPrintPhoto(photo)}
             onNavigate={navigateTo}
             commercialCategories={content.commercialCategories}
-            definedTechniques={content.definedTechniques}
-            equipment={content.equipment}
+            definedTechniques={content.definedTechniques || []}
+            equipment={content.equipment || []}
             isPortfolioPage={true}
           />
         )}
@@ -223,8 +241,8 @@ export default function App() {
             language={language}
             onNavigate={navigateTo}
             slug={articleSlug}
-            equipment={content.equipment}
-            techniques={content.definedTechniques}
+            equipment={content.equipment || []}
+            techniques={content.definedTechniques || []}
           />
         )}
 
