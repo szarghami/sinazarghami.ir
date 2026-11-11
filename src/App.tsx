@@ -161,7 +161,7 @@ export default function App() {
         navLabels={content.navLabels}
         language={language}
         onToggleLanguage={handleToggleLanguage}
-        onOpenAdmin={() => setIsAdminOpen(isSessionAuthenticated())}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         onOpenContact={() => navigateTo('/order')}
       />
 
@@ -291,7 +291,7 @@ export default function App() {
       {/* Minimal Dynamic Footer */}
       <Footer
         language={language}
-        onOpenAdmin={() => setIsAdminOpen(isSessionAuthenticated())}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         onOpenSeo={() => setIsSeoOpen(true)}
         onNavigate={navigateTo}
         aboutBio={content.aboutBio}
