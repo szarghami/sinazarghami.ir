@@ -5,33 +5,27 @@
 
 import { SiteContent } from '../types';
 import { initialSiteContent } from '../data/initialData';
-import { Env } from '../../functions/api/_shared/runtime';
 
-const STORAGE_KEY = 'sina_portfolio_site_data_v4';
-const SESSION_AUTH_KEY = 'sina_admin_session_auth_v4';
+const STORAGE_KEY = 'sina_portfolio_site_data_v5';
+const SESSION_AUTH_KEY = 'sina_admin_session_auth_v5';
 
 /**
  * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
  */
 export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
-  // ۱. تلاش برای خواندن از API سرور فعال
   try {
-    const res = await fetch(`/api/site-data?t=${Date.now()}`);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(`/site-data.json?t=${Date.now()}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    window.clearTimeout(timeout);
     if (res.ok) {
-      const data = await res.json();
-      if (data && data.profile) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        return data;
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('پاسخ site-data.json از نوع JSON نیست.');
       }
-    }
-  } catch (e) {
-    // خطا در دسترسی به API سرور
-  }
-
-  // ۲. تلاش برای خواندن از فایل استاتیک site-data.json
-  try {
-    const res = await fetch(`/site-data.json?t=${Date.now()}`);
-    if (res.ok) {
       const data = await res.json();
       if (data && data.profile) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -96,17 +90,6 @@ export function saveSiteContent(content: SiteContent): void {
   } catch (err) {
     console.error('خطا در ذخیره محلی:', err);
   }
-
-  // ارسال پس‌زمینه به سرور برای اینکه گوشی و لپ‌تاپ هر دو به‌روز شوند
-  try {
-    fetch('/api/site-data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(content),
-    }).catch(() => {});
-  } catch {
-    // خطای شبکه را نادیده می‌گیریم تا کاربر متوقف نشود
-  }
 }
 
 /**
@@ -124,26 +107,39 @@ export function resetSiteContent(): SiteContent {
 /**
  * بررسی احراز هویت در سشن فعلی مرورگر
  */
-export function isSessionAuthenticated(env: Env): boolean {
-  return sessionStorage.getItem(SESSION_AUTH_KEY) === 'true' && env.ADMIN_EMAIL;
+export function isSessionAuthenticated(): boolean {
+  try {
+    return sessionStorage.getItem(SESSION_AUTH_KEY) === 'true';
+  } catch {
+    return false;
+  }
 }
 
 /**
  * ثبت ورود موفق در سشن
  */
-export function setSessionAuthenticated(auth: boolean, env: Env): void {
-  if (auth && env.ADMIN_EMAIL) {
-    sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
-  } else {
-    sessionStorage.removeItem(SESSION_AUTH_KEY);
+export function setSessionAuthenticated(auth: boolean): void {
+  try {
+    if (auth) {
+      sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
+    } else {
+      sessionStorage.removeItem(SESSION_AUTH_KEY);
+    }
+  } catch {
+    // Storage can be unavailable in private browsing.
   }
 }
 
 /**
  * بررسی رمز عبور ورودی
  */
-export async function checkAdminPasscode(pin: string): Promise<boolean> {
-  if (!pin?.trim()) return false;
+export interface AuthCheckResult {
+  ok: boolean;
+  error?: string;
+}
+
+export async function checkAdminPasscode(pin: string): Promise<AuthCheckResult> {
+  if (!pin?.trim()) return { ok: false, error: 'رمز عبور را وارد کنید.' };
   try {
     const res = await fetch('/api/auth/verify', {
       method: 'POST',
@@ -151,9 +147,30 @@ export async function checkAdminPasscode(pin: string): Promise<boolean> {
       credentials: 'same-origin',
       body: JSON.stringify({ passcode: pin.trim() }),
     });
-    return res.ok && (await res.json()).authenticated === true;
+    const data = await res.json().catch(() => ({}));
+    const authenticated = res.ok && data.authenticated === true;
+    if (authenticated) {
+      setSessionAuthenticated(true);
+      return { ok: true };
+    }
+    if (res.status === 503) {
+      return {
+        ok: false,
+        error: data.error || 'سرور ورود تنظیم نشده است. مقدار ADMIN_SESSION_SECRET را در Cloudflare بررسی کنید.',
+      };
+    }
+    if (res.status === 404) {
+      return {
+        ok: false,
+        error: 'مسیر ورود روی سرور پیدا نشد. نسخه‌ی جدید سایت باید deploy شود.',
+      };
+    }
+    if (res.status === 401) {
+      return { ok: false, error: data.error || 'رمز عبور نادرست است.' };
+    }
+    return { ok: false, error: data.error || `خطای سرور (${res.status}).` };
   } catch {
-    return false;
+    return { ok: false, error: 'ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.' };
   }
 }
 

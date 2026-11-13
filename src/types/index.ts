@@ -256,6 +256,7 @@ export interface ProfileContent {
   linkedin: string;
   github: string;
   youtube?: string;
+  avatarUrl?: string;
   stats: StatItem[];
 }
 

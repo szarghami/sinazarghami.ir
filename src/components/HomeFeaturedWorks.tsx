@@ -1,7 +1,7 @@
 import React from 'react';
 import { Language, PhotoItem } from '../types';
 import { Camera, MapPin, ArrowRight, ArrowLeft, Eye, ShoppingBag, Sparkles } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface HomeFeaturedWorksProps {
   photos: PhotoItem[];

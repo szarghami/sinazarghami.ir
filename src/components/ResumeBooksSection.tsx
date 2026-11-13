@@ -12,7 +12,7 @@ import {
   ExternalLink,
   ShoppingBag,
 } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface ResumeBooksSectionProps {
   resume: ResumeEntry[];

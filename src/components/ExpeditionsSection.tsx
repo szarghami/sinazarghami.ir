@@ -17,7 +17,7 @@ import {
   Flag,
 } from 'lucide-react';
 import { notifyExpeditionInquiry } from '../utils/telegram';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface ExpeditionsSectionProps {
   expeditions: ExpeditionItem[];

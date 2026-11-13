@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { HomeCategoryCard, Language } from '../types';
 import { ChevronLeft, ChevronRight, ArrowUpRight, Sparkles, Layers } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface HomeCategoryCardsProps {
   cards?: HomeCategoryCard[];

@@ -1,9 +1,11 @@
-# Copy to .dev.vars (ignored by Git), then replace values for local testing.
+# Copy to .dev.vars (ignored by Git) for local testing with `npx wrangler pages dev dist`.
 ADMIN_INITIAL_PASSCODE=replace-with-a-long-random-password
 ADMIN_SESSION_SECRET=replace-with-at-least-32-random-bytes
 GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 GITHUB_TOKEN=
-GITHUB_REPOSITORY=szarghami/sinazarghami-aistudio-site
-MEDIA_PUBLIC_URL=https://media.example.com
+GITHUB_REPO=szarghami/sinazarghami.ir
+GITHUB_BRANCH=main
+SITE_URL=http://localhost:8788

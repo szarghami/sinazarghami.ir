@@ -10,7 +10,6 @@ import {
   saveSiteContent,
   fetchRemoteSiteData,
 } from './utils/storage';
-import { trackEvent } from './utils/analytics';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { HomeCategoryCards } from './components/HomeCategoryCards';
@@ -24,30 +23,30 @@ import { ResumeBooksSection } from './components/ResumeBooksSection';
 import { ArticlesSection } from './components/ArticlesSection';
 import { AboutPage } from './components/AboutPage';
 import { DynamicFilterArchive } from './components/DynamicFilterArchive';
-
-const LoadingFallback = () => (
-  <div className="h-64 flex items-center justify-center">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-  </div>
-);
+import { NotFoundPage } from './components/NotFoundPage';
 import { PrintShopModal } from './components/PrintShopModal';
 import { AdminStudioModal } from './components/AdminStudioModal';
 import { SeoDocumentationModal } from './components/SeoDocumentationModal';
 import { Footer } from './components/Footer';
 
-const isSessionAuthenticated = () => {
-  try {
-    const authValues = [
-      sessionStorage.getItem('site_admin_session'),
-      localStorage.getItem('site_admin_session'),
-      sessionStorage.getItem('admin_session'),
-      localStorage.getItem('admin_session'),
-    ].filter((value): value is string => Boolean(value));
+const KNOWN_PATHS = new Set([
+  '/',
+  '/portfolio',
+  '/trips',
+  '/gear',
+  '/articles',
+  '/resume',
+  '/about',
+  '/order',
+  '/filter',
+  '/studio',
+]);
 
-    return authValues.some((value) => ['true', '1', 'authenticated'].includes(value));
-  } catch {
-    return false;
-  }
+const LEGACY_REDIRECTS: Record<string, string> = {
+  '/expeditions': '/trips',
+  '/commercial': '/portfolio',
+  '/prints': '/portfolio',
+  '/works': '/portfolio',
 };
 
 export default function App() {
@@ -79,8 +78,27 @@ export default function App() {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    trackEvent('page_view', { path });
   };
+
+  // مسیرهای قدیمی و میان‌بر #admin
+  useEffect(() => {
+    const pathOnly = window.location.pathname.replace(/\/+$/, '') || '/';
+    const redirect = LEGACY_REDIRECTS[pathOnly];
+    if (redirect) {
+      window.history.replaceState({}, '', redirect);
+      setCurrentPath(redirect);
+      return;
+    }
+    if (window.location.hash === '#admin') {
+      setIsAdminOpen(true);
+    }
+  }, []);
+
+  // صفحه اختصاصی پنل مدیریت
+  useEffect(() => {
+    if (currentPath.split('?')[0] === '/studio') setIsAdminOpen(true);
+  }, [currentPath]);
+
   // دریافت اطلاعات هماهنگ‌شده از سرور
   useEffect(() => {
     fetchRemoteSiteData().then((remoteData) => {
@@ -88,7 +106,6 @@ export default function App() {
         setContent(remoteData);
       }
     });
-    trackEvent('page_view', { path: currentPath });
   }, [currentPath]);
 
   // بروزرسانی تایتل تب مرورگر و صفات lang / dir
@@ -286,6 +303,22 @@ export default function App() {
             onSelectPrint={(photo) => setSelectedPrintPhoto(photo)}
           />
         )}
+
+        {/* ۱۰. صفحه اختصاصی پنل مدیریت (/studio) */}
+        {pathOnly === '/studio' && (
+          <section className="py-24 text-center px-6">
+            <p className="text-sm text-stone-600">
+              {language === 'fa'
+                ? 'پنل مدیریت در حال باز شدن است. اگر پنجره را بستید، دوباره از منو وارد شوید.'
+                : 'Opening the admin studio. If you closed it, open it again from the menu.'}
+            </p>
+          </section>
+        )}
+
+        {/* ۱۱. مسیر ناشناخته */}
+        {!KNOWN_PATHS.has(pathOnly) && (
+          <NotFoundPage language={language} onNavigate={navigateTo} />
+        )}
       </main>
 
       {/* Minimal Dynamic Footer */}
@@ -310,7 +343,10 @@ export default function App() {
           content={content}
           onUpdateContent={handleUpdateContent}
           language={language}
-          onClose={() => setIsAdminOpen(false)}
+          onClose={() => {
+            setIsAdminOpen(false);
+            if (pathOnly === '/studio') navigateTo('/');
+          }}
         />
       )}
 

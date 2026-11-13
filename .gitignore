@@ -18,3 +18,5 @@ bun.lockb
 *credentials*.json
 .cloudcode/
 node_modules/
+backups/
+temp_raw/

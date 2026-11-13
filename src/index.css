@@ -2,7 +2,7 @@
 
 @layer base {
   :root {
-    --font-fa: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-fa: 'Vazirmatn', 'Tahoma', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --font-en: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
     /* Color Palette */
@@ -126,3 +126,9 @@
   background-size: 200% 100%;
   animation: shimmer 1.8s infinite;
 }
+/* تصویر بدون منبع نباید آیکون شکسته نشان دهد */
+img[src=''],
+img:not([src]) {
+  display: none;
+}
+

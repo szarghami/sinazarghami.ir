@@ -1,7 +1,7 @@
 // =====================================================================
 // پنل جامع استودیو اختصاصی سینا ضرغامی (Private Creator Studio)
 // این کامپوننت مرکز کنترل کامل وب‌سایت است و به سینا امکان می‌دهد:
-// ۱. عکس‌ها و آلبوم‌ها را به صورت دسته‌ای با فرمت فشرده WebP بارگذاری و در Supabase ذخیره کند
+// ۱. عکس‌ها و آلبوم‌ها را به صورت دسته‌ای با فرمت فشرده WebP بارگذاری و در مخزن گیت‌هاب ذخیره کند
 // ۲. عناوین و توضیحات فارسی را با هوش مصنوعی جمینای (Gemini AI) به زبان انگلیسی فاخر گالری‌ها ترجمه کند
 // ۳. تمام پلتفرم‌ها، ابزارها، سفرها، کتاب‌ها، رزومه و متن‌ها را ویرایش (Edit)، حذف (Delete) و جابجا (Reorder) کند
 // ۴. اطلاعات و رمز عبور را بین لپ‌تاپ و گوشی به صورت یکپارچه همگام نماید
@@ -35,11 +35,10 @@ import {
   setSessionAuthenticated,
   saveSiteContent,
 } from '../utils/storage';
-import { smartUploadImage } from '../utils/supabase';
+import { smartUploadImage } from '../utils/media';
 import { translateToArtisticEnglish } from '../utils/aiTranslator';
 import { sendTelegramNotification } from '../utils/telegram';
 import { VoiceDictationButton } from './VoiceDictationButton';
-import { AdminAnalyticsTab } from './AdminAnalyticsTab';
 import {
   Lock,
   Upload,
@@ -71,7 +70,6 @@ import {
   Phone,
   Mail,
   Camera,
-  BarChart3,
   CheckCircle2,
   Star,
   Tag,
@@ -104,17 +102,16 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isSessionAuthenticated());
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
+  const [pinErrorMessage, setPinErrorMessage] = useState<string | null>(null);
   const [newPin, setNewPin] = useState('');
 
   useEffect(() => {
-    if (!isSessionAuthenticated()) return;
     fetch('/api/auth/verify', { credentials: 'same-origin' })
-      .then((response) => response.json())
-      .then((data) => {
-        if (!data.authenticated) {
-          setIsAuthenticated(false);
-          setSessionAuthenticated(false);
-        }
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}));
+        const authenticated = response.ok && data.authenticated === true;
+        setIsAuthenticated(authenticated);
+        setSessionAuthenticated(authenticated);
       })
       .catch(() => {
         setIsAuthenticated(false);
@@ -133,7 +130,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     | 'books'
     | 'resume'
     | 'texts'
-    | 'analytics'
     | 'publish'
     | 'security'
   >('upload_studio');
@@ -145,7 +141,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [rawFiles, setRawFiles] = useState<File[]>([]);
   const [compressedResults, setCompressedResults] = useState<CompressedImageResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [supabaseUploadMsg, setSupabaseUploadMsg] = useState<string | null>(null);
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
   const [compressQuality, setCompressQuality] = useState<number>(0.68);
   const [compressMaxDim, setCompressMaxDim] = useState<number>(1400);
   const [overallStats, setOverallStats] = useState<{ origKB: number; compKB: number; percent: number } | null>(null);
@@ -228,7 +224,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         heroBioEn: '',
         detailedBioFa: '',
         detailedBioEn: '',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=800&q=80',
+        avatarUrl: '',
         philosophyFa: '',
         philosophyEn: '',
         contactEmail: content.profile.email || '',
@@ -362,7 +358,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       setIsSyncingGithub(true);
       setGithubSyncStatus(null);
 
-      const res = await fetch('/api/github/sync', {
+      const res = await fetch('/api/site-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
@@ -432,12 +428,15 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    */
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (await checkAdminPasscode(pinInput)) {
+    const result = await checkAdminPasscode(pinInput);
+    if (result.ok) {
       setIsAuthenticated(true);
       setSessionAuthenticated(true);
       setPinError(false);
+      setPinErrorMessage(null);
     } else {
       setPinError(true);
+      setPinErrorMessage(result.error || null);
     }
   };
 
@@ -608,9 +607,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       let mainImageUrl = photoImageUrl;
       let additionalImages: string[] = [];
 
-      // تصاویر جدید فقط پس از ذخیره موفق در R2 به محتوا اضافه می‌شوند.
+      // تصاویر جدید فقط پس از ذخیره موفق در مخزن گیت‌هاب به محتوا اضافه می‌شوند.
       if (compressedResults.length > 0) {
-        setSupabaseUploadMsg('در حال بارگذاری تصاویر در فضای ابری...');
+        setUploadMsg('در حال بارگذاری تصاویر در مخزن گیت‌هاب...');
         const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
         if (!mainUpload.success || !mainUpload.publicUrl) throw new Error(mainUpload.error || 'بارگذاری تصویر اصلی ناموفق بود.');
         mainImageUrl = mainUpload.publicUrl;
@@ -711,7 +710,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       alert(`خطا: ${err.message}`);
     } finally {
       setIsProcessing(false);
-      setSupabaseUploadMsg(null);
+      setUploadMsg(null);
     }
   };
 
@@ -958,7 +957,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         durationEn: expDurationEn || expDurationFa,
         seasonFa: expSeasonFa,
         seasonEn: expSeasonEn || expSeasonFa,
-        coverImage: expImage || 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
+        coverImage: expImage || '',
         descriptionFa: expDescFa || 'سفر اکتشافی و مسترکلاس میدانی عکاسی به سرپرستی سینا ضرغامی.',
         descriptionEn: expDescEn || 'Field photography expedition led by Sina Zarghami.',
         highlightsFa: ['پیمایش تخصصی با خودروهای آفرود مجهز', 'ورکشاپ عکاسی شب و رصد آسمان تاریک'],
@@ -1065,7 +1064,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         subtitleEn: bookSubtitleEn || 'Photographic Monograph & Visual Essay',
         statusFa: bookStatusFa,
         statusEn: bookStatusEn,
-        coverImage: bookCoverImage || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=1000&q=80',
+        coverImage: bookCoverImage || '',
         descriptionFa: bookDescFa || 'کتاب فاین‌آرت و مستندنگاری زیست‌بوم‌های بکر ایران.',
         descriptionEn: bookDescEn || 'Fine art monograph capturing Iran untouched wilderness.',
         pages: bookPages,
@@ -1438,8 +1437,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         category: artCategoryFa,
         categoryFa: artCategoryFa,
         categoryEn: artCategoryEn,
-        coverImage: artCoverUrl || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
-        coverUrl: artCoverUrl || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80',
+        coverImage: artCoverUrl || '',
+        coverUrl: artCoverUrl || '',
         publishedAt: new Date().toISOString().split('T')[0],
         readTimeMinutes: Number(artReadTime) || 6,
         readingTimeMinutes: Number(artReadTime) || 6,
@@ -1548,34 +1547,15 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       // ۳. ارسال اعلان انتشار به تلگرام سینا ضرغامی
       await sendTelegramNotification(
         `🚀 <b>انتشار فوری نسخه جدید وب‌سایت sinazarghami.ir</b>\n` +
-        `سینا جان، تمام تغییرات، آثار جدید، پروژه‌ها و متون در سرور ابری ذخیره شدند و اکنون در تمام گوشی‌ها و لپ‌تاپ‌ها به صورت هماهنگ نمایش داده می‌شوند.`
+        `سینا جان، تغییرات در مخزن گیت‌هاب ثبت شد و Cloudflare Pages نسخه جدید را منتشر می‌کند.`
       );
-
-      // ۴. همگام‌سازی اختیاری با Secret سمت سرور (توکنی به مرورگر ارسال نمی‌شود)
-      let githubMsg = '';
-      try {
-        const syncRes = await fetch('/api/github/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'same-origin',
-          body: JSON.stringify({ content: savedData.content || content }),
-        });
-        const syncData = await syncRes.json();
-        if (syncRes.ok && syncData.success) {
-          githubMsg = isFa ? ' مخزن گیت‌هاب نیز همگام شد.' : ' GitHub repository synchronized.';
-        } else if (syncRes.status !== 503) {
-          githubMsg = isFa ? ` (همگام‌سازی گیت‌هاب انجام نشد: ${syncData.error || 'خطا'})` : ` (GitHub sync failed: ${syncData.error || 'error'})`;
-        }
-      } catch (gitErr) {
-        console.warn('GitHub sync optional warning:', gitErr);
-      }
 
       setInstantPublishSuccess(true);
       setPublishStatus({
         success: true,
         msg: isFa
-          ? `انتشار فوری با موفقیت انجام شد! تمامی تغییرات در سرور ابری ثبت و بین گوشی و لپ‌تاپ یکپارچه شدند.${githubMsg}`
-          : `Universal Publish Succeeded! Live and synchronized across all devices.${githubMsg}`,
+          ? 'محتوا در مخزن گیت‌هاب ثبت شد. Cloudflare Pages طی چند دقیقه نسخه جدید را منتشر می‌کند.'
+          : 'Content committed to GitHub. Cloudflare Pages will publish the new version shortly.',
       });
       setTimeout(() => setInstantPublishSuccess(false), 8000);
     } catch (err: any) {
@@ -1718,7 +1698,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
               {pinError && (
                 <p className="text-xs text-red-600 font-medium">
-                  {isFa ? 'رمز عبور واردشده صحیح نیست.' : 'Incorrect password.'}
+                  {isFa ? (pinErrorMessage || 'رمز عبور واردشده صحیح نیست.') : (pinErrorMessage || 'Incorrect password.')}
                 </p>
               )}
 
@@ -1868,19 +1848,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveTab('analytics')}
-                className={`pb-3 px-3 border-b-2 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  activeTab === 'analytics'
-                    ? 'border-blue-600 text-stone-950 font-bold'
-                    : 'border-transparent hover:text-stone-950'
-                }`}
-              >
-                <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
-                <span>{isFa ? 'آمار بازدید و رفتار خریداران' : 'Visitor Analytics'}</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              </button>
-
-              <button
                 onClick={() => setActiveTab('publish')}
                 className={`pb-3 px-3 border-b-2 transition-colors cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeTab === 'publish'
@@ -1919,7 +1886,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <Images className="w-4 h-4 text-amber-700" />
                         <span>{isFa ? 'انتخاب عکس یا مجموعه عکس (آلبوم چندعکسی)' : 'Upload Photo(s)'}</span>
                       </h4>
-                      <span className="text-xs text-emerald-800">{isFa ? 'ذخیره امن در Cloudflare R2' : 'Secure Cloudflare R2 storage'}</span>
+                      <span className="text-xs text-emerald-800">{isFa ? 'ذخیره امن در مخزن گیت‌هاب' : 'Saved to the GitHub repository'}</span>
                     </div>
 
                     <input
@@ -2608,9 +2575,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     </div>
                   </div>
 
-                  {supabaseUploadMsg && (
+                  {uploadMsg && (
                     <div className="p-2.5 bg-amber-50 text-amber-900 rounded-lg text-xs font-mono border border-amber-200">
-                      {supabaseUploadMsg}
+                      {uploadMsg}
                     </div>
                   )}
 
@@ -3194,7 +3161,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           setArtContentEn('');
                           setArtCategoryFa('آموزش عکاسی');
                           setArtCategoryEn('Tutorial');
-                          setArtCoverUrl('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=1200&q=80');
+                          setArtCoverUrl('');
                           setArtReadTime(6);
                           setArtTags('عکاسی، آموزش، تکنیک');
                           setArtSeoKeywords('آموزش عکاسی, سینا ضرغامی, تکنیک عکاسی');
@@ -3305,7 +3272,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           type="url"
                           value={artCoverUrl}
                           onChange={(e) => setArtCoverUrl(e.target.value)}
-                          placeholder="https://images.unsplash.com/..."
+                          placeholder="/media/..."
                           className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs font-mono"
                         />
                       </div>
@@ -5030,11 +4997,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 </button>
               </form>
             )}
-
-            {/* ============================================================== */}
-            {/* تب ۶: آمار، رفتار کاربران، دستگاه‌ها و خریدهای رها شده */}
-            {/* ============================================================== */}
-            {activeTab === 'analytics' && <AdminAnalyticsTab isFa={isFa} />}
 
             {/* ============================================================== */}
             {/* تب ۷: انتشار سراسری، همگام‌سازی ابری و فایل پشتیبان */}

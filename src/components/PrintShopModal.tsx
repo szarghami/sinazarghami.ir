@@ -16,8 +16,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { notifyPrintOrder } from '../utils/telegram';
-import { trackEvent } from '../utils/analytics';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface PrintShopModalProps {
   photo: PhotoItem | null;
@@ -130,31 +129,12 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
   const whatsappDirectUrl = `https://wa.me/989127193767?text=${encodeURIComponent(invoiceText)}`;
 
   const handleClose = () => {
-    if (!orderSent && photo) {
-      trackEvent('abandon_checkout', {
-        photoId: photo.id,
-        photoTitle: photo.titleFa,
-        priceToman: activeFinalToman,
-        priceUsd: activeFinalUsd,
-        selectedFormat: purchaseType,
-        details: `رها کردن در مرحله انتخاب ${purchaseType === 'print' ? 'چاپ فاین‌آرت' : 'لایسنس دیجیتال'}`,
-      });
-    }
     onClose();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setOrderSent(true);
-
-    trackEvent('complete_order', {
-      photoId: photo.id,
-      photoTitle: photo.titleFa,
-      priceToman: activeFinalToman,
-      priceUsd: activeFinalUsd,
-      selectedFormat: purchaseType,
-      details: `خریدار: ${customerName || 'ناشناس'} | تماس: ${customerContact}`,
-    });
 
     // ارسال اعلان آنی به ربات تلگرام سینا ضرغامی
     notifyPrintOrder({

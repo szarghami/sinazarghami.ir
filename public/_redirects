@@ -1,0 +1,4 @@
+/media/*  /media/:splat  200
+/assets/*  /assets/:splat  200
+/site-data.json  /site-data.json  200
+/*  /index.html  200

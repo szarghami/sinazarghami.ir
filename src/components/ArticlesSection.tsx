@@ -16,7 +16,7 @@ import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface ArticlesSectionProps {
   articles?: ArticleItem[];

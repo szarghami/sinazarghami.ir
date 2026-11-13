@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import { Language, SiteContent } from '../types';
 import { Camera, Compass, Code2, GraduationCap, ArrowDown, Sparkles, Phone } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/supabase';
+import { getReliableImageUrl } from '../utils/media';
 
 interface HeroProps {
   content: SiteContent;
@@ -153,7 +153,7 @@ export const Hero: React.FC<HeroProps> = ({
                 <span className="text-sm font-semibold">{content.photos[0]?.titleFa || 'آثار برگزیده سینا ضرغامی'}</span>
               </div>
               <img
-                src={getReliableImageUrl(content.photos[0]?.imageUrl || "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=85")}
+                  src={getReliableImageUrl(content.photos[0]?.imageUrl)}
                 alt="Sina Zarghami Photography Showcase"
                 className="relative w-full h-84 sm:h-96 lg:h-[430px] object-cover transition-transform duration-700 group-hover:scale-102 z-10"
                 loading="eager"

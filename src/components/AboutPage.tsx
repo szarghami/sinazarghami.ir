@@ -148,11 +148,17 @@ export const AboutPage: React.FC<AboutPageProps> = ({
           {/* Side Portrait & Direct Contact Grid */}
           <div className="lg:col-span-5 space-y-6">
             <div className="relative aspect-4/5 rounded-2xl overflow-hidden bg-stone-900 shadow-lg border border-stone-200">
-              <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=1000&q=80"
-                alt="Sina Zarghami"
-                className="w-full h-full object-cover"
-              />
+              {profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt="Sina Zarghami"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-stone-800 via-stone-900 to-stone-950">
+                  <span className="text-6xl font-extrabold text-amber-500/80">س</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent pointer-events-none" />
               <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1">
                 <div className="text-xs font-mono text-amber-400">سینا ضرغامی · Sina Zarghami</div>

@@ -23,8 +23,7 @@ import {
   ArrowUpRight,
   SlidersHorizontal,
 } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/supabase';
-import { trackEvent } from '../utils/analytics';
+import { getReliableImageUrl } from '../utils/media';
 
 interface PhotographyGalleryProps {
   photos: PhotoItem[];
@@ -85,20 +84,9 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
   const openLightbox = (photo: PhotoItem) => {
     setActivePhoto(photo);
     setActiveImageIndex(0);
-    trackEvent('photo_view', {
-      photoId: photo.id,
-      photoTitle: photo.titleFa,
-      selectedFormat: photo.isAlbum ? 'digital' : 'print',
-    });
   };
 
   const handleSelectPrint = (photo: PhotoItem) => {
-    trackEvent('open_buy_modal', {
-      photoId: photo.id,
-      photoTitle: photo.titleFa,
-      priceToman: photo.printPriceToman,
-      priceUsd: photo.printPriceUsd,
-    });
     onSelectPrint(photo);
   };
 

@@ -1,38 +1,126 @@
-# Cloudflare Pages Functions setup
+# راهنمای راه‌اندازی سایت روی Cloudflare Pages
 
-The production site uses the Cloudflare Pages Functions in `functions/`. Keep the existing Express server available during preview and cutover; Pages does not run `server.ts`.
+این سایت یک اپلیکیشن استاتیک React است که در Cloudflare Pages میزبانی می‌شود.
+تنها بک‌اند آن Pages Functions است (پوشه `functions/`) و محتوا در مخزن گیت‌هاب نگهداری می‌شود.
+هیچ D1، R2، Supabase یا سرور Expressی در پروژه وجود ندارد.
 
-## Cloudflare resources and bindings
+## چرا ورود به پنل قبلاً کار نمی‌کرد؟
 
-1. In the Cloudflare account serving the Pages project, create a D1 database named `sina-site-data` and an R2 bucket named `sina-site-images`.
-2. Replace `REPLACE_WITH_CLOUDFLARE_D1_DATABASE_ID` in `wrangler.toml` with the actual D1 database ID. Keep the binding names `DB` and `MEDIA` unchanged in local, preview, and production environments.
-3. Apply the schema with `npx wrangler d1 migrations apply sina-site-data --remote`.
-4. Enable public delivery for the R2 bucket through a dedicated media custom domain (recommended). Set the Pages variable `MEDIA_PUBLIC_URL` to that HTTPS origin, without a trailing slash. Do not make the bucket broadly writable.
-5. Set these **Secrets** in the Pages project's production and preview environments (and local `.dev.vars` when needed):
-   - `ADMIN_INITIAL_PASSCODE`: a new, unique password with at least 8 characters. It is used only to bootstrap the first D1 credential; after the first successful login and a password change, remove this Secret.
-   - `ADMIN_SESSION_SECRET`: a stable random secret of at least 32 bytes, used to sign HttpOnly admin sessions.
-   - `GEMINI_API_KEY`: Gemini server-side API key.
-   - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`: optional notification integration; keep the bot token out of all client bundles. The old frontend source contained a bot token, so revoke/rotate that token with BotFather before enabling this integration, then set only the replacement as a Cloudflare Secret.
-   - `GITHUB_TOKEN`: optional least-privilege token for updating the repository's `site-data.json` only.
-6. Set the Pages variable `GITHUB_REPOSITORY` to `szarghami/sinazarghami-aistudio-site` only if GitHub sync is wanted. The API ignores client-supplied repository, path, and token values.
-7. Keep the Pages build command as `npm run build` and output directory as `dist`. The Functions directory is at the repository root and must be included in the Pages deployment.
+پنل مدیریت رمز را به آدرس `/api/auth/verify` می‌فرستاد، اما در نسخه‌ی منتشرشده پوشه‌ی
+`functions/` وجود نداشت؛ یعنی هیچ کدی روی سرور نبود که رمز را بررسی کند. برای همین هر رمزی
+اشتباه حساب می‌شد. حالا این مسیر ساخته شده و بعد از اولین deploy کار می‌کند.
 
-## Local development
+`ADMIN_SESSION_SECRET` تنها وقتی مقصر است که تنظیم نشده باشد؛ در آن صورت پاسخ خطای
+`503 ADMIN_SESSION_SECRET is not configured` برمی‌گردد.
 
-- Copy `.dev.vars.example` to `.dev.vars` and replace the placeholder values. `.dev.vars` is git-ignored.
-- Create a local database/bucket binding as needed, then run `npx wrangler d1 migrations apply sina-site-data --local`.
-- Run `npm run pages:dev` to build and serve through the Pages runtime. This differs from `npm run dev`, which starts the legacy Express server.
-- Before integrating an admin change, log in with `ADMIN_INITIAL_PASSCODE`, publish site content once (which stores it in D1), then change the password in the admin panel. The passcode is stored as a salted PBKDF2 hash in D1; the session is an HttpOnly, Secure, SameSite=Strict cookie.
+## ۱. تنظیمات پروژه Pages
 
-## Data and migration notes
+Cloudflare Dashboard → Workers & Pages → پروژه‌ی سایت → Settings → Builds & deployments:
 
-- On first read, `/api/site-data` falls back to the static `/site-data.json` asset. The first authenticated admin publish writes the complete content to D1. Confirm that file is current before the first publish and retain a backup.
-- The browser no longer receives the admin passcode, Telegram bot token, or GitHub token. Existing localStorage passcodes and tokens are intentionally not imported.
-- New admin image uploads use R2 and require `MEDIA_PUBLIC_URL`; existing absolute image URLs remain unchanged. On the first authenticated site-data publish, valid embedded JPEG/PNG/WebP data URLs in the submitted content are migrated into R2 and replaced with their public URLs before D1 persistence. Back up site content first and verify the public R2 domain before that publish.
-- Videos remain URL/embed-only. Video upload and transcoding are not part of this migration.
-- Analytics events are rate-limited and retained for 180 days. Analytics summary/report endpoints require the admin session.
-- `npm run lint` currently reports parse errors throughout the pre-existing `server.ts`; use `npm run lint:pages` to type-check the new Functions independently while that legacy baseline is unresolved.
+| فیلد | مقدار |
+| --- | --- |
+| Production branch | `main` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Root directory | `/` |
+| Node version | `22` |
 
-## Rollback
+پوشه‌ی `functions/` به‌صورت خودکار شناسایی می‌شود و نیازی به تنظیم جداگانه ندارد.
+مطمئن شو پروژه به مخزن `szarghami/sinazarghami.ir` وصل است.
 
-Do not remove `server.ts` until Cloudflare preview testing confirms the required admin flows and production data has been backed up. If the new Pages Functions are not ready, leave the production Pages deployment on its previous release and restore the prior client bundle; do not point production writes to an uninitialized D1 database.
+## ۲. Variables و Secrets
+
+مسیر: پروژه → Settings → Variables and Secrets → Production (و در صورت نیاز Preview).
+
+### مقادیر عادی (Plaintext)
+
+| نام | مقدار |
+| --- | --- |
+| `GITHUB_REPO` | `szarghami/sinazarghami.ir` |
+| `GITHUB_BRANCH` | `main` |
+| `SITE_URL` | `https://sinazarghami.ir` |
+| `GEMINI_MODEL` | `gemini-2.5-flash` |
+| `NODE_VERSION` | `22` |
+
+### مقادیر محرمانه (Secret)
+
+روی دکمه‌ی Encrypt / Add secret بزن؛ این مقادیر نباید در کد یا چت نوشته شوند.
+
+| نام | کاربرد |
+| --- | --- |
+| `ADMIN_INITIAL_PASSCODE` | رمز اولیه‌ی ورود به پنل (حداقل ۸ کاراکتر) |
+| `ADMIN_SESSION_SECRET` | امضای کوکی نشست (حداقل ۳۲ کاراکتر تصادفی) |
+| `GITHUB_TOKEN` | خواندن و نوشتن محتوا و عکس‌ها در مخزن |
+| `GEMINI_API_KEY` | پیشنهاد متن و ترجمه‌ی خودکار |
+| `TELEGRAM_BOT_TOKEN` | ارسال پیام فرم‌ها و اعلان‌ها |
+| `TELEGRAM_CHAT_ID` | مقصد پیام‌های تلگرام |
+| `ARTICLE_CRON_SECRET` | محافظ تولید مقاله‌ی روزانه |
+
+نکته: کد هم `ADMIN_SESSION_SECRET` و هم `SESSION_SECRET` را می‌پذیرد؛ فقط یکی کافی است.
+
+## ۳. KV برای رمز و دستگاه‌ها
+
+بدون KV ورود با رمز اولیه کار می‌کند، اما «تغییر رمز» و «فهرست دستگاه‌ها» غیرفعال می‌ماند.
+
+1. Workers & Pages → KV → Create a namespace
+2. نام: `sinazarghami-admin`
+3. پروژه‌ی سایت → Settings → Functions → KV namespace bindings
+4. Variable name: `ADMIN_KV` — Namespace: `sinazarghami-admin`
+5. برای Production و Preview جداگانه اضافه کن.
+
+## ۴. توکن گیت‌هاب
+
+GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token:
+
+- Repository access: فقط `szarghami/sinazarghami.ir`
+- Permissions → Contents: **Read and write**
+- Permissions → Metadata: **Read-only**
+- هیچ دسترسی دیگری (Actions، Workflows، Secrets) لازم نیست.
+
+## ۵. رمز اولیه و ورود
+
+1. `ADMIN_INITIAL_PASSCODE` را در Cloudflare ثبت کن و یک‌بار Redeploy بزن.
+2. آدرس `https://sinazarghami.ir/studio` را باز کن.
+3. رمز اولیه را وارد کن.
+4. بعد از ورود، از تب «امنیت» رمز را عوض کن.
+
+بعد از تغییر رمز، مقدار `ADMIN_INITIAL_PASSCODE` دیگر استفاده نمی‌شود و هش رمز جدید در KV
+ذخیره می‌ماند. پیشنهاد می‌شود بعد از تست موفق، مقدار رمز اولیه را از Cloudflare حذف کنی.
+
+## ۶. ثبت در GitHub برای تولید مقاله‌ی روزانه
+
+GitHub → مخزن → Settings → Secrets and variables → Actions → New repository secret:
+
+- Name: `ARTICLE_CRON_TOKEN`
+- Value: همان مقدار `ARTICLE_CRON_SECRET` در Cloudflare
+
+## ۷. چک‌لیست بعد از deploy
+
+- [ ] `https://sinazarghami.ir/` بدون اسپینر بی‌پایان باز می‌شود.
+- [ ] `https://sinazarghami.ir/studio` صفحه‌ی پنل را نشان می‌دهد.
+- [ ] ورود با رمز اولیه موفق است.
+- [ ] تغییر رمز از تب امنیت ذخیره می‌شود.
+- [ ] آپلود یک عکس تست، فایل را در `public/media/` مخزن می‌گذارد.
+- [ ] دکمه‌ی انتشار، فایل `public/site-data.json` را در مخزن کامیت می‌کند.
+- [ ] فرم تماس پیام را به تلگرام می‌فرستد.
+
+## ۸. خطاهای رایج
+
+| نشانه | علت | راه‌حل |
+| --- | --- | --- |
+| `503 ADMIN_SESSION_SECRET is not configured` | Secret تنظیم نشده | مقدار را در Cloudflare اضافه و Redeploy کن |
+| `401 رمز عبور نادرست است` | رمز با مقدار Cloudflare نمی‌خواند | مقدار `ADMIN_INITIAL_PASSCODE` را بررسی کن |
+| `503 ADMIN_KV is not configured` هنگام تغییر رمز | KV وصل نیست | بخش ۳ را انجام بده |
+| `503 GITHUB_TOKEN is not configured` | توکن گیت‌هاب ثبت نشده | بخش ۴ را انجام بده |
+| `503 GEMINI_API_KEY در Cloudflare تنظیم نشده است` | کلید جمینای ثبت نشده | Secret را اضافه کن |
+| صفحه سفید بعد از تغییر | نسخه‌ی قدیمی فونت/تصاویر خارجی را blocking لود می‌کرد | با نسخه‌ی فعلی برطرف شده؛ کش مرورگر را پاک کن |
+
+## اجرای محلی (اختیاری)
+
+```bash
+npm install
+npm run build
+npx wrangler pages dev dist
+```
+
+فایل `.dev.vars.example` را به `.dev.vars` کپی کن و مقادیر تست را داخلش بگذار.
