@@ -1,4 +1,3 @@
-/media/*  /media/:splat  200
-/assets/*  /assets/:splat  200
-/site-data.json  /site-data.json  200
+# SPA fallback. Cloudflare Pages serves existing static files first,
+# so /assets/*, /media/* and /site-data.json are untouched.
 /*  /index.html  200
