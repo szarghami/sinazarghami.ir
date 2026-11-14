@@ -38,8 +38,11 @@ import {
 import { smartUploadImage } from '../utils/media';
 import {
   getChunkSize,
+  getTransportMode,
   probeConnection,
   publishSiteContent,
+  TRANSPORT_MODE_LABELS,
+  type ChannelProbe,
   type ProbeStep,
 } from '../utils/transport';
 import { sendTelegramNotification } from '../utils/telegram';
@@ -362,6 +365,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [probeSteps, setProbeSteps] = useState<ProbeStep[] | null>(null);
   const [probeColo, setProbeColo] = useState<string | null>(null);
   const [activeChunkSize, setActiveChunkSize] = useState<number>(() => getChunkSize());
+  const [activeMode, setActiveMode] = useState(() => getTransportMode());
+  const [probeChannels, setProbeChannels] = useState<ChannelProbe[] | null>(null);
   const [serverChecks, setServerChecks] = useState<ServerChecks | null>(null);
   const publishQueueRef = useRef<SiteContent | null>(null);
   const publishingRef = useRef(false);
@@ -1557,6 +1562,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     try {
       setIsProbing(true);
       setProbeSteps(null);
+      setProbeChannels(null);
       setServerChecks(null);
       fetch('/api/health?deep=1', { credentials: 'same-origin' })
         .then((response) => (response.ok ? response.json() : null))
@@ -1566,13 +1572,17 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         .catch(() => setServerChecks(null));
       const result = await probeConnection();
       setProbeSteps(result.steps);
+      setProbeChannels(result.channels);
       setProbeColo(result.colo);
       setActiveChunkSize(getChunkSize());
+      setActiveMode(getTransportMode());
       const largest = [...result.steps].reverse().find((step) => step.ok);
       if (largest) {
         notify(
           isFa
-            ? `بزرگ‌ترین اندازه سالم: ${Math.round(largest.bytes / 1024)} کیلوبایت`
+            ? `کانال سالم: ${TRANSPORT_MODE_LABELS[getTransportMode()]} — بزرگ‌ترین اندازه سالم: ${Math.round(
+                largest.bytes / 1024,
+              )} کیلوبایت`
             : `Largest healthy payload: ${Math.round(largest.bytes / 1024)} KB`,
           'success',
         );
@@ -4971,6 +4981,30 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <span>{isProbing ? (isFa ? 'در حال تست...' : 'Testing...') : (isFa ? 'اجرای تست اتصال' : 'Run Test')}</span>
                     </button>
 
+                    {probeChannels && (
+                      <div className="rounded-lg border border-stone-200 bg-white divide-y divide-stone-100 overflow-hidden">
+                        {probeChannels.map((channel) => (
+                          <div
+                            key={channel.mode}
+                            className="flex items-center justify-between px-3 py-1.5 gap-2"
+                          >
+                            <span className="text-[11px] text-stone-600">
+                              {TRANSPORT_MODE_LABELS[channel.mode]}
+                            </span>
+                            {channel.ok ? (
+                              <span className="text-[11px] font-bold text-emerald-700">
+                                سالم ({channel.elapsedMs}ms)
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold text-red-600">
+                                {channel.status === 0 ? 'قطع شد' : `خطا ${channel.status}`}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {probeSteps && probeSteps.length > 0 && (
                       <div className="rounded-lg border border-stone-200 bg-white divide-y divide-stone-100 overflow-hidden">
                         {probeSteps.map((step) => (
@@ -4994,6 +5028,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <div className="px-3 py-2 bg-stone-50 text-[11px] text-stone-600">
                           {isFa ? 'کولو:' : 'Colo:'}{' '}
                           <span className="font-mono">{probeColo || '-'}</span>
+                          {' · '}
+                          {isFa ? 'کانال:' : 'Channel:'}{' '}
+                          <span className="font-mono">{TRANSPORT_MODE_LABELS[activeMode]}</span>
                           {' · '}
                           {isFa ? 'اندازه تکه فعلی:' : 'Chunk:'}{' '}
                           <span className="font-mono">{Math.round(activeChunkSize / 1024)} KB</span>

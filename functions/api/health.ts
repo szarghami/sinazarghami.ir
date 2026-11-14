@@ -7,7 +7,7 @@ import {
   type Env,
 } from './_shared/runtime';
 
-const VERSION = '2026-11-14-chunked';
+const VERSION = '2026-11-15-transport';
 const KV_PROBE_KEY = 'health:probe';
 
 interface RequestWithCf extends Request {

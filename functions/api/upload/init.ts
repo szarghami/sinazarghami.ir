@@ -1,4 +1,5 @@
 import { json, requireAdmin, type Env } from '../_shared/runtime';
+import { readRequestJson } from '../_shared/request';
 import { MAX_CHUNKS } from '../_shared/uploads';
 
 interface Context {
@@ -6,7 +7,12 @@ interface Context {
   env: Env;
 }
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
+interface InitBody {
+  kind?: string;
+  total?: number;
+}
+
+async function handle(request: Request, env: Env): Promise<Response> {
   const session = await requireAdmin(request, env);
   if (!session) return json({ success: false, error: 'Unauthorized.' }, 401);
   if (!env.ADMIN_KV) {
@@ -19,12 +25,8 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     );
   }
 
-  let body: { kind?: string; total?: number };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return json({ success: false, error: 'Invalid JSON body.' }, 400);
-  }
+  const body = await readRequestJson<InitBody>(request);
+  if (!body) return json({ success: false, error: 'Invalid JSON body.' }, 400);
 
   const kind = body.kind === 'content' || body.kind === 'media' ? body.kind : null;
   if (!kind) return json({ success: false, error: 'نوع آپلود نامعتبر است.' }, 400);
@@ -35,4 +37,12 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
   }
 
   return json({ success: true, uploadId: crypto.randomUUID(), kind, total });
+}
+
+export async function onRequestPost({ request, env }: Context): Promise<Response> {
+  return handle(request, env);
+}
+
+export async function onRequestGet({ request, env }: Context): Promise<Response> {
+  return handle(request, env);
 }

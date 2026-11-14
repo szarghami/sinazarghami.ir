@@ -1,4 +1,5 @@
 import { json, requireAdmin, type Env } from '../_shared/runtime';
+import { readRequestJson } from '../_shared/request';
 import {
   MAX_CHUNK_CHARS,
   MAX_CHUNKS,
@@ -12,19 +13,40 @@ interface Context {
   env: Env;
 }
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
+interface ChunkBody {
+  uploadId?: string;
+  index?: number;
+  data?: string;
+}
+
+/** در حالت GET داده به‌صورت base64url می‌آید تا نیازی به percent-encoding نباشد. */
+function fromBase64UrlChars(value: string): string {
+  return value.replace(/-/g, '+').replace(/_/g, '/');
+}
+
+async function readBody(request: Request): Promise<ChunkBody | null> {
+  if (request.method.toUpperCase() === 'GET') {
+    const params = new URL(request.url).searchParams;
+    const data = params.get('data');
+    if (!data) return null;
+    return {
+      uploadId: params.get('uploadId') || undefined,
+      index: Number(params.get('index')),
+      data: fromBase64UrlChars(data),
+    };
+  }
+  return readRequestJson<ChunkBody>(request);
+}
+
+async function handle(request: Request, env: Env): Promise<Response> {
   const session = await requireAdmin(request, env);
   if (!session) return json({ success: false, error: 'Unauthorized.' }, 401);
   if (!env.ADMIN_KV) {
     return json({ success: false, error: 'ADMIN_KV در Cloudflare تنظیم نشده است.' }, 503);
   }
 
-  let body: { uploadId?: string; index?: number; data?: string };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return json({ success: false, error: 'Invalid JSON body.' }, 400);
-  }
+  const body = await readBody(request);
+  if (!body) return json({ success: false, error: 'Invalid JSON body.' }, 400);
 
   if (!isUploadId(body.uploadId)) {
     return json({ success: false, error: 'شناسه آپلود نامعتبر است.' }, 400);
@@ -43,4 +65,12 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
   });
 
   return json({ success: true, index });
+}
+
+export async function onRequestPost({ request, env }: Context): Promise<Response> {
+  return handle(request, env);
+}
+
+export async function onRequestGet({ request, env }: Context): Promise<Response> {
+  return handle(request, env);
 }

@@ -31,5 +31,8 @@ jobs:
       - name: Typecheck Pages Functions
         run: npm run lint:pages
 
+      - name: Test request channels
+        run: npm test
+
       - name: Build
         run: npm run build

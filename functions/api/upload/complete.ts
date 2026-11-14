@@ -7,6 +7,7 @@ import {
   requireAdmin,
   type Env,
 } from '../_shared/runtime';
+import { readRequestJson } from '../_shared/request';
 import {
   MAX_CHUNKS,
   MAX_UPLOAD_BYTES,
@@ -22,6 +23,14 @@ interface Context {
   env: Env;
 }
 
+interface CompleteBody {
+  uploadId?: string;
+  total?: number;
+  kind?: string;
+  mimeType?: string;
+  filename?: string;
+}
+
 const CONTENT_PATH = 'public/site-data.json';
 const MAX_CONTENT_BYTES = 1_500_000;
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -31,25 +40,15 @@ const MIME_EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
+async function handle(request: Request, env: Env): Promise<Response> {
   const session = await requireAdmin(request, env);
   if (!session) return json({ success: false, error: 'Unauthorized.' }, 401);
   if (!env.ADMIN_KV) {
     return json({ success: false, error: 'ADMIN_KV در Cloudflare تنظیم نشده است.' }, 503);
   }
 
-  let body: {
-    uploadId?: string;
-    total?: number;
-    kind?: string;
-    mimeType?: string;
-    filename?: string;
-  };
-  try {
-    body = (await request.json()) as typeof body;
-  } catch {
-    return json({ success: false, error: 'Invalid JSON body.' }, 400);
-  }
+  const body = await readRequestJson<CompleteBody>(request);
+  if (!body) return json({ success: false, error: 'Invalid JSON body.' }, 400);
 
   if (!isUploadId(body.uploadId)) {
     return json({ success: false, error: 'شناسه آپلود نامعتبر است.' }, 400);
@@ -156,4 +155,12 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
   }
 
   return json({ success: false, error: 'نوع آپلود نامعتبر است.' }, 400);
+}
+
+export async function onRequestPost({ request, env }: Context): Promise<Response> {
+  return handle(request, env);
+}
+
+export async function onRequestGet({ request, env }: Context): Promise<Response> {
+  return handle(request, env);
 }

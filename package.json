@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "lint:pages": "tsc --noEmit -p tsconfig.functions.json",
+    "test": "node --experimental-strip-types scripts/test-request-channels.mjs",
     "pages:dev": "vite build && npx wrangler pages dev dist"
   },
   "dependencies": {
