@@ -16,7 +16,7 @@ import {
   FileCheck,
 } from 'lucide-react';
 import { notifyPrintOrder } from '../utils/telegram';
-import { getReliableImageUrl } from '../utils/media';
+import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
 
 interface PrintShopModalProps {
   photo: PhotoItem | null;
@@ -288,7 +288,7 @@ export const PrintShopModal: React.FC<PrintShopModalProps> = ({
                 <div className="md:col-span-5 space-y-4">
                   <div className="relative rounded-xl overflow-hidden bg-stone-100 border border-stone-200 aspect-4/3 shadow-xs">
                     <img
-                      src={getReliableImageUrl(photo.imageUrl)}
+                      src={getReliableImageUrl(getPostCoverUrl(photo))}
                       alt={photoTitle}
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"

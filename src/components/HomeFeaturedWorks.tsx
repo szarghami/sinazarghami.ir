@@ -1,7 +1,7 @@
 import React from 'react';
 import { Language, PhotoItem } from '../types';
 import { Camera, MapPin, ArrowRight, ArrowLeft, Eye, ShoppingBag, Sparkles } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/media';
+import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
 
 interface HomeFeaturedWorksProps {
   photos: PhotoItem[];
@@ -70,7 +70,7 @@ export const HomeFeaturedWorks: React.FC<HomeFeaturedWorksProps> = ({
                 {/* Media Container */}
                 <div className="relative aspect-4/3 overflow-hidden bg-stone-900">
                   <img
-                    src={getReliableImageUrl(photo.imageUrl)}
+                    src={getReliableImageUrl(getPostCoverUrl(photo))}
                     alt={isFa ? photo.titleFa : photo.titleEn}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104"
                     loading="lazy"

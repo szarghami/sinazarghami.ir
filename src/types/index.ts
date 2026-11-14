@@ -9,6 +9,13 @@ export type Language = 'fa' | 'en';
 export type PhotoCategory = 'all' | 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
 
 // ساختار اطلاعات هر قطعه عکس یا ویدیو
+export interface PostVideo {
+  id: string;
+  url: string; // لینک یوتیوب، آپارات یا فایل مستقیم mp4/webm
+  titleFa?: string;
+  titleEn?: string;
+}
+
 export interface PhotoItem {
   id: string;
   titleFa: string; // عنوان فارسی اثر
@@ -44,6 +51,7 @@ export interface PhotoItem {
   featured?: boolean;
   galleryImages?: string[]; // تصاویر آلبوم (برای پست کردن چند عکس به صورت یک گالری)
   isAlbum?: boolean; // آیا این پست یک آلبوم چندعکسی است؟
+  videos?: PostVideo[]; // ویدیوهای همین پست (به صورت لینک، بدون آپلود فایل)
   // فیلدهای تکمیلی جهت مدیریت داینامیک CMS و تفکیک نمونه‌کار
   showOnHome?: boolean; // نمایش در پست‌های برگزیده صفحه اصلی
   homeOrder?: number; // ترتیب نمایش در صفحه اصلی برای جابجایی

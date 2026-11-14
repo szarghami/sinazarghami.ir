@@ -22,7 +22,7 @@ import {
   Layers,
   ShoppingBag,
 } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/media';
+import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
 
 interface DynamicFilterArchiveProps {
   type: 'gear' | 'technique';
@@ -247,7 +247,7 @@ export const DynamicFilterArchive: React.FC<DynamicFilterArchiveProps> = ({
                 >
                   <div className="relative aspect-16/10 overflow-hidden bg-stone-900">
                     <img
-                      src={getReliableImageUrl(photo.imageUrl)}
+                      src={getReliableImageUrl(getPostCoverUrl(photo))}
                       alt={isFa ? photo.titleFa : photo.titleEn}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-104"
                       loading="lazy"
@@ -353,7 +353,7 @@ export const DynamicFilterArchive: React.FC<DynamicFilterArchiveProps> = ({
             </button>
             <div className="aspect-16/10 bg-black flex items-center justify-center">
               <img
-                src={getReliableImageUrl(selectedPhoto.imageUrl)}
+                src={getReliableImageUrl(getPostCoverUrl(selectedPhoto))}
                 alt={isFa ? selectedPhoto.titleFa : selectedPhoto.titleEn}
                 className="max-h-[75vh] w-auto max-w-full object-contain"
               />

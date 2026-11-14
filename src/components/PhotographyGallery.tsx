@@ -22,8 +22,11 @@ import {
   Wrench,
   ArrowUpRight,
   SlidersHorizontal,
+  Play,
+  Film,
 } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/media';
+import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
+import { VideoPlayer } from './VideoPlayer';
 
 interface PhotographyGalleryProps {
   photos: PhotoItem[];
@@ -115,8 +118,14 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
   };
 
   const currentPhotoImages = activePhoto
-    ? [activePhoto.imageUrl, ...(activePhoto.galleryImages || [])]
+    ? [activePhoto.imageUrl, ...(activePhoto.galleryImages || [])].filter(Boolean)
     : [];
+  const currentPhotoVideos = activePhoto?.videos || [];
+  const currentMediaCount = currentPhotoImages.length + currentPhotoVideos.length;
+  const activeVideo =
+    activePhoto && activeImageIndex >= currentPhotoImages.length
+      ? currentPhotoVideos[activeImageIndex - currentPhotoImages.length]
+      : null;
 
   return (
     <section id="photography" className="py-20 sm:py-24 bg-stone-50 border-b border-stone-200">
@@ -197,10 +206,11 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {filteredPhotos.map((photo, index) => {
               const isLarge = index === 0 || index === 4;
-              const hasMultiple = photo.galleryImages && photo.galleryImages.length > 0;
-              const totalCount = 1 + (photo.galleryImages?.length || 0);
-              const isFailed = failedImages[photo.id];
-              const displayUrl = getReliableImageUrl(photo.imageUrl);
+              const videoCount = photo.videos?.length || 0;
+              const hasMultiple = (photo.galleryImages?.length || 0) + videoCount > 0;
+              const totalCount = 1 + (photo.galleryImages?.length || 0) + videoCount;
+              const displayUrl = getReliableImageUrl(getPostCoverUrl(photo));
+              const isFailed = failedImages[photo.id] || !displayUrl;
 
               return (
                 <div
@@ -230,7 +240,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-stone-850 via-stone-900 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-white">
                           <div className="p-3 bg-amber-600/20 text-amber-400 rounded-full mb-3 ring-1 ring-amber-500/30">
-                            <Camera className="w-8 h-8" />
+                            {videoCount > 0 ? <Film className="w-8 h-8" /> : <Camera className="w-8 h-8" />}
                           </div>
                           <h4 className="font-bold text-sm text-stone-100 mb-1">
                             {isFa ? photo.titleFa : photo.titleEn}
@@ -255,8 +265,29 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                       {/* نشانگر گالری چندعکسی (آلبوم) */}
                       {hasMultiple && (
                         <div className="absolute top-3 left-3 bg-stone-900/85 backdrop-blur-md text-white text-xs px-2.5 py-1 rounded-md flex items-center gap-1.5 font-mono shadow-md z-10">
-                          <Images className="w-3.5 h-3.5 text-amber-400" />
-                          <span>{isFa ? `${totalCount} تصویر` : `${totalCount} Photos`}</span>
+                          {videoCount > 0 ? (
+                            <Film className="w-3.5 h-3.5 text-amber-400" />
+                          ) : (
+                            <Images className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          <span>
+                            {videoCount > 0
+                              ? isFa
+                                ? `${totalCount} رسانه`
+                                : `${totalCount} items`
+                              : isFa
+                              ? `${totalCount} تصویر`
+                              : `${totalCount} Photos`}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* دکمه پخش روی کاور پست‌های ویدیویی */}
+                      {videoCount > 0 && !isFailed && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                          <span className="p-4 bg-stone-950/55 backdrop-blur-sm text-white rounded-full ring-1 ring-white/30 group-hover:scale-110 transition-transform">
+                            <Play className="w-7 h-7 fill-current" />
+                          </span>
                         </div>
                       )}
 
@@ -393,18 +424,32 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
             <div className="grid grid-cols-1 lg:grid-cols-12 max-h-[90vh] overflow-y-auto">
               {/* Media Container */}
               <div className="lg:col-span-7 bg-black flex flex-col items-center justify-center min-h-[340px] sm:min-h-[480px] p-2 relative group">
-                <img
-                  src={getReliableImageUrl(currentPhotoImages[activeImageIndex] || activePhoto.imageUrl)}
-                  alt={isFa ? activePhoto.titleFa : activePhoto.titleEn}
-                  className="max-h-[70vh] w-auto max-w-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
+                {activeVideo ? (
+                  <VideoPlayer
+                    url={activeVideo.url}
+                    title={
+                      (isFa ? activeVideo.titleFa : activeVideo.titleEn) ||
+                      (isFa ? activePhoto.titleFa : activePhoto.titleEn)
+                    }
+                  />
+                ) : (
+                  <img
+                    src={getReliableImageUrl(
+                      currentPhotoImages[activeImageIndex] || activePhoto.imageUrl,
+                    )}
+                    alt={isFa ? activePhoto.titleFa : activePhoto.titleEn}
+                    className="max-h-[70vh] w-auto max-w-full object-contain"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
 
                 {/* اسلایدر آلبوم چندعکسی */}
-                {currentPhotoImages.length > 1 && (
+                {currentMediaCount > 1 && (
                   <>
                     <button
-                      onClick={() => setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : currentPhotoImages.length - 1))}
+                      onClick={() =>
+                        setActiveImageIndex((prev) => (prev > 0 ? prev - 1 : currentMediaCount - 1))
+                      }
                       className="absolute left-3 p-2 bg-stone-900/70 hover:bg-stone-800 text-white rounded-full transition-all cursor-pointer"
                       title={isFa ? 'عکس قبلی' : 'Previous'}
                     >
@@ -412,7 +457,9 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                     </button>
 
                     <button
-                      onClick={() => setActiveImageIndex((prev) => (prev < currentPhotoImages.length - 1 ? prev + 1 : 0))}
+                      onClick={() =>
+                        setActiveImageIndex((prev) => (prev < currentMediaCount - 1 ? prev + 1 : 0))
+                      }
                       className="absolute right-3 p-2 bg-stone-900/70 hover:bg-stone-800 text-white rounded-full transition-all cursor-pointer"
                       title={isFa ? 'عکس بعدی' : 'Next'}
                     >
@@ -422,7 +469,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                     <div className="w-full flex items-center justify-center gap-2 p-2 bg-stone-950/80 overflow-x-auto mt-2">
                       {currentPhotoImages.map((imgUrl, i) => (
                         <button
-                          key={i}
+                          key={`img-${i}`}
                           onClick={() => setActiveImageIndex(i)}
                           className={`w-12 h-10 rounded-md overflow-hidden border-2 transition-all cursor-pointer shrink-0 ${
                             activeImageIndex === i ? 'border-amber-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
@@ -431,6 +478,23 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                           <img src={getReliableImageUrl(imgUrl)} alt="" className="w-full h-full object-cover" />
                         </button>
                       ))}
+                      {currentPhotoVideos.map((video, i) => {
+                        const mediaIndex = currentPhotoImages.length + i;
+                        return (
+                          <button
+                            key={video.id || `video-${i}`}
+                            onClick={() => setActiveImageIndex(mediaIndex)}
+                            className={`w-12 h-10 rounded-md overflow-hidden border-2 transition-all cursor-pointer shrink-0 bg-stone-800 flex items-center justify-center ${
+                              activeImageIndex === mediaIndex
+                                ? 'border-amber-500 scale-105'
+                                : 'border-transparent opacity-60 hover:opacity-100'
+                            }`}
+                            title={isFa ? 'ویدیو' : 'Video'}
+                          >
+                            <Play className="w-4 h-4 text-white fill-current" />
+                          </button>
+                        );
+                      })}
                     </div>
                   </>
                 )}

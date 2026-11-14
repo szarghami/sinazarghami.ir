@@ -1,4 +1,6 @@
 import { uploadImageFile } from './transport';
+import { videoThumbnail } from './videoEmbed';
+import type { PhotoItem } from '../types';
 
 export interface UploadResult {
   success: boolean;
@@ -16,4 +18,14 @@ export async function smartUploadImage(dataUrl: string, customName?: string): Pr
 
 export function getReliableImageUrl(url?: string): string {
   return url || '';
+}
+
+/**
+ * تصویر کاور یک پست. اگر پست عکس نداشته باشد، تصویر بندانگشتی اولین ویدیو
+ * (مثلاً کاور یوتیوب) استفاده می‌شود.
+ */
+export function getPostCoverUrl(photo: Pick<PhotoItem, 'imageUrl' | 'videos'>): string {
+  if (photo.imageUrl) return photo.imageUrl;
+  const firstVideo = photo.videos?.find((video) => video.url);
+  return firstVideo ? videoThumbnail(firstVideo.url) || '' : '';
 }

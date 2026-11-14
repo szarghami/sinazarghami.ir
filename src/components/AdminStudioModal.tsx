@@ -24,6 +24,7 @@ import {
   DefinedTechnique,
   AboutPageContent,
   NavLabelsItem,
+  PostVideo,
 } from '../types';
 import {
   checkAdminPasscode,
@@ -34,8 +35,9 @@ import {
   isSessionAuthenticated,
   setSessionAuthenticated,
   saveSiteContent,
+  rememberPublish,
 } from '../utils/storage';
-import { smartUploadImage } from '../utils/media';
+import { getPostCoverUrl, smartUploadImage } from '../utils/media';
 import {
   getChunkSize,
   getTransportMode,
@@ -100,6 +102,9 @@ import {
   SlidersHorizontal,
   PlusCircle,
   UserCheck,
+  Play,
+  Film,
+  Link2,
 } from 'lucide-react';
 
 interface AdminStudioModalProps {
@@ -187,6 +192,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [photoPriceUsd, setPhotoPriceUsd] = useState<number>(45);
   const [photoPrintAvail, setPhotoPrintAvail] = useState<boolean>(true);
   const [photoImageUrl, setPhotoImageUrl] = useState<string>('');
+  // آدرسی که عکس در مخزن گرفته است تا دوباره بارگذاری نشود.
+  const [uploadedMainUrl, setUploadedMainUrl] = useState<string>('');
+
+  // ویدیوهای همین پست (فقط لینک؛ فایلی آپلود نمی‌شود)
+  const [photoVideos, setPhotoVideos] = useState<PostVideo[]>([]);
+  const [videoUrlInput, setVideoUrlInput] = useState<string>('');
+  const [videoTitleInput, setVideoTitleInput] = useState<string>('');
 
   // فیلدهای تکمیلی داینامیک CMS برای اثر
   const [photoShowOnHome, setPhotoShowOnHome] = useState<boolean>(false);
@@ -387,6 +399,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const processSelectedFiles = async (files: File[]) => {
     try {
       setIsProcessing(true);
+      setUploadedMainUrl('');
       const res = await compressMultipleImagesToWebP(files, compressMaxDim, compressQuality);
       setCompressedResults(res.results);
       setOverallStats({
@@ -445,7 +458,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    * ترجمه می‌کند.
    */
   const handleAiSuggestPhoto = async () => {
-    const currentImage =
+    let currentImage =
       compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl;
 
     if (!currentImage) {
@@ -456,13 +469,29 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     try {
       setIsAiSuggesting(true);
       setAiSuggestError(null);
+
+      // بدنه‌ی درخواست هوش مصنوعی باید کوچک بماند؛ روی این شبکه هر درخواست
+      // سنگین قطع می‌شود. پس عکس اول در مخزن ذخیره می‌شود و بعد فقط آدرسش
+      // به جمینای می‌رود.
+      if (currentImage.startsWith('data:')) {
+        setUploadMsg(
+          isFa ? 'در حال بارگذاری عکس برای تحلیل هوش مصنوعی...' : 'Uploading photo for AI analysis...',
+        );
+        const upload = await smartUploadImage(currentImage, `ai_${Date.now()}`);
+        if (!upload.success || !upload.publicUrl) {
+          throw new Error(upload.error || 'بارگذاری عکس برای تحلیل ناموفق بود.');
+        }
+        currentImage = upload.publicUrl;
+        setPhotoImageUrl(upload.publicUrl);
+        setUploadedMainUrl(upload.publicUrl);
+      }
+
       const res = await fetch('/api/gemini/suggest-photo-details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
         body: JSON.stringify({
-          imageBase64: currentImage.startsWith('data:') ? currentImage : undefined,
-          imageUrl: currentImage.startsWith('data:') ? undefined : currentImage,
+          imageUrl: currentImage,
           titleHint: photoTitleFa || undefined,
         }),
       });
@@ -497,6 +526,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       notifyError(message);
     } finally {
       setIsAiSuggesting(false);
+      setUploadMsg(null);
     }
   };
 
@@ -526,6 +556,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoPriceUsd(photo.printPriceUsd);
     setPhotoPrintAvail(photo.printAvailable);
     setPhotoImageUrl(photo.imageUrl);
+    setUploadedMainUrl('');
+    setPhotoVideos(photo.videos || []);
+    setVideoUrlInput('');
+    setVideoTitleInput('');
     // فیلدهای تکمیلی داینامیک CMS
     setPhotoShowOnHome(photo.showOnHome || false);
     setPhotoHomeOrder(photo.homeOrder || 0);
@@ -550,6 +584,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoDescFa('');
     setPhotoDescEn('');
     setPhotoImageUrl('');
+    setUploadedMainUrl('');
+    setPhotoVideos([]);
+    setVideoUrlInput('');
+    setVideoTitleInput('');
     setPhotoShowOnHome(false);
     setPhotoHomeOrder(0);
     setPhotoPortfolioScope('commercial');
@@ -567,6 +605,36 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   /**
    * ثبت عکس جدید یا به‌روزرسانی عکس در حال ویرایش
    */
+  const handleAddVideo = () => {
+    const url = videoUrlInput.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      notifyError(
+        isFa
+          ? 'لینک ویدیو باید با http یا https شروع شود.'
+          : 'Video link must start with http or https.',
+      );
+      return;
+    }
+    if (photoVideos.some((video) => video.url === url)) {
+      notifyError(isFa ? 'این ویدیو قبلاً اضافه شده است.' : 'This video is already added.');
+      return;
+    }
+    setPhotoVideos([
+      ...photoVideos,
+      {
+        id: `video-${Date.now()}`,
+        url,
+        titleFa: videoTitleInput.trim() || undefined,
+      },
+    ]);
+    setVideoUrlInput('');
+    setVideoTitleInput('');
+  };
+
+  const handleRemoveVideo = (id: string) => {
+    setPhotoVideos(photoVideos.filter((video) => video.id !== id));
+  };
+
   const handleSavePhoto = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -578,9 +646,14 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       // تصاویر جدید فقط پس از ذخیره موفق در مخزن گیت‌هاب به محتوا اضافه می‌شوند.
       if (compressedResults.length > 0) {
         setUploadMsg('در حال بارگذاری تصاویر در مخزن گیت‌هاب...');
-        const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
-        if (!mainUpload.success || !mainUpload.publicUrl) throw new Error(mainUpload.error || 'بارگذاری تصویر اصلی ناموفق بود.');
-        mainImageUrl = mainUpload.publicUrl;
+        if (uploadedMainUrl && uploadedMainUrl === photoImageUrl) {
+          // عکس اصلی قبلاً (مثلاً هنگام تحلیل هوش مصنوعی) بارگذاری شده است.
+          mainImageUrl = uploadedMainUrl;
+        } else {
+          const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
+          if (!mainUpload.success || !mainUpload.publicUrl) throw new Error(mainUpload.error || 'بارگذاری تصویر اصلی ناموفق بود.');
+          mainImageUrl = mainUpload.publicUrl;
+        }
 
         for (let i = 1; i < compressedResults.length; i++) {
           const subUpload = await smartUploadImage(compressedResults[i].dataUrl, `sub_${Date.now()}_${i}`);
@@ -589,8 +662,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         }
       }
 
-      if (!mainImageUrl) {
-        notify(isFa ? 'لطفاً یک تصویر بارگذاری کنید یا آدرس آن را وارد نمایید.' : 'Please provide an image.');
+      if (!mainImageUrl && photoVideos.length === 0) {
+        notify(
+          isFa
+            ? 'لطفاً یک تصویر بارگذاری کنید یا حداقل یک لینک ویدیو اضافه کنید.'
+            : 'Please add an image or at least one video link.',
+        );
         return;
       }
 
@@ -613,6 +690,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
               imageUrl: mainImageUrl,
               galleryImages: additionalImages.length > 0 ? additionalImages : p.galleryImages,
               isAlbum: additionalImages.length > 0 ? true : p.isAlbum,
+              videos: photoVideos.length > 0 ? photoVideos : undefined,
+              isVideo: photoVideos.length > 0,
               descriptionFa: photoDescFa,
               descriptionEn: photoDescEn,
               printAvailable: photoPrintAvail,
@@ -646,6 +725,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           imageUrl: mainImageUrl,
           galleryImages: additionalImages,
           isAlbum: isAlbum,
+          videos: photoVideos.length > 0 ? photoVideos : undefined,
+          isVideo: photoVideos.length > 0,
           camera: photoCamera,
           lens: photoLens,
           exif: {
@@ -1505,6 +1586,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const persistContent = async (next: SiteContent) => {
     onUpdateContent(next);
     saveSiteContent(next);
+    rememberPublish(next, false);
     publishQueueRef.current = next;
     if (publishingRef.current) return;
     publishingRef.current = true;
@@ -1522,6 +1604,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           onUpdateContent(result.content as SiteContent);
           saveSiteContent(result.content as SiteContent);
         }
+        rememberPublish((result.content as SiteContent) || payload, true);
         const translation = result.translation;
         const translationNote = translation?.translated
           ? `\n${translation.translated} فیلد انگلیسی هم خودکار ترجمه شد.`
@@ -2021,6 +2104,99 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* ویدیوهای همین پست: فقط لینک، بدون آپلود فایل */}
+                <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
+                      <Film className="w-4 h-4 text-amber-700" />
+                      <span>{isFa ? 'ویدیوهای همین پست (لینک)' : 'Videos in this post (links)'}</span>
+                    </h4>
+                    <span className="text-[11px] text-stone-500">
+                      {isFa
+                        ? 'لینک یوتیوب، آپارات یا فایل مستقیم mp4 — هر تعداد که بخواهی'
+                        : 'YouTube, Aparat or direct mp4 — as many as you like'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    <input
+                      type="url"
+                      dir="ltr"
+                      value={videoUrlInput}
+                      onChange={(e) => setVideoUrlInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddVideo();
+                        }
+                      }}
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      className="sm:col-span-7 px-3 py-2 bg-white border border-stone-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                    <input
+                      type="text"
+                      value={videoTitleInput}
+                      onChange={(e) => setVideoTitleInput(e.target.value)}
+                      placeholder={isFa ? 'عنوان ویدیو (اختیاری)' : 'Video title (optional)'}
+                      className="sm:col-span-3 px-3 py-2 bg-white border border-stone-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddVideo}
+                      className="sm:col-span-2 px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{isFa ? 'افزودن' : 'Add'}</span>
+                    </button>
+                  </div>
+
+                  {photoVideos.length > 0 && (
+                    <ul className="space-y-2">
+                      {photoVideos.map((video, index) => (
+                        <li
+                          key={video.id}
+                          className="flex items-center gap-2.5 bg-white border border-stone-200 rounded-lg px-3 py-2"
+                        >
+                          <span className="w-6 h-6 rounded-md bg-stone-900 text-white flex items-center justify-center shrink-0">
+                            <Play className="w-3 h-3 fill-current" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-bold text-stone-800 truncate">
+                              {video.titleFa || (isFa ? `ویدیو ${index + 1}` : `Video ${index + 1}`)}
+                            </div>
+                            <div
+                              className="text-[10px] text-stone-500 truncate font-mono"
+                              dir="ltr"
+                              title={video.url}
+                            >
+                              {video.url}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVideo(video.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                            title={isFa ? 'حذف ویدیو' : 'Remove video'}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {photoVideos.length === 0 && (
+                    <p className="text-[11px] text-stone-500 flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-stone-400" />
+                      <span>
+                        {isFa
+                          ? 'اگر پست فقط ویدیو دارد، نیازی به بارگذاری عکس نیست.'
+                          : 'A video-only post does not need an image.'}
+                      </span>
+                    </p>
+                  )}
                 </div>
 
                 {/* دکمه واحد هوش مصنوعی: تحلیل عکس و پر کردن همه فیلدها */}
@@ -2597,7 +2773,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           </button>
 
                           <img
-                            src={p.imageUrl}
+                            src={getPostCoverUrl(p)}
                             alt=""
                             className="w-14 h-11 object-cover rounded-md bg-stone-200 shrink-0 border border-stone-300"
                             referrerPolicy="no-referrer"
