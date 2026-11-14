@@ -36,9 +36,25 @@ import {
   saveSiteContent,
 } from '../utils/storage';
 import { smartUploadImage } from '../utils/media';
-import { translateToArtisticEnglish } from '../utils/aiTranslator';
+import {
+  getChunkSize,
+  probeConnection,
+  publishSiteContent,
+  type ProbeStep,
+} from '../utils/transport';
 import { sendTelegramNotification } from '../utils/telegram';
 import { VoiceDictationButton } from './VoiceDictationButton';
+import { ToastHost, useToasts } from './ToastHost';
+
+interface ServerChecks {
+  sessionSecret: boolean;
+  initialPasscode: boolean;
+  passcodeChanged: boolean;
+  kv: { bound: boolean; ok: boolean | null; error?: string };
+  github: { configured: boolean; repo: string; branch: string };
+  gemini: boolean;
+  telegram: boolean;
+}
 import {
   Lock,
   Upload,
@@ -97,6 +113,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   onClose,
 }) => {
   const isFa = language === 'fa';
+  const { toast, notify, notifyError, dismiss } = useToasts();
 
   // وضعیت احراز هویت سشن فعلی کاربر
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => isSessionAuthenticated());
@@ -147,7 +164,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [overallStats, setOverallStats] = useState<{ origKB: number; compKB: number; percent: number } | null>(null);
 
   // استیت‌های هوش مصنوعی جمینای برای تحلیل عکس
-  const [aiSuggestion, setAiSuggestion] = useState<AiPhotoSuggestion | null>(null);
   const [isAiSuggesting, setIsAiSuggesting] = useState<boolean>(false);
   const [aiSuggestError, setAiSuggestError] = useState<string | null>(null);
   const [instantPublishSuccess, setInstantPublishSuccess] = useState<boolean>(false);
@@ -168,7 +184,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [photoPriceUsd, setPhotoPriceUsd] = useState<number>(45);
   const [photoPrintAvail, setPhotoPrintAvail] = useState<boolean>(true);
   const [photoImageUrl, setPhotoImageUrl] = useState<string>('');
-  const [translatingField, setTranslatingField] = useState<string | null>(null);
 
   // فیلدهای تکمیلی داینامیک CMS برای اثر
   const [photoShowOnHome, setPhotoShowOnHome] = useState<boolean>(false);
@@ -340,51 +355,19 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [resType, setResType] = useState<'experience' | 'education' | 'exhibition' | 'award' | 'publication'>('experience');
 
   // استیت‌های انتشار ابری و پشتیبان‌گیری
-  const githubRepo = 'szarghami/sinazarghami-aistudio-site';
   const [isPublishing, setIsPublishing] = useState(false);
-  const [isSyncingGithub, setIsSyncingGithub] = useState(false);
-  const [githubSyncStatus, setGithubSyncStatus] = useState<{ success: boolean; msg: string } | null>(null);
   const [publishStatus, setPublishStatus] = useState<{ success: boolean; msg: string } | null>(null);
   const [telegramTestStatus, setTelegramTestStatus] = useState<string | null>(null);
+  const [isProbing, setIsProbing] = useState(false);
+  const [probeSteps, setProbeSteps] = useState<ProbeStep[] | null>(null);
+  const [probeColo, setProbeColo] = useState<string | null>(null);
+  const [activeChunkSize, setActiveChunkSize] = useState<number>(() => getChunkSize());
+  const [serverChecks, setServerChecks] = useState<ServerChecks | null>(null);
+  const publishQueueRef = useRef<SiteContent | null>(null);
+  const publishingRef = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const backupInputRef = useRef<HTMLInputElement>(null);
-
-  /**
-   * همگام‌سازی دستی و مستقیم فایل‌ها با مخزن گیت‌هاب
-   */
-  const handleManualGithubSync = async () => {
-    try {
-      setIsSyncingGithub(true);
-      setGithubSyncStatus(null);
-
-      const res = await fetch('/api/site-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ content }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'خطا در ارتباط با گیت‌هاب');
-      }
-
-      setGithubSyncStatus({
-        success: true,
-        msg: isFa
-          ? `فایل داده‌های وب‌سایت با موفقیت در مخزن ${githubRepo} کامیت و همگام‌سازی شد!`
-          : `Successfully committed to ${githubRepo}!`,
-      });
-    } catch (err: any) {
-      setGithubSyncStatus({
-        success: false,
-        msg: isFa ? `خطا در همگام‌سازی با گیت‌هاب: ${err.message}` : `Error: ${err.message}`,
-      });
-    } finally {
-      setIsSyncingGithub(false);
-    }
-  };
 
   // بازفشرده‌سازی در صورت تغییر اسلایدرهای کیفیت یا حداکثر اندازه
   useEffect(() => {
@@ -450,40 +433,18 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPinInput('');
   };
 
-  // =========================================================================
-  // توابع ترجمه هوشمند با هوش مصنوعی (AI Translation Helpers)
-  // =========================================================================
-
   /**
-   * ترجمه تک‌فیلدی به کمک هوش مصنوعی جمینای
-   */
-  const handleAiTranslate = async (
-    persianText: string,
-    targetSetter: (text: string) => void,
-    fieldId: string,
-    type: 'title' | 'description' | 'tagline' = 'title',
-    category?: string
-  ) => {
-    if (!persianText.trim()) return;
-    try {
-      setTranslatingField(fieldId);
-      const res = await translateToArtisticEnglish(persianText, type, category);
-      targetSetter(res);
-    } finally {
-      setTranslatingField(null);
-    }
-  };
-
-  /**
-   * تحلیل بصری عکس توسط هوش مصنوعی جمینای و ارائه پیشنهادات موضوع، عنوان و داستان
+   * یک دکمه برای همه‌چیز: عکس تحلیل می‌شود و عنوان، توضیح، مکان، دسته،
+   * دوربین، لنز و تگ‌ها به‌صورت فارسی و انگلیسی در فرم پر می‌شوند.
+   * ترجمه‌ی دستی فیلدها لازم نیست؛ سرور هنگام انتشار کمبودها را خودکار
+   * ترجمه می‌کند.
    */
   const handleAiSuggestPhoto = async () => {
-    const currentImage = compressedResults.length > 0
-      ? compressedResults[0].dataUrl
-      : photoImageUrl;
+    const currentImage =
+      compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl;
 
     if (!currentImage) {
-      alert(isFa ? 'لطفاً ابتدا یک عکس انتخاب یا آپلود کنید تا هوش مصنوعی آن را تحلیل کند.' : 'Please upload or choose a photo first.');
+      notify(isFa ? 'اول یک عکس انتخاب یا آپلود کن.' : 'Pick or upload a photo first.');
       return;
     }
 
@@ -493,43 +454,45 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       const res = await fetch('/api/gemini/suggest-photo-details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           imageBase64: currentImage.startsWith('data:') ? currentImage : undefined,
-          imageUrl: currentImage.startsWith('http') ? currentImage : undefined,
+          imageUrl: currentImage.startsWith('data:') ? undefined : currentImage,
           titleHint: photoTitleFa || undefined,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'خطا در تحلیل عکس با جمینای');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success || !data.suggestion) {
+        throw new Error(data.error || 'تحلیل عکس انجام نشد.');
       }
 
-      setAiSuggestion(data.suggestion);
+      const suggestion = data.suggestion as AiPhotoSuggestion;
+      if (suggestion.titleFa) setPhotoTitleFa(suggestion.titleFa);
+      if (suggestion.titleEn) setPhotoTitleEn(suggestion.titleEn);
+      if (suggestion.category) setPhotoCategory(suggestion.category);
+      if (suggestion.locationFa) setPhotoLocationFa(suggestion.locationFa);
+      if (suggestion.locationEn) setPhotoLocationEn(suggestion.locationEn);
+      if (suggestion.descriptionFa) setPhotoDescFa(suggestion.descriptionFa);
+      if (suggestion.descriptionEn) setPhotoDescEn(suggestion.descriptionEn);
+      if (suggestion.camera) setPhotoCamera(suggestion.camera);
+      if (suggestion.lens) setPhotoLens(suggestion.lens);
+      if (suggestion.suggestedPriceToman) setPhotoPriceToman(suggestion.suggestedPriceToman);
+      if (suggestion.suggestedPriceUsd) setPhotoPriceUsd(suggestion.suggestedPriceUsd);
+
+      notify(
+        isFa
+          ? 'فیلدها با پیشنهاد هوش مصنوعی پر شدند؛ هر جا لازم بود خودت اصلاح کن.'
+          : 'Fields filled by AI. Edit anything you like.',
+        'success',
+      );
     } catch (err: any) {
-      setAiSuggestError(err.message || 'خطا در ارتباط با هوش مصنوعی');
+      const message = err?.message || 'تحلیل عکس انجام نشد.';
+      setAiSuggestError(message);
+      notifyError(message);
     } finally {
       setIsAiSuggesting(false);
     }
-  };
-
-  /**
-   * اعمال پیشنهادات هوش مصنوعی در فرم مشخصات اثر
-   */
-  const handleApplyAiSuggestion = () => {
-    if (!aiSuggestion) return;
-    if (aiSuggestion.titleFa) setPhotoTitleFa(aiSuggestion.titleFa);
-    if (aiSuggestion.titleEn) setPhotoTitleEn(aiSuggestion.titleEn);
-    if (aiSuggestion.category) setPhotoCategory(aiSuggestion.category);
-    if (aiSuggestion.locationFa) setPhotoLocationFa(aiSuggestion.locationFa);
-    if (aiSuggestion.locationEn) setPhotoLocationEn(aiSuggestion.locationEn);
-    if (aiSuggestion.descriptionFa) setPhotoDescFa(aiSuggestion.descriptionFa);
-    if (aiSuggestion.descriptionEn) setPhotoDescEn(aiSuggestion.descriptionEn);
-    if (aiSuggestion.camera) setPhotoCamera(aiSuggestion.camera);
-    if (aiSuggestion.lens) setPhotoLens(aiSuggestion.lens);
-    if (aiSuggestion.suggestedPriceToman) setPhotoPriceToman(aiSuggestion.suggestedPriceToman);
-    if (aiSuggestion.suggestedPriceUsd) setPhotoPriceUsd(aiSuggestion.suggestedPriceUsd);
-    alert(isFa ? 'پیشنهادات هوش مصنوعی جمینای در فرم اعمال شدند!' : 'AI suggestions applied to form!');
   };
 
   // =========================================================================
@@ -622,7 +585,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       }
 
       if (!mainImageUrl) {
-        alert(isFa ? 'لطفاً یک تصویر بارگذاری کنید یا آدرس آن را وارد نمایید.' : 'Please provide an image.');
+        notify(isFa ? 'لطفاً یک تصویر بارگذاری کنید یا آدرس آن را وارد نمایید.' : 'Please provide an image.');
         return;
       }
 
@@ -663,8 +626,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           return p;
         });
 
-        onUpdateContent({ ...content, photos: updatedPhotos });
-        alert(isFa ? 'اثر با موفقیت ویرایش شد!' : 'Photo updated.');
+        void persistContent({ ...content, photos: updatedPhotos });
+        notify(isFa ? 'اثر با موفقیت ویرایش شد!' : 'Photo updated.');
       } else {
         // ایجاد اثر یا آلبوم جدید
         const newPhoto: PhotoItem = {
@@ -701,13 +664,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           techniques: photoTechniques,
         };
 
-        onUpdateContent({ ...content, photos: [newPhoto, ...content.photos] });
-        alert(isFa ? (isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس منتشر شد!` : 'اثر در گالری ثبت گردید!') : 'Published!');
+        void persistContent({ ...content, photos: [newPhoto, ...content.photos] });
+        notify(isFa ? (isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس منتشر شد!` : 'اثر در گالری ثبت گردید!') : 'Published!');
       }
 
       handleCancelEditPhoto();
     } catch (err: any) {
-      alert(`خطا: ${err.message}`);
+      notify(`خطا: ${err.message}`);
     } finally {
       setIsProcessing(false);
       setUploadMsg(null);
@@ -724,7 +687,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       }
       return p;
     });
-    onUpdateContent({ ...content, photos: updatedPhotos });
+    void persistContent({ ...content, photos: updatedPhotos });
   };
 
   /**
@@ -741,7 +704,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       descriptionFa: `تکنیک اختصاصی ${name}`,
     };
     const currentList = content.definedTechniques || [];
-    onUpdateContent({
+    void persistContent({
       ...content,
       definedTechniques: [...currentList, newTech],
     });
@@ -756,7 +719,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    */
   const handleDeletePhoto = (id: string) => {
     if (confirm(isFa ? 'آیا از حذف این اثر از گالری اطمینان دارید؟' : 'Delete photo?')) {
-      onUpdateContent({
+      void persistContent({
         ...content,
         photos: content.photos.filter((p) => p.id !== id),
       });
@@ -774,7 +737,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const temp = newPhotos[index];
     newPhotos[index] = newPhotos[targetIdx];
     newPhotos[targetIdx] = temp;
-    onUpdateContent({ ...content, photos: newPhotos });
+    void persistContent({ ...content, photos: newPhotos });
   };
 
   // =========================================================================
@@ -836,8 +799,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         return s;
       });
 
-      onUpdateContent({ ...content, software: updatedList });
-      alert(isFa ? 'پروژه نرم‌افزاری ویرایش شد!' : 'Software updated.');
+      void persistContent({ ...content, software: updatedList });
+      notify(isFa ? 'پروژه نرم‌افزاری ویرایش شد!' : 'Software updated.');
     } else {
       const newSoft: SoftwareItem = {
         id: `soft-${Date.now()}`,
@@ -853,8 +816,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         category: softCategory,
       };
 
-      onUpdateContent({ ...content, software: [newSoft, ...content.software] });
-      alert(isFa ? 'پروژه نرم‌افزاری جدید اضافه گردید!' : 'Software created.');
+      void persistContent({ ...content, software: [newSoft, ...content.software] });
+      notify(isFa ? 'پروژه نرم‌افزاری جدید اضافه گردید!' : 'Software created.');
     }
 
     handleCancelEditSoftware();
@@ -865,7 +828,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    */
   const handleDeleteSoftware = (id: string) => {
     if (confirm(isFa ? 'آیا این پروژه نرم‌افزاری حذف شود؟' : 'Delete software?')) {
-      onUpdateContent({
+      void persistContent({
         ...content,
         software: content.software.filter((s) => s.id !== id),
       });
@@ -880,7 +843,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const temp = list[index];
     list[index] = list[targetIdx];
     list[targetIdx] = temp;
-    onUpdateContent({ ...content, software: list });
+    void persistContent({ ...content, software: list });
   };
 
   // =========================================================================
@@ -944,8 +907,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         return ex;
       });
 
-      onUpdateContent({ ...content, expeditions: updatedList });
-      alert(isFa ? 'مشخصات سفر ویرایش شد!' : 'Expedition updated.');
+      void persistContent({ ...content, expeditions: updatedList });
+      notify(isFa ? 'مشخصات سفر ویرایش شد!' : 'Expedition updated.');
     } else {
       const newExp: ExpeditionItem = {
         id: `exp-${Date.now()}`,
@@ -967,8 +930,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         difficultyEn: expDifficultyEn,
       };
 
-      onUpdateContent({ ...content, expeditions: [newExp, ...content.expeditions] });
-      alert(isFa ? 'سفر جدید با موفقیت اضافه شد!' : 'Expedition added.');
+      void persistContent({ ...content, expeditions: [newExp, ...content.expeditions] });
+      notify(isFa ? 'سفر جدید با موفقیت اضافه شد!' : 'Expedition added.');
     }
 
     handleCancelEditExpedition();
@@ -976,7 +939,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   const handleDeleteExpedition = (id: string) => {
     if (confirm(isFa ? 'آیا این سفر از لیست حذف شود؟' : 'Delete expedition?')) {
-      onUpdateContent({
+      void persistContent({
         ...content,
         expeditions: content.expeditions.filter((e) => e.id !== id),
       });
@@ -991,7 +954,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const temp = list[index];
     list[index] = list[targetIdx];
     list[targetIdx] = temp;
-    onUpdateContent({ ...content, expeditions: list });
+    void persistContent({ ...content, expeditions: list });
   };
 
   // =========================================================================
@@ -1053,8 +1016,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         return b;
       });
 
-      onUpdateContent({ ...content, books: updatedList });
-      alert(isFa ? 'اطلاعات کتاب با موفقیت ویرایش شد!' : 'Book updated.');
+      void persistContent({ ...content, books: updatedList });
+      notify(isFa ? 'اطلاعات کتاب با موفقیت ویرایش شد!' : 'Book updated.');
     } else {
       const newBook: BookItem = {
         id: `book-${Date.now()}`,
@@ -1073,8 +1036,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         releaseYear: bookReleaseYear,
       };
 
-      onUpdateContent({ ...content, books: [...(content.books || []), newBook] });
-      alert(isFa ? 'کتاب جدید ثبت گردید!' : 'Book created.');
+      void persistContent({ ...content, books: [...(content.books || []), newBook] });
+      notify(isFa ? 'کتاب جدید ثبت گردید!' : 'Book created.');
     }
 
     handleCancelEditBook();
@@ -1082,7 +1045,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   const handleDeleteBook = (id: string) => {
     if (confirm(isFa ? 'آیا این کتاب از لیست حذف شود؟' : 'Delete book?')) {
-      onUpdateContent({
+      void persistContent({
         ...content,
         books: (content.books || []).filter((b) => b.id !== id),
       });
@@ -1138,8 +1101,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         return r;
       });
 
-      onUpdateContent({ ...content, resume: updatedList });
-      alert(isFa ? 'مورد رزومه ویرایش شد!' : 'Resume updated.');
+      void persistContent({ ...content, resume: updatedList });
+      notify(isFa ? 'مورد رزومه ویرایش شد!' : 'Resume updated.');
     } else {
       const newRes: ResumeEntry = {
         id: `res-${Date.now()}`,
@@ -1153,8 +1116,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         type: resType,
       };
 
-      onUpdateContent({ ...content, resume: [newRes, ...content.resume] });
-      alert(isFa ? 'سابقه جدید با موفقیت اضافه شد!' : 'Resume entry added.');
+      void persistContent({ ...content, resume: [newRes, ...content.resume] });
+      notify(isFa ? 'سابقه جدید با موفقیت اضافه شد!' : 'Resume entry added.');
     }
 
     handleCancelEditResume();
@@ -1162,7 +1125,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   const handleDeleteResume = (id: string) => {
     if (confirm(isFa ? 'آیا این مورد از رزومه حذف شود؟' : 'Delete item?')) {
-      onUpdateContent({
+      void persistContent({
         ...content,
         resume: content.resume.filter((r) => r.id !== id),
       });
@@ -1217,8 +1180,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         }
         return c;
       });
-      onUpdateContent({ ...content, commercialCategories: updated });
-      alert(isFa ? 'دسته‌بندی با موفقیت ویرایش شد!' : 'Category updated.');
+      void persistContent({ ...content, commercialCategories: updated });
+      notify(isFa ? 'دسته‌بندی با موفقیت ویرایش شد!' : 'Category updated.');
     } else {
       const newCat: CategoryItem = {
         id: finalId,
@@ -1231,16 +1194,25 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         iconName: catIcon,
         order: currentList.length + 1,
       };
-      onUpdateContent({ ...content, commercialCategories: [...currentList, newCat] });
-      alert(isFa ? 'دسته‌بندی جدید با موفقیت اضافه شد!' : 'Category added.');
+      void persistContent({ ...content, commercialCategories: [...currentList, newCat] });
+      notify(isFa ? 'دسته‌بندی جدید با موفقیت اضافه شد!' : 'Category added.');
     }
     handleCancelEditCategory();
   };
 
   const handleDeleteCategory = (id: string) => {
+    const used = content.photos.filter((photo) => photo.commercialCategory === id).length;
+    if (used > 0) {
+      notifyError(
+        isFa
+          ? `${used} عکس در این دسته‌بندی قرار دارد. اول دسته‌بندی آن‌ها را عوض کن، بعد این دسته را حذف کن.`
+          : `${used} photo(s) still use this category. Reassign them first.`,
+      );
+      return;
+    }
     if (confirm(isFa ? 'آیا از حذف این دسته‌بندی اطمینان دارید؟' : 'Delete category?')) {
       const currentList = content.commercialCategories || [];
-      onUpdateContent({
+      void persistContent({
         ...content,
         commercialCategories: currentList.filter((c) => c.id !== id),
       });
@@ -1255,7 +1227,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const temp = list[index];
     list[index] = list[target];
     list[target] = temp;
-    onUpdateContent({ ...content, commercialCategories: list });
+    void persistContent({ ...content, commercialCategories: list });
   };
 
   // =========================================================================
@@ -1300,8 +1272,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         }
         return t;
       });
-      onUpdateContent({ ...content, definedTechniques: updated });
-      alert(isFa ? 'تکنیک با موفقیت ویرایش شد!' : 'Technique updated.');
+      void persistContent({ ...content, definedTechniques: updated });
+      notify(isFa ? 'تکنیک با موفقیت ویرایش شد!' : 'Technique updated.');
     } else {
       const newTech: DefinedTechnique = {
         id: finalId,
@@ -1310,8 +1282,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         descriptionFa: techDescFa,
         descriptionEn: techDescEn,
       };
-      onUpdateContent({ ...content, definedTechniques: [...currentList, newTech] });
-      alert(isFa ? 'تکنیک جدید با موفقیت اضافه شد!' : 'Technique added.');
+      void persistContent({ ...content, definedTechniques: [...currentList, newTech] });
+      notify(isFa ? 'تکنیک جدید با موفقیت اضافه شد!' : 'Technique added.');
     }
     handleCancelEditTechnique();
   };
@@ -1319,7 +1291,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const handleDeleteTechnique = (id: string) => {
     if (confirm(isFa ? 'آیا این تکنیک حذف شود؟' : 'Delete technique?')) {
       const currentList = content.definedTechniques || [];
-      onUpdateContent({
+      void persistContent({
         ...content,
         definedTechniques: currentList.filter((t) => t.id !== id),
       });
@@ -1334,7 +1306,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const temp = list[index];
     list[index] = list[target];
     list[target] = temp;
-    onUpdateContent({ ...content, definedTechniques: list });
+    void persistContent({ ...content, definedTechniques: list });
   };
 
   // =========================================================================
@@ -1420,8 +1392,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         }
         return a;
       });
-      onUpdateContent({ ...content, articles: updated });
-      alert(isFa ? 'مقاله با موفقیت ویرایش شد!' : 'Article updated.');
+      void persistContent({ ...content, articles: updated });
+      notify(isFa ? 'مقاله با موفقیت ویرایش شد!' : 'Article updated.');
     } else {
       const newArticle: ArticleItem = {
         id: `art-${Date.now()}`,
@@ -1448,8 +1420,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         seoKeywords: keywordsArray,
         featured: artFeatured,
       };
-      onUpdateContent({ ...content, articles: [newArticle, ...currentArticles] });
-      alert(isFa ? 'مقاله جدید با موفقیت منتشر شد!' : 'Article published.');
+      void persistContent({ ...content, articles: [newArticle, ...currentArticles] });
+      notify(isFa ? 'مقاله جدید با موفقیت منتشر شد!' : 'Article published.');
     }
     handleCancelEditArticle();
   };
@@ -1457,7 +1429,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const handleDeleteArticle = (id: string) => {
     if (confirm(isFa ? 'آیا از حذف این مقاله اطمینان دارید؟' : 'Delete article?')) {
       const currentList = content.articles || [];
-      onUpdateContent({
+      void persistContent({
         ...content,
         articles: currentList.filter((a) => a.id !== id),
       });
@@ -1472,7 +1444,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     const temp = list[index];
     list[index] = list[target];
     list[target] = temp;
-    onUpdateContent({ ...content, articles: list });
+    void persistContent({ ...content, articles: list });
   };
 
   // =========================================================================
@@ -1490,13 +1462,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       specialtiesFa: specList,
     };
 
-    onUpdateContent({
+    void persistContent({
       ...content,
       aboutPage: updatedAbout,
       homeShowcaseConfig: homeShowcaseForm,
       navLabels: navLabelsForm,
     });
-    alert(isFa ? 'تنظیمات صفحه درباره من، ویترین صفحه اصلی و منوها با موفقیت ذخیره شد!' : 'About & Layout settings saved!');
+    notify(isFa ? 'تنظیمات صفحه درباره من، ویترین صفحه اصلی و منوها با موفقیت ذخیره شد!' : 'About & Layout settings saved!');
   };
 
   // =========================================================================
@@ -1505,8 +1477,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   const handleSaveTextsAndProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateContent({ ...content, profile: profileForm });
-    alert(isFa ? 'متن‌ها، راه‌های ارتباطی و آمارهای کلیدی ذخیره شدند!' : 'Saved successfully!');
+    void persistContent({ ...content, profile: profileForm });
+    notify(isFa ? 'متن‌ها، راه‌های ارتباطی و آمارهای کلیدی ذخیره شدند!' : 'Saved successfully!');
   };
 
   // ویرایش هر یک از شاخص‌های آماری
@@ -1521,50 +1493,100 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   // =========================================================================
 
   /**
-   * انتشار فوری و سراسری تغییرات در تمام دستگاه‌ها (موبایل و لپ‌تاپ)
+   * تنها مسیر ذخیره و انتشار: تغییر در مرورگر ذخیره می‌شود و سپس تکه‌تکه روی
+   * مخزن گیت‌هاب منتشر می‌شود. اگر چند تغییر پشت سر هم بیاید، فقط آخرین نسخه
+   * منتشر می‌شود تا صف درخواست‌ها روی هم انبار نشود.
    */
-  const handleInstantUniversalPublish = async () => {
+  const persistContent = async (next: SiteContent) => {
+    onUpdateContent(next);
+    saveSiteContent(next);
+    publishQueueRef.current = next;
+    if (publishingRef.current) return;
+    publishingRef.current = true;
+    setIsPublishing(true);
+    setPublishStatus(null);
     try {
-      setIsPublishing(true);
-      setPublishStatus(null);
-      // ۱. ذخیره فوری در کش لوکال استوریج
-      saveSiteContent(content);
-
-      // ۲. ذخیره قطعی در سرور اختصاصی جهت همگام‌سازی لحظه‌ای بین لپ‌تاپ و گوشی
-      const serverRes = await fetch('/api/site-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(content),
-      });
-
-      if (!serverRes.ok) {
-        const saveError = await serverRes.json().catch(() => ({}));
-        throw new Error(saveError.error || 'سرور در ذخیره‌سازی داده با خطا مواجه شد.');
+      while (publishQueueRef.current) {
+        const payload = publishQueueRef.current;
+        publishQueueRef.current = null;
+        const result = await publishSiteContent(payload);
+        if (!result.success) {
+          throw new Error(result.error || 'ثبت محتوا ناموفق بود.');
+        }
+        if (result.content) {
+          onUpdateContent(result.content as SiteContent);
+          saveSiteContent(result.content as SiteContent);
+        }
+        const translation = result.translation;
+        const translationNote = translation?.translated
+          ? `\n${translation.translated} فیلد انگلیسی هم خودکار ترجمه شد.`
+          : translation?.failed
+          ? `\n${translation.failed} فیلد انگلیسی ترجمه نشد.`
+          : '';
+        setPublishStatus({
+          success: true,
+          msg: isFa
+            ? `ذخیره و منتشر شد (${result.chunkCount} تکه). Cloudflare Pages تا چند دقیقه نسخه جدید را نشان می‌دهد.${translationNote}`
+            : 'Saved and published.',
+        });
+        notify(isFa ? 'ذخیره و منتشر شد.' : 'Saved and published.', 'success');
       }
-      const savedData = await serverRes.json().catch(() => ({}));
-      if (savedData.content) onUpdateContent(savedData.content as SiteContent);
-
-      // ۳. ارسال اعلان انتشار به تلگرام سینا ضرغامی
-      await sendTelegramNotification(
-        `🚀 <b>انتشار فوری نسخه جدید وب‌سایت sinazarghami.ir</b>\n` +
-        `سینا جان، تغییرات در مخزن گیت‌هاب ثبت شد و Cloudflare Pages نسخه جدید را منتشر می‌کند.`
-      );
-
       setInstantPublishSuccess(true);
-      setPublishStatus({
-        success: true,
-        msg: isFa
-          ? 'محتوا در مخزن گیت‌هاب ثبت شد. Cloudflare Pages طی چند دقیقه نسخه جدید را منتشر می‌کند.'
-          : 'Content committed to GitHub. Cloudflare Pages will publish the new version shortly.',
-      });
       setTimeout(() => setInstantPublishSuccess(false), 8000);
     } catch (err: any) {
+      const message = err?.message || 'خطای نامشخص';
       setPublishStatus({
         success: false,
-        msg: isFa ? `خطا در انتشار: ${err.message}` : `Error: ${err.message}`,
+        msg: isFa ? `ذخیره شد ولی انتشار انجام نشد: ${message}` : `Publish failed: ${message}`,
       });
+      notifyError(
+        isFa
+          ? `تغییر در مرورگر ذخیره شد ولی انتشار انجام نشد: ${message}`
+          : `Saved locally but publishing failed: ${message}`,
+      );
     } finally {
+      publishingRef.current = false;
       setIsPublishing(false);
+    }
+  };
+
+  /**
+   * سنجش شبکه: معلوم می‌کند این اتصال تا چه حجمی را بدون قطع شدن عبور می‌دهد
+   */
+  const handleProbeConnection = async () => {
+    try {
+      setIsProbing(true);
+      setProbeSteps(null);
+      setServerChecks(null);
+      fetch('/api/health?deep=1', { credentials: 'same-origin' })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          if (data?.checks) setServerChecks(data.checks as ServerChecks);
+        })
+        .catch(() => setServerChecks(null));
+      const result = await probeConnection();
+      setProbeSteps(result.steps);
+      setProbeColo(result.colo);
+      setActiveChunkSize(getChunkSize());
+      const largest = [...result.steps].reverse().find((step) => step.ok);
+      if (largest) {
+        notify(
+          isFa
+            ? `بزرگ‌ترین اندازه سالم: ${Math.round(largest.bytes / 1024)} کیلوبایت`
+            : `Largest healthy payload: ${Math.round(largest.bytes / 1024)} KB`,
+          'success',
+        );
+      } else {
+        notifyError(
+          isFa
+            ? 'هیچ اندازه‌ای عبور نکرد؛ اتصال شبکه را بررسی کنید.'
+            : 'No payload size passed. Check your connection.',
+        );
+      }
+    } catch {
+      notifyError(isFa ? 'تست اتصال انجام نشد.' : 'Connection test failed.');
+    } finally {
+      setIsProbing(false);
     }
   };
 
@@ -1595,14 +1617,14 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       try {
         const parsed = JSON.parse(ev.target?.result as string);
         if (parsed && parsed.profile && parsed.photos) {
-          onUpdateContent(parsed);
+          void persistContent(parsed);
           setProfileForm(parsed.profile);
-          alert(isFa ? 'فایل پشتیبان با موفقیت بازیابی شد!' : 'Backup restored!');
+          notify(isFa ? 'فایل پشتیبان با موفقیت بازیابی شد!' : 'Backup restored!');
         } else {
-          alert(isFa ? 'ساختار فایل پشتیبان معتبر نیست.' : 'Invalid file.');
+          notify(isFa ? 'ساختار فایل پشتیبان معتبر نیست.' : 'Invalid file.');
         }
       } catch {
-        alert(isFa ? 'خطا در خواندن فایل JSON.' : 'Error parsing file.');
+        notify(isFa ? 'خطا در خواندن فایل JSON.' : 'Error parsing file.');
       }
     };
     reader.readAsText(file);
@@ -1629,23 +1651,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           <div className="flex items-center gap-2">
             {isAuthenticated && (
               <>
-                <button
-                  type="button"
-                  onClick={handleInstantUniversalPublish}
-                  disabled={isPublishing}
-                  className="px-3 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                  title={isFa ? 'انتشار آنی و ذخیره سراسری در سرور برای گوشی و لپ‌تاپ' : 'Instant Universal Publish'}
-                >
-                  <CloudUpload className="w-3.5 h-3.5" />
-                  <span>
-                    {isPublishing
-                      ? (isFa ? 'در حال ذخیره...' : 'Syncing...')
-                      : instantPublishSuccess
-                      ? (isFa ? 'منتشر شد!' : 'Published!')
-                      : (isFa ? 'انتشار فوری' : 'Instant Publish')}
+                {isPublishing && (
+                  <span className="px-3 py-1.5 text-xs font-bold bg-emerald-600/20 text-emerald-300 rounded-lg flex items-center gap-1.5">
+                    <CloudUpload className="w-3.5 h-3.5 animate-pulse" />
+                    <span>{isFa ? 'در حال انتشار...' : 'Publishing...'}</span>
                   </span>
-                </button>
-
+                )}
                 <button
                   onClick={handleLogout}
                   className="px-2.5 py-1.5 text-xs text-stone-400 hover:text-white bg-stone-800 rounded-md cursor-pointer transition-colors"
@@ -2002,7 +2013,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
 
-                {/* کارت پیشنهاد هوشمند عنوان، موضوع و داستان با جمینای */}
+                {/* دکمه واحد هوش مصنوعی: تحلیل عکس و پر کردن همه فیلدها */}
                 <div className="p-4 bg-gradient-to-r from-amber-50 via-stone-50 to-indigo-50/60 rounded-2xl border border-amber-200/90 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -2011,12 +2022,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       </div>
                       <div>
                         <h5 className="text-xs font-bold text-stone-900">
-                          {isFa ? 'پیشنهاد هوشمند موضوع، عنوان و داستان عکس (Gemini AI Vision)' : 'AI Photo Topic, Title & Story Suggester'}
+                          {isFa ? 'تحلیل عکس و پر کردن همه فیلدها' : 'Analyze Photo & Fill All Fields'}
                         </h5>
                         <p className="text-[11px] text-stone-500">
                           {isFa
-                            ? 'جمینای تصویر انتخاب‌شده را تحلیل کرده و عنوان شاعرانه، دسته‌بندی و داستان هنری متناسب پیشنهاد می‌دهد.'
-                            : 'AI analyzes the image composition and generates fine-art titles and narrative.'}
+                            ? 'عنوان، توضیح، مکان، دسته، دوربین و لنز یک‌جا و به هر دو زبان پر می‌شوند؛ ترجمه‌ی دستی لازم نیست.'
+                            : 'Fills title, story, location, category, camera and lens in both languages at once.'}
                         </p>
                       </div>
                     </div>
@@ -2030,12 +2041,12 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       {isAiSuggesting ? (
                         <>
                           <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>{isFa ? 'در حال تحلیل بصری عکس...' : 'Analyzing Image...'}</span>
+                          <span>{isFa ? 'در حال تحلیل عکس...' : 'Analyzing...'}</span>
                         </>
                       ) : (
                         <>
                           <Wand2 className="w-3.5 h-3.5" />
-                          <span>{isFa ? 'دریافت پیشنهادات هوش مصنوعی' : 'Get AI Suggestions'}</span>
+                          <span>{isFa ? 'تحلیل عکس و پر کردن فرم' : 'Analyze & Fill'}</span>
                         </>
                       )}
                     </button>
@@ -2044,55 +2055,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   {aiSuggestError && (
                     <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
                       {aiSuggestError}
-                    </div>
-                  )}
-
-                  {aiSuggestion && (
-                    <div className="p-4 bg-white rounded-xl border border-amber-300 space-y-3 animate-fade-in shadow-xs text-xs">
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 font-bold text-[11px]">
-                            {aiSuggestion.categoryFa || aiSuggestion.category}
-                          </span>
-                          <span className="text-stone-500 font-mono text-[11px]">
-                            {aiSuggestion.locationFa} · {aiSuggestion.camera}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleApplyAiSuggestion}
-                          className="px-3 py-1 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1 shadow-xs"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>{isFa ? 'اعمال تمام پیشنهادات در فرم' : 'Apply All to Form'}</span>
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-stone-400 font-mono block">عنوان پیشنهادی فارسی:</span>
-                          <p className="font-bold text-stone-900 text-sm">«{aiSuggestion.titleFa}»</p>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-stone-400 font-mono block">English Title:</span>
-                          <p className="font-medium text-stone-800 text-xs italic">{aiSuggestion.titleEn}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 pt-1 border-t border-stone-100">
-                        <span className="text-[10px] text-stone-400 font-mono block">داستان و روایت پیشنهادی عکس:</span>
-                        <p className="text-stone-700 leading-relaxed text-xs">{aiSuggestion.descriptionFa}</p>
-                      </div>
-
-                      {aiSuggestion.tags && aiSuggestion.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {aiSuggestion.tags.map((tag, tIdx) => (
-                            <span key={tIdx} className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded text-[10px]">
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -2120,15 +2082,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-700">{isFa ? 'عنوان اثر به فارسی:' : 'Persian Title:'}</label>
-                        <button
-                          type="button"
-                          onClick={() => handleAiTranslate(photoTitleFa, setPhotoTitleEn, 'photoTitle', 'title', photoCategory)}
-                          disabled={translatingField === 'photoTitle' || !photoTitleFa}
-                          className="text-[11px] text-amber-800 hover:text-amber-950 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          <span>{translatingField === 'photoTitle' ? (isFa ? 'در حال ترجمه...' : 'Translating...') : (isFa ? 'ترجمه هنری با هوش مصنوعی (Gemini)' : 'AI Translate')}</span>
-                        </button>
+
                       </div>
                       <div className="flex items-center gap-2">
                         <input
@@ -2177,15 +2131,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-700">{isFa ? 'موقعیت مکانی (فارسی):' : 'Location (FA):'}</label>
-                        <button
-                          type="button"
-                          onClick={() => handleAiTranslate(photoLocationFa, setPhotoLocationEn, 'photoLoc', 'title', 'location')}
-                          disabled={translatingField === 'photoLoc' || !photoLocationFa}
-                          className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          <span>AI</span>
-                        </button>
+
                       </div>
                       <input
                         type="text"
@@ -2286,15 +2232,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             title={isFa ? 'دیکته صوتی توضیحات' : 'Dictate description'}
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAiTranslate(photoDescFa, setPhotoDescEn, 'photoDesc', 'description', photoCategory)}
-                          disabled={translatingField === 'photoDesc' || !photoDescFa}
-                          className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          <span>{translatingField === 'photoDesc' ? (isFa ? 'در حال ترجمه عمیق...' : 'Translating...') : (isFa ? 'ترجمه عمیق با هوش مصنوعی' : 'AI Translate')}</span>
-                        </button>
+
                       </div>
                       <textarea
                         rows={2}
@@ -2389,27 +2327,34 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       </div>
                     </div>
 
-                    {photoPortfolioScope === 'commercial' && (
-                      <div className="space-y-3 pt-2 border-t border-amber-200/60 animate-fade-in">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block font-bold text-stone-700 mb-1">
-                              {isFa ? 'دسته‌بندی تخصصی نمونه‌کار:' : 'Commercial Category:'}
-                            </label>
-                            <select
-                              value={photoCommercialCategory}
-                              onChange={(e) => setPhotoCommercialCategory(e.target.value)}
-                              className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                            >
-                              <option value="">{isFa ? '-- انتخاب دسته‌بندی تخصصی --' : '-- Select Category --'}</option>
-                              {(content.commercialCategories || []).map((cat) => (
-                                <option key={cat.id} value={cat.id}>
-                                  {isFa ? cat.titleFa || cat.nameFa : cat.titleEn || cat.nameEn}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                    <div className="space-y-3 pt-2 border-t border-amber-200/60">
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">
+                          {isFa ? 'دسته‌بندی نمونه‌کار:' : 'Portfolio Category:'}
+                        </label>
+                        <select
+                          value={photoCommercialCategory}
+                          onChange={(e) => setPhotoCommercialCategory(e.target.value)}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                        >
+                          <option value="">
+                            {isFa ? '-- بدون دسته (فقط در آرشیو دیده می‌شود) --' : '-- No category --'}
+                          </option>
+                          {(content.commercialCategories || []).map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {isFa ? cat.titleFa || cat.nameFa : cat.titleEn || cat.nameEn}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
+                          {isFa
+                            ? 'همین دسته، چیپ فیلتر صفحه نمونه‌کار را می‌سازد. دسته‌ها را در تب «دسته‌بندی‌ها و تکنیک‌ها» مدیریت کن.'
+                            : 'This drives the portfolio filter chips. Manage categories in the Categories tab.'}
+                        </p>
+                      </div>
 
+                      {photoPortfolioScope === 'commercial' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div>
                             <label className="block font-bold text-stone-700 mb-1">
                               {isFa ? 'نام کارفرما یا شرکت سفارش‌دهنده:' : 'Client / Company Name:'}
@@ -2422,22 +2367,21 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                               className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                             />
                           </div>
+                          <div>
+                            <label className="block font-bold text-stone-700 mb-1">
+                              {isFa ? 'شرح خلاصه پروژه برای کارفرما:' : 'Client Project Brief:'}
+                            </label>
+                            <input
+                              type="text"
+                              value={photoClientInfo}
+                              onChange={(e) => setPhotoClientInfo(e.target.value)}
+                              placeholder="مثال: عکاسی صنعتی از خط تولید توربین و تهیه کتابچه گزارش سالانه"
+                              className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                            />
+                          </div>
                         </div>
-
-                        <div>
-                          <label className="block font-bold text-stone-700 mb-1">
-                            {isFa ? 'شرح خلاصه پروژه برای کارفرما:' : 'Client Project Brief:'}
-                          </label>
-                          <input
-                            type="text"
-                            value={photoClientInfo}
-                            onChange={(e) => setPhotoClientInfo(e.target.value)}
-                            placeholder="مثال: عکاسی صنعتی از خط تولید توربین و تهیه کتابچه گزارش سالانه"
-                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                          />
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
 
                   {/* اتصال به تجهیزات و تکنیک‌های عکاسی با تگ‌های چندانتخابی (Chips) */}
@@ -2590,7 +2534,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <Check className="w-4 h-4" />
                       <span>
                         {editingPhotoId
-                          ? (isFa ? 'ذخیره تغییرات اثر' : 'Update Photo')
+                          ? (isFa ? 'ذخیره و انتشار' : 'Update Photo')
                           : (isFa
                               ? compressedResults.length > 1
                                 ? `ثبت و انتشار آلبوم گالری (${compressedResults.length} عکس)`
@@ -2762,7 +2706,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="px-3.5 py-1.5 bg-amber-700 hover:bg-amber-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>{isFa ? 'افزودن دسته‌بندی جدید' : 'Add Category'}</span>
+                        <span>{isFa ? 'ذخیره و انتشار جدید' : 'Add Category'}</span>
                       </button>
                     )}
                   </div>
@@ -2773,7 +2717,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div className="flex items-center justify-between border-b border-stone-100 pb-2">
                         <span className="font-bold text-stone-900 flex items-center gap-1.5">
                           <Edit3 className="w-3.5 h-3.5 text-amber-700" />
-                          <span>{editingCatId === 'new' ? (isFa ? 'افزودن دسته‌بندی تجاری جدید' : 'New Commercial Category') : (isFa ? 'ویرایش دسته‌بندی' : 'Edit Category')}</span>
+                          <span>{editingCatId === 'new' ? (isFa ? 'ذخیره و انتشار تجاری جدید' : 'New Commercial Category') : (isFa ? 'ویرایش دسته‌بندی' : 'Edit Category')}</span>
                         </span>
                         <button
                           type="button"
@@ -2850,7 +2794,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           type="submit"
                           className="flex-1 py-2 bg-amber-700 hover:bg-amber-800 text-white font-bold rounded-lg cursor-pointer transition-colors shadow-2xs"
                         >
-                          {editingCatId === 'new' ? (isFa ? 'افزودن دسته‌بندی' : 'Save Category') : (isFa ? 'ذخیره تغییرات' : 'Update Category')}
+                          {editingCatId === 'new' ? (isFa ? 'ذخیره و انتشار' : 'Save Category') : (isFa ? 'ذخیره تغییرات' : 'Update Category')}
                         </button>
                         <button
                           type="button"
@@ -3040,7 +2984,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           type="submit"
                           className="flex-1 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-lg cursor-pointer transition-colors shadow-2xs"
                         >
-                          {editingTechId === 'new' ? (isFa ? 'ثبت در بانک تکنیک‌ها' : 'Save Technique') : (isFa ? 'ذخیره تغییرات' : 'Update Technique')}
+                          {editingTechId === 'new' ? (isFa ? 'ذخیره و انتشار' : 'Save Technique') : (isFa ? 'ذخیره تغییرات' : 'Update Technique')}
                         </button>
                         <button
                           type="button"
@@ -3198,15 +3142,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <div>
                           <div className="flex items-center justify-between mb-1">
                             <label className="font-bold text-stone-700">{isFa ? 'عنوان مقاله (فارسی):' : 'Title (FA):'}</label>
-                            <button
-                              type="button"
-                              onClick={() => handleAiTranslate(artTitleFa, setArtTitleEn, 'artTitle', 'title', artCategoryFa)}
-                              disabled={translatingField === 'artTitle' || !artTitleFa}
-                              className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                            >
-                              <Wand2 className="w-3 h-3" />
-                              <span>{isFa ? 'ترجمه هوشمند' : 'AI Translate'}</span>
-                            </button>
+
                           </div>
                           <input
                             type="text"
@@ -3282,15 +3218,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <div>
                           <div className="flex items-center justify-between mb-1">
                             <label className="font-bold text-stone-700">{isFa ? 'خلاصه مقاله (فارسی):' : 'Excerpt / Summary (FA):'}</label>
-                            <button
-                              type="button"
-                              onClick={() => handleAiTranslate(artExcerptFa, setArtExcerptEn, 'artExcerpt', 'description', artCategoryFa)}
-                              disabled={translatingField === 'artExcerpt' || !artExcerptFa}
-                              className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                            >
-                              <Wand2 className="w-3 h-3" />
-                              <span>{isFa ? 'ترجمه خلاصه' : 'Translate'}</span>
-                            </button>
+
                           </div>
                           <textarea
                             rows={2}
@@ -3397,7 +3325,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           type="submit"
                           className="flex-1 py-2.5 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl cursor-pointer transition-colors shadow-xs"
                         >
-                          {editingArticleId === 'new' ? (isFa ? 'انتشار مقاله' : 'Publish Article') : (isFa ? 'ذخیره تغییرات مقاله' : 'Update Article')}
+                          {editingArticleId === 'new' ? (isFa ? 'ذخیره و انتشار' : 'Publish Article') : (isFa ? 'ذخیره تغییرات مقاله' : 'Update Article')}
                         </button>
                         <button
                           type="button"
@@ -3898,7 +3826,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-sm text-sm"
                   >
                     <Check className="w-4 h-4" />
-                    <span>{isFa ? 'ذخیره تنظیمات صفحه درباره من، ویترین اصلی و عناوین منو' : 'Save About, Showcase & Menu Settings'}</span>
+                    <span>{isFa ? 'ذخیره و انتشار تنظیمات' : 'Save About, Showcase & Menu Settings'}</span>
                   </button>
                 </div>
               </form>
@@ -3942,15 +3870,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="font-bold text-stone-700">{isFa ? 'شعار کوتاه فارسی:' : 'Tagline (FA):'}</label>
-                          <button
-                            type="button"
-                            onClick={() => handleAiTranslate(softTaglineFa, setSoftTaglineEn, 'softTagline', 'tagline', 'software')}
-                            disabled={translatingField === 'softTagline' || !softTaglineFa}
-                            className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            <span>AI</span>
-                          </button>
+
                         </div>
                         <input
                           type="text"
@@ -3977,15 +3897,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="font-bold text-stone-700">{isFa ? 'توضیحات فارسی پروژه:' : 'Description (FA):'}</label>
-                          <button
-                            type="button"
-                            onClick={() => handleAiTranslate(softDescFa, setSoftDescEn, 'softDesc', 'description', 'software')}
-                            disabled={translatingField === 'softDesc' || !softDescFa}
-                            className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            <span>{translatingField === 'softDesc' ? (isFa ? 'در حال ترجمه...' : 'Translating...') : (isFa ? 'ترجمه توضیحات با AI' : 'AI Translate')}</span>
-                          </button>
+
                         </div>
                         <textarea
                           rows={2}
@@ -4061,7 +3973,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         type="submit"
                         className="flex-1 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl cursor-pointer transition-colors"
                       >
-                        {editingSoftId ? (isFa ? 'ذخیره تغییرات پروژه' : 'Update Project') : (isFa ? 'ثبت و انتشار پروژه در سایت' : 'Add Project')}
+                        {editingSoftId ? (isFa ? 'ذخیره و انتشار' : 'Update Project') : (isFa ? 'ثبت و انتشار پروژه در سایت' : 'Add Project')}
                       </button>
                       {editingSoftId && (
                         <button
@@ -4169,15 +4081,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="font-bold text-stone-700">{isFa ? 'عنوان سفر (فارسی):' : 'Title (FA):'}</label>
-                          <button
-                            type="button"
-                            onClick={() => handleAiTranslate(expTitleFa, setExpTitleEn, 'expTitle', 'title', 'expedition')}
-                            disabled={translatingField === 'expTitle' || !expTitleFa}
-                            className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            <span>AI</span>
-                          </button>
+
                         </div>
                         <input
                           type="text"
@@ -4264,15 +4168,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="font-bold text-stone-700">{isFa ? 'شرح برنامه و مسترکلاس (فارسی):' : 'Description (FA):'}</label>
-                          <button
-                            type="button"
-                            onClick={() => handleAiTranslate(expDescFa, setExpDescEn, 'expDesc', 'description', 'expedition')}
-                            disabled={translatingField === 'expDesc' || !expDescFa}
-                            className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            <span>AI Translate</span>
-                          </button>
+
                         </div>
                         <textarea
                           rows={2}
@@ -4318,7 +4214,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           type="submit"
                           className="px-5 py-2 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-lg cursor-pointer transition-colors"
                         >
-                          {editingExpId ? (isFa ? 'ذخیره تغییرات سفر' : 'Update Expedition') : (isFa ? 'ثبت و انتشار سفر' : 'Add Expedition')}
+                          {editingExpId ? (isFa ? 'ذخیره و انتشار' : 'Update Expedition') : (isFa ? 'ثبت و انتشار سفر' : 'Add Expedition')}
                         </button>
                       </div>
                     </div>
@@ -4429,15 +4325,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="font-bold text-stone-700">{isFa ? 'نام کتاب (فارسی):' : 'Book Title (FA):'}</label>
-                          <button
-                            type="button"
-                            onClick={() => handleAiTranslate(bookTitleFa, setBookTitleEn, 'bookTitle', 'title', 'book')}
-                            disabled={translatingField === 'bookTitle' || !bookTitleFa}
-                            className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            <span>AI</span>
-                          </button>
+
                         </div>
                         <input
                           type="text"
@@ -4510,15 +4398,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-700">{isFa ? 'توضیحات و یادداشت مؤلف:' : 'Author Note:'}</label>
-                        <button
-                          type="button"
-                          onClick={() => handleAiTranslate(bookDescFa, setBookDescEn, 'bookDesc', 'description', 'book')}
-                          disabled={translatingField === 'bookDesc' || !bookDescFa}
-                          className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          <span>AI Translate</span>
-                        </button>
+
                       </div>
                       <textarea
                         rows={2}
@@ -4533,7 +4413,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         type="submit"
                         className="flex-1 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl cursor-pointer transition-colors"
                       >
-                        {editingBookId ? (isFa ? 'ذخیره تغییرات کتاب' : 'Update Book') : (isFa ? 'ثبت کتاب جدید' : 'Add Book')}
+                        {editingBookId ? (isFa ? 'ذخیره و انتشار' : 'Update Book') : (isFa ? 'ثبت کتاب جدید' : 'Add Book')}
                       </button>
                       {editingBookId && (
                         <button
@@ -4633,15 +4513,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="font-bold text-stone-700">{isFa ? 'عنوان سمت / دستاورد:' : 'Title:'}</label>
-                          <button
-                            type="button"
-                            onClick={() => handleAiTranslate(resTitleFa, setResTitleEn, 'resTitle', 'title', 'resume')}
-                            disabled={translatingField === 'resTitle' || !resTitleFa}
-                            className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                          >
-                            <Wand2 className="w-3 h-3" />
-                            <span>AI</span>
-                          </button>
+
                         </div>
                         <input
                           type="text"
@@ -4707,7 +4579,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         type="submit"
                         className="flex-1 py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl cursor-pointer transition-colors"
                       >
-                        {editingResId ? (isFa ? 'ذخیره تغییرات رزومه' : 'Update Resume') : (isFa ? 'افزودن به رزومه' : 'Add to Resume')}
+                        {editingResId ? (isFa ? 'ذخیره و انتشار' : 'Update Resume') : (isFa ? 'افزودن به رزومه' : 'Add to Resume')}
                       </button>
                       {editingResId && (
                         <button
@@ -4774,14 +4646,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-800">{isFa ? 'نشانگر بالای تیتر (فارسی):' : 'Hero Kicker (FA):'}</label>
-                        <button
-                          type="button"
-                          onClick={() => handleAiTranslate(profileForm.heroKickerFa, (val) => setProfileForm({ ...profileForm, heroKickerEn: val }), 'kicker', 'tagline')}
-                          className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          <span>AI</span>
-                        </button>
+
                       </div>
                       <input
                         type="text"
@@ -4847,14 +4712,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             title={isFa ? 'دیکته صوتی بیوگرافی' : 'Dictate bio'}
                           />
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleAiTranslate(profileForm.aboutFa, (val) => setProfileForm({ ...profileForm, aboutEn: val }), 'bio', 'description')}
-                          className="text-[11px] text-amber-800 font-bold flex items-center gap-1 cursor-pointer"
-                        >
-                          <Wand2 className="w-3 h-3" />
-                          <span>AI Translate</span>
-                        </button>
+
                       </div>
                       <textarea
                         rows={3}
@@ -4993,7 +4851,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   type="submit"
                   className="w-full py-3 bg-stone-900 hover:bg-stone-800 text-white font-bold rounded-xl cursor-pointer transition-colors shadow-sm"
                 >
-                  {isFa ? 'ذخیره تمام متن‌ها، آمارها و اطلاعات تماس' : 'Save Texts & Profile'}
+                  {isFa ? 'ذخیره و انتشار متون و آمار' : 'Save Texts & Profile'}
                 </button>
               </form>
             )}
@@ -5005,28 +4863,14 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
               <div className="p-4 sm:p-6 space-y-6 max-w-xl mx-auto">
                 <div className="space-y-2">
                   <h4 className="text-base font-bold text-stone-900">
-                    {isFa ? 'انتشار سراسری روی sinazarghami.ir' : 'Publish to Live Site'}
+                    {isFa ? 'وضعیت انتشار و پشتیبان‌گیری' : 'Publish Status & Backup'}
                   </h4>
                   <p className="text-xs text-stone-600 leading-relaxed">
                     {isFa
-                      ? 'با فشردن دکمه زیر، تمام عکس‌ها، گالری‌ها، پروژه‌ها و متون ویرایش‌شده در سرور ابری ذخیره شده و در تمام مرورگرها (Edge، کروم)، گوشی و لپ‌تاپ یکپارچه و به تلگرام گزارش می‌شود.'
-                      : 'Deploy updates globally.'}
+                      ? 'هر تغییر را با دکمه «ذخیره و انتشار» همان بخش ثبت کن؛ همان دکمه هم در مرورگر ذخیره می‌کند و هم در مخزن گیت‌هاب منتشر می‌کند. این صفحه وضعیت آخرین انتشار، فایل پشتیبان و تست اتصال را نشان می‌دهد.'
+                      : 'Each section saves and publishes with its own button. This page shows status, backups and connection tests.'}
                   </p>
                 </div>
-
-                <div className="space-y-3">
-                  <button
-                    onClick={handleInstantUniversalPublish}
-                    disabled={isPublishing}
-                    className="w-full py-3.5 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:bg-stone-400 text-white text-xs sm:text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md"
-                  >
-                    <CloudUpload className="w-5 h-5" />
-                    <span>
-                      {isPublishing
-                        ? (isFa ? 'در حال ثبت در سرور ابری...' : 'Deploying...')
-                        : (isFa ? '🚀 انتشار فوری روی سرور و همگام‌سازی گوشی و لپ‌تاپ' : 'Publish Globally')}
-                    </span>
-                  </button>
 
                   {publishStatus && (
                     <div
@@ -5039,7 +4883,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       {publishStatus.msg}
                     </div>
                   )}
-                </div>
 
                 {/* بخش دانلود و بازیابی فایل پشتیبان (Backup / Restore) */}
                 <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-3 text-xs">
@@ -5082,15 +4925,17 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
 
-                {/* اتصال و همگام‌سازی مستقیم با گیت‌هاب */}
+                {/* وضعیت اتصال، مخزن و تست شبکه */}
                 <div className="p-4 bg-stone-50 rounded-xl border border-stone-200 text-xs space-y-3.5 text-stone-700">
                   <div className="flex items-center justify-between">
                     <div className="font-bold flex items-center gap-2 text-stone-900">
                       <Github className="w-4 h-4 text-stone-900" />
-                      <span>{isFa ? 'همگام‌سازی با مخزن گیت‌هاب (szarghami/sinazarghami-aistudio-site)' : 'GitHub Repository Sync'}</span>
+                      <span>
+                        {isFa ? 'مخزن گیت‌هاب (szarghami/sinazarghami.ir)' : 'GitHub Repository'}
+                      </span>
                     </div>
                     <a
-                      href="https://github.com/szarghami/sinazarghami-aistudio-site"
+                      href="https://github.com/szarghami/sinazarghami.ir"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[11px] text-amber-800 hover:underline flex items-center gap-1"
@@ -5102,33 +4947,120 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
                   <p className="text-[11px] text-stone-600 leading-relaxed">
                     {isFa
-                      ? 'اعتبارنامه گیت‌هاب فقط در Cloudflare به‌صورت Secret تنظیم می‌شود و هرگز در مرورگر وارد یا ذخیره نمی‌شود.'
-                      : 'GitHub credentials are configured only as Cloudflare Secrets and are never entered or stored in this browser.'}
+                      ? 'اعتبارنامه گیت‌هاب فقط در Cloudflare به‌صورت Secret تنظیم می‌شود. ارسال‌ها به‌صورت تکه‌های کوچک انجام می‌شود تا شبکه‌های ناپایدار وسط کار اتصال را قطع نکنند.'
+                      : 'GitHub credentials live in Cloudflare Secrets. Writes are sent in small chunks so unstable networks cannot drop the connection mid-transfer.'}
                   </p>
 
-                  <div className="space-y-2">
+                  <div className="pt-3 border-t border-stone-200 space-y-2">
+                    <div className="font-bold text-stone-900 flex items-center gap-1.5">
+                      <RefreshCw className="w-3.5 h-3.5 text-amber-700" />
+                      <span>{isFa ? 'تست اتصال و اندازه مجاز ارسال' : 'Connection Test'}</span>
+                    </div>
+                    <p className="text-[11px] text-stone-600 leading-relaxed">
+                      {isFa
+                        ? 'اگر انتشار یا آپلود شکست خورد، این تست را بزن. نتیجه نشان می‌دهد شبکه‌ات تا چه حجمی را عبور می‌دهد.'
+                        : 'Run this if publishing fails. It reports the largest payload your network allows.'}
+                    </p>
                     <button
                       type="button"
-                      onClick={handleManualGithubSync}
-                      disabled={isSyncingGithub}
-                      className="px-4 py-2 bg-stone-900 hover:bg-stone-800 disabled:bg-stone-400 text-white font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                      onClick={handleProbeConnection}
+                      disabled={isProbing}
+                      className="px-4 py-2 bg-white hover:bg-stone-100 disabled:bg-stone-200 border border-stone-300 text-stone-800 font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition-colors"
                     >
-                      {isSyncingGithub ? (
-                        <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>{isFa ? 'در حال همگام‌سازی...' : 'Syncing...'}</span></>
-                      ) : (
-                        <><CloudUpload className="w-3.5 h-3.5 text-emerald-400" /><span>{isFa ? 'همگام‌سازی امن با گیت‌هاب' : 'Secure GitHub sync'}</span></>
-                      )}
+                      <RefreshCw className={`w-3.5 h-3.5 ${isProbing ? 'animate-spin' : ''}`} />
+                      <span>{isProbing ? (isFa ? 'در حال تست...' : 'Testing...') : (isFa ? 'اجرای تست اتصال' : 'Run Test')}</span>
                     </button>
 
-                    {githubSyncStatus && (
-                      <div
-                        className={`p-2.5 rounded-lg text-xs font-medium border ${
-                          githubSyncStatus.success
-                            ? 'bg-emerald-50 text-emerald-900 border-emerald-300'
-                            : 'bg-red-50 text-red-900 border-red-300'
-                        }`}
-                      >
-                        {githubSyncStatus.msg}
+                    {probeSteps && probeSteps.length > 0 && (
+                      <div className="rounded-lg border border-stone-200 bg-white divide-y divide-stone-100 overflow-hidden">
+                        {probeSteps.map((step) => (
+                          <div key={step.bytes} className="flex items-center justify-between px-3 py-1.5">
+                            <span className="font-mono text-[11px] text-stone-600">
+                              {Math.round(step.bytes / 1024)} KB
+                            </span>
+                            <span
+                              className={`text-[11px] font-bold ${
+                                step.ok ? 'text-emerald-700' : 'text-red-600'
+                              }`}
+                            >
+                              {step.ok
+                                ? `سالم (${step.elapsedMs}ms)`
+                                : step.status === 0
+                                ? 'قطع شد'
+                                : `خطا ${step.status}`}
+                            </span>
+                          </div>
+                        ))}
+                        <div className="px-3 py-2 bg-stone-50 text-[11px] text-stone-600">
+                          {isFa ? 'کولو:' : 'Colo:'}{' '}
+                          <span className="font-mono">{probeColo || '-'}</span>
+                          {' · '}
+                          {isFa ? 'اندازه تکه فعلی:' : 'Chunk:'}{' '}
+                          <span className="font-mono">{Math.round(activeChunkSize / 1024)} KB</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {serverChecks && (
+                      <div className="rounded-lg border border-stone-200 bg-white divide-y divide-stone-100 overflow-hidden">
+                        <div className="px-3 py-2 bg-stone-50 text-[11px] font-bold text-stone-700">
+                          {isFa ? 'وضعیت تنظیمات سرور' : 'Server configuration'}
+                        </div>
+                        {[
+                          {
+                            label: isFa ? 'کلید امنیتی نشست (ADMIN_SESSION_SECRET)' : 'Session secret',
+                            value: serverChecks.sessionSecret,
+                          },
+                          {
+                            label: isFa ? 'رمز اولیه (ADMIN_INITIAL_PASSCODE)' : 'Initial passcode',
+                            value: serverChecks.initialPasscode,
+                          },
+                          {
+                            label: isFa ? 'فضای ذخیره‌سازی (KV)' : 'KV storage',
+                            value: serverChecks.kv.bound && serverChecks.kv.ok !== false,
+                          },
+                          {
+                            label: isFa ? 'توکن گیت‌هاب' : 'GitHub token',
+                            value: serverChecks.github.configured,
+                          },
+                          {
+                            label: isFa ? 'کلید هوش مصنوعی (Gemini)' : 'Gemini key',
+                            value: serverChecks.gemini,
+                          },
+                          {
+                            label: isFa ? 'ربات تلگرام' : 'Telegram bot',
+                            value: serverChecks.telegram,
+                          },
+                        ].map((row) => (
+                          <div key={row.label} className="flex items-center justify-between px-3 py-1.5 gap-2">
+                            <span className="text-[11px] text-stone-600">{row.label}</span>
+                            {row.value ? (
+                              <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                <Check className="w-3 h-3" />
+                                {isFa ? 'تنظیم شده' : 'OK'}
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-bold text-red-600 flex items-center gap-1">
+                                <X className="w-3 h-3" />
+                                {isFa ? 'تنظیم نشده' : 'Missing'}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                        {serverChecks.passcodeChanged && (
+                          <div className="px-3 py-2 text-[11px] text-amber-800 bg-amber-50">
+                            {isFa
+                              ? 'رمز ورود قبلاً تغییر کرده است؛ رمز اولیه دیگر کار نمی‌کند و باید رمز جدید را بزنی.'
+                              : 'Passcode was changed before; the initial passcode no longer works.'}
+                          </div>
+                        )}
+                        {!serverChecks.kv.bound && (
+                          <div className="px-3 py-2 text-[11px] text-red-700 bg-red-50">
+                            {isFa
+                              ? 'KV وصل نیست: در Cloudflare، بخش Pages ← Settings ← Bindings یک KV با نام متغیر ADMIN_KV اضافه کن.'
+                              : 'KV not bound: add a KV binding named ADMIN_KV.'}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -5165,13 +5097,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       if (newPin.trim().length >= 8) {
                         const updated = await updateAdminPasscode(newPin.trim());
                         if (!updated) {
-                          alert(isFa ? 'ذخیره رمز ناموفق بود؛ ورود مدیر یا اتصال سرور را بررسی کنید.' : 'Password update failed. Check your admin session and server connection.');
+                          notify(isFa ? 'ذخیره رمز ناموفق بود؛ ورود مدیر یا اتصال سرور را بررسی کنید.' : 'Password update failed. Check your admin session and server connection.');
                           return;
                         }
-                        alert(isFa ? 'رمز جدید به‌صورت امن ذخیره شد.' : 'Password updated securely.');
+                        notify(isFa ? 'رمز جدید به‌صورت امن ذخیره شد.' : 'Password updated securely.');
                         setNewPin('');
                       } else {
-                        alert(isFa ? 'رمز باید حداقل ۸ نویسه باشد.' : 'Password must be at least 8 characters.');
+                        notify(isFa ? 'رمز باید حداقل ۸ نویسه باشد.' : 'Password must be at least 8 characters.');
                       }
                     }}
                     className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold rounded-lg cursor-pointer transition-colors"
@@ -5211,6 +5143,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           </div>
         )}
       </div>
+      <ToastHost toast={toast} onDismiss={dismiss} />
     </div>
   );
 };

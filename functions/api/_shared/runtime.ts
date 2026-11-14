@@ -1,6 +1,6 @@
 export interface KVNamespaceLike {
   get(key: string): Promise<string | null>;
-  put(key: string, value: string): Promise<void>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
   delete(key: string): Promise<void>;
   list(options?: { prefix?: string }): Promise<{ keys: { name: string }[] }>;
 }
@@ -363,4 +363,34 @@ export function isValidContent(value: unknown): value is Record<string, unknown>
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Record<string, unknown>;
   return Boolean(candidate.profile) && Array.isArray(candidate.photos);
+}
+
+/**
+ * خواندن فایل خام (تصویر) از مخزن گیت‌هاب.
+ * برای تحلیل تصویر در هوش مصنوعی استفاده می‌شود تا درخواست به دامنه‌ی خود سایت
+ * ارسال نشود و محدودیت subrequest همان zone مشکل ایجاد نکند.
+ */
+export async function getGitHubRaw(
+  env: Env,
+  path: string,
+): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
+  if (!env.GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is not configured.');
+  const { repo, branch } = getRepo(env);
+  const response = await fetch(
+    `https://api.github.com/repos/${repo}/contents/${path}?ref=${encodeURIComponent(branch)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github.raw',
+        'User-Agent': 'sinazarghami-site',
+      },
+    },
+  );
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GitHub raw read failed (${response.status}).`);
+  const mimeType = (response.headers.get('content-type') || '')
+    .split(';')[0]
+    .trim()
+    .replace('application/octet-stream', '');
+  return { bytes: new Uint8Array(await response.arrayBuffer()), mimeType };
 }

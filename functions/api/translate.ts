@@ -1,4 +1,4 @@
-import { callGemini, getTone, parseJsonObject } from './_shared/ai';
+import { callGemini, friendlyGeminiError, getTone, parseJsonObject } from './_shared/ai';
 import { json, requireAdmin, type Env } from './_shared/runtime';
 
 interface Context {
@@ -50,7 +50,7 @@ ${text}`;
     return json({ success: true, translatedText });
   } catch (error) {
     return json(
-      { success: false, error: error instanceof Error ? error.message : 'ترجمه ناموفق بود.' },
+      { success: false, error: friendlyGeminiError(error) },
       502,
     );
   }

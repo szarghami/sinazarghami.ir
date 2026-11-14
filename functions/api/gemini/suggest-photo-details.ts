@@ -1,11 +1,14 @@
 import {
   callGemini,
+  friendlyGeminiError,
   getTone,
   imagePartFromDataUrl,
+  imagePartFromBytes,
   imagePartFromUrl,
+  mimeFromPath,
   parseJsonObject,
 } from '../_shared/ai';
-import { json, requireAdmin, type Env } from '../_shared/runtime';
+import { getGitHubRaw, json, requireAdmin, type Env } from '../_shared/runtime';
 
 interface Context {
   request: Request;
@@ -34,10 +37,21 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
 
   let image = body.imageBase64 ? await imagePartFromDataUrl(body.imageBase64) : null;
   if (!image && body.imageUrl) {
-    const url = body.imageUrl.startsWith('/')
-      ? `${(env.SITE_URL || 'https://sinazarghami.ir').replace(/\/$/, '')}${body.imageUrl}`
-      : body.imageUrl;
-    image = await imagePartFromUrl(url);
+    const url = body.imageUrl.trim();
+    if (url.startsWith('/')) {
+      // مسیر داخلی مثل /media/... از مخزن گیت‌هاب خوانده می‌شود
+      const repoPath = `public${url}`.replace(/\/{2,}/g, '/');
+      try {
+        const raw = await getGitHubRaw(env, repoPath);
+        if (raw) {
+          image = imagePartFromBytes(raw.bytes, mimeFromPath(repoPath) || raw.mimeType);
+        }
+      } catch {
+        image = null;
+      }
+    } else if (/^https?:\/\//i.test(url)) {
+      image = await imagePartFromUrl(url);
+    }
   }
   if (!image) {
     return json(
@@ -101,7 +115,7 @@ titleFa حداکثر ۹ کلمه و descriptionFa بین ۲ تا ۴ جمله ب�
     return json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'تحلیل تصویر ناموفق بود.',
+        error: friendlyGeminiError(error),
       },
       502,
     );

@@ -6,6 +6,7 @@ import {
   requireAdmin,
   type Env,
 } from './_shared/runtime';
+import { ensureEnglishFields } from './_shared/translateContent';
 
 interface Context {
   request: Request;
@@ -45,6 +46,8 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     return json({ success: false, error: 'ساختار محتوا معتبر نیست.' }, 400);
   }
 
+  const translation = await ensureEnglishFields(env, content as Record<string, unknown>);
+
   const serialized = JSON.stringify(content);
   if (new TextEncoder().encode(serialized).byteLength > MAX_CONTENT_BYTES) {
     return json({ success: false, error: 'حجم محتوا بیش از حد مجاز است.' }, 413);
@@ -72,7 +75,7 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
         file?.sha,
       );
     }
-    return json({ success: true, content, commitSha });
+    return json({ success: true, content, commitSha, translation });
   } catch (error) {
     return json(
       { success: false, error: error instanceof Error ? error.message : 'GitHub write failed.' },

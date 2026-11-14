@@ -59,27 +59,40 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
     : photos;
 
   // دسته‌بندی‌های داینامیک ۱۰۰٪ خوانده‌شده از SiteContent.commercialCategories
-  const dynamicCategories: { id: string; labelFa: string; labelEn: string }[] = [
-    { id: 'all', labelFa: 'همه نمونه‌کارها', labelEn: 'All Works' },
-    ...commercialCategories.map((c) => ({
-      id: c.id,
-      labelFa: c.titleFa || c.nameFa || c.id,
-      labelEn: c.titleEn || c.nameEn || c.id,
-    })),
-  ];
+  // دسته‌بندی‌ها تنها از داده‌ی مدیریت‌شده در پنل ساخته می‌شوند و فقط
+  // دسته‌هایی نمایش داده می‌شوند که واقعاً عکسی در همین محدوده دارند.
+  const countForCategory = (id: string) =>
+    scopedPhotos.filter((photo) => photo.commercialCategory === id).length;
 
-  // فیلتر بر اساس دسته‌بندی انتخابی
+  const portfolioCategories = [...commercialCategories].sort(
+    (left, right) => (left.order ?? 0) - (right.order ?? 0),
+  );
+
+  const dynamicCategories: {
+    id: string;
+    labelFa: string;
+    labelEn: string;
+    count: number;
+  }[] = [
+    {
+      id: 'all',
+      labelFa: 'همه نمونه‌کارها',
+      labelEn: 'All Works',
+      count: scopedPhotos.length,
+    },
+    ...portfolioCategories.map((category) => ({
+      id: category.id,
+      labelFa: category.titleFa || category.nameFa || category.id,
+      labelEn: category.titleEn || category.nameEn || category.id,
+      count: countForCategory(category.id),
+    })),
+  ].filter((category) => category.id === 'all' || category.count > 0);
+
   const filteredPhotos =
     selectedCategory === 'all'
       ? scopedPhotos
-      : scopedPhotos.filter((p) => {
-          return (
-            p.commercialCategory === selectedCategory ||
-            p.category === selectedCategory ||
-            (p.category === 'architecture' && selectedCategory.includes('industrial')) ||
-            (p.category === 'portrait' && selectedCategory.includes('macro'))
-          );
-        });
+      : scopedPhotos.filter((photo) => photo.commercialCategory === selectedCategory);
+
 
   const openLightbox = (photo: PhotoItem) => {
     setActivePhoto(photo);
@@ -162,6 +175,13 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                   }`}
                 >
                   {isFa ? cat.labelFa : cat.labelEn}
+                  <span
+                    className={`mr-1.5 inline-block min-w-4 rounded px-1 text-[10px] font-mono ${
+                      active ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'
+                    }`}
+                  >
+                    {cat.count}
+                  </span>
                 </button>
               );
             })}

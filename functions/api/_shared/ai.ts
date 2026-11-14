@@ -126,3 +126,43 @@ export async function imagePartFromUrl(
     return null;
   }
 }
+
+export function imagePartFromBytes(
+  bytes: Uint8Array,
+  mimeType: string,
+): { mimeType: string; data: string } | null {
+  if (!/^image\/(jpeg|png|webp)$/.test(mimeType)) return null;
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_INLINE_BYTES) return null;
+  let binary = '';
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.byteLength; index += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunk));
+  }
+  return { mimeType, data: btoa(binary) };
+}
+
+export function mimeFromPath(path: string): string {
+  if (/\.png$/i.test(path)) return 'image/png';
+  if (/\.jpe?g$/i.test(path)) return 'image/jpeg';
+  if (/\.webp$/i.test(path)) return 'image/webp';
+  return '';
+}
+
+/** پیام خطای فارسی و قابل‌اقدام به‌جای متن خام پاسخ Gemini. */
+export function friendlyGeminiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error || '');
+  if (/not configured/i.test(raw)) return 'کلید Gemini در Cloudflare تنظیم نشده است.';
+  if (/\b429\b|\bquota\b/i.test(raw)) {
+    return 'سهمیه روزانه هوش مصنوعی تمام شده است؛ کمی بعد دوباره تلاش کنید.';
+  }
+  if (/\b404\b/.test(raw)) {
+    return 'مدل هوش مصنوعی انتخاب‌شده در دسترس نیست؛ مقدار GEMINI_MODEL را بررسی کنید.';
+  }
+  if (/\b(400|401|403)\b/.test(raw)) {
+    return 'کلید هوش مصنوعی پذیرفته نشد (نامعتبر یا محدودشده). مقدار GEMINI_API_KEY را در Cloudflare بررسی کنید.';
+  }
+  if (/abort|timeout|network|fetch/i.test(raw)) {
+    return 'ارتباط با سرویس هوش مصنوعی برقرار نشد؛ شبکه یا کلید را بررسی کنید.';
+  }
+  return 'تحلیل تصویر ناموفق بود؛ دوباره تلاش کنید.';
+}

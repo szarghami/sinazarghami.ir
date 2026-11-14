@@ -856,28 +856,33 @@
   "commercialCategories": [
     {
       "id": "comm-industrial",
-      "nameFa": "عکاسی و فیلمبرداری صنعتی و خطوط تولید",
-      "nameEn": "Industrial & Manufacturing"
+      "titleFa": "عکاسی و فیلمبرداری صنعتی و خطوط تولید",
+      "titleEn": "Industrial & Manufacturing",
+      "order": 0
     },
     {
       "id": "comm-products",
-      "nameFa": "کاتالوگ تبلیغاتی و محصولات",
-      "nameEn": "Product Catalog & Advertising"
+      "titleFa": "کاتالوگ تبلیغاتی و محصولات",
+      "titleEn": "Product Catalog & Advertising",
+      "order": 1
     },
     {
       "id": "comm-architecture",
-      "nameFa": "معماری مدرن و سازه‌های لوکس",
-      "nameEn": "Modern Architecture & Structures"
+      "titleFa": "معماری مدرن و سازه‌های لوکس",
+      "titleEn": "Modern Architecture & Structures",
+      "order": 2
     },
     {
       "id": "comm-macro-commercial",
-      "nameFa": "هایپرمکرو صنعتی و قطعات دقیق",
-      "nameEn": "Commercial Precision Hyper-Macro"
+      "titleFa": "هایپرمکرو صنعتی و قطعات دقیق",
+      "titleEn": "Commercial Precision Hyper-Macro",
+      "order": 3
     },
     {
       "id": "comm-documentary-film",
-      "nameFa": "مستندسازی و تیزرهای سازمانی",
-      "nameEn": "Corporate Documentaries & Teasers"
+      "titleFa": "مستندسازی و تیزرهای سازمانی",
+      "titleEn": "Corporate Documentaries & Teasers",
+      "order": 4
     }
   ],
   "definedTechniques": [
