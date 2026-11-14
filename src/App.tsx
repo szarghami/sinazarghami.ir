@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { Language, PhotoItem, SiteContent } from './types';
 import {
   loadSiteContent,
@@ -25,9 +25,13 @@ import { AboutPage } from './components/AboutPage';
 import { DynamicFilterArchive } from './components/DynamicFilterArchive';
 import { NotFoundPage } from './components/NotFoundPage';
 import { PrintShopModal } from './components/PrintShopModal';
-import { AdminStudioModal } from './components/AdminStudioModal';
 import { SeoDocumentationModal } from './components/SeoDocumentationModal';
 import { Footer } from './components/Footer';
+
+// پنل مدیریت فقط وقتی باز می‌شود دانلود می‌شود تا حجم بارگذاری اولیه‌ی سایت کم بماند.
+const AdminStudioModal = lazy(() =>
+  import('./components/AdminStudioModal').then((module) => ({ default: module.AdminStudioModal })),
+);
 
 const KNOWN_PATHS = new Set([
   '/',
@@ -339,15 +343,25 @@ export default function App() {
       />
 
       {isAdminOpen && (
-        <AdminStudioModal
-          content={content}
-          onUpdateContent={handleUpdateContent}
-          language={language}
-          onClose={() => {
-            setIsAdminOpen(false);
-            if (pathOnly === '/studio') navigateTo('/');
-          }}
-        />
+        <Suspense
+          fallback={
+            <div className="fixed inset-0 z-[100] bg-stone-950/70 flex items-center justify-center">
+              <div className="bg-white rounded-xl px-5 py-4 text-sm font-bold text-stone-800 shadow-xl">
+                {language === 'fa' ? 'در حال باز کردن پنل…' : 'Opening studio…'}
+              </div>
+            </div>
+          }
+        >
+          <AdminStudioModal
+            content={content}
+            onUpdateContent={handleUpdateContent}
+            language={language}
+            onClose={() => {
+              setIsAdminOpen(false);
+              if (pathOnly === '/studio') navigateTo('/');
+            }}
+          />
+        </Suspense>
       )}
 
       {isSeoOpen && (

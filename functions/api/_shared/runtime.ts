@@ -69,7 +69,7 @@ export function getSessionSecret(env: Env): string {
 }
 
 export function getInitialPasscode(env: Env): string {
-  return env.ADMIN_INITIAL_PASSCODE || env.ADMIN_PASSCODE || '';
+  return (env.ADMIN_INITIAL_PASSCODE || env.ADMIN_PASSCODE || '').trim();
 }
 
 export function getRepo(env: Env): { repo: string; branch: string } {
