@@ -8,6 +8,49 @@ import { initialSiteContent } from '../data/initialData';
 
 const STORAGE_KEY = 'sina_portfolio_site_data_v5';
 const SESSION_AUTH_KEY = 'sina_admin_session_auth_v5';
+const PUBLISH_SNAPSHOT_KEY = 'sina_publish_snapshot_v1';
+
+export interface PublishSnapshot {
+  content: SiteContent;
+  /** null یعنی انتشار هنوز با موفقیت انجام نشده است. */
+  publishedAt: number | null;
+}
+
+/**
+ * پس از هر تغییر، نسخه‌ی موردنظر در مرورگر نگه داشته می‌شود تا اگر انتشار
+ * شکست بخورد یا ساخت مجدد Cloudflare Pages چند دقیقه طول بکشد، نسخه‌ی قدیمی
+ * سرور روی تغییرات کاربر نوشته نشود.
+ */
+export function rememberPublish(content: SiteContent, published: boolean): void {
+  try {
+    const snapshot: PublishSnapshot = {
+      content,
+      publishedAt: published ? Date.now() : null,
+    };
+    localStorage.setItem(PUBLISH_SNAPSHOT_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}
+
+export function getPublishSnapshot(): PublishSnapshot | null {
+  try {
+    const raw = localStorage.getItem(PUBLISH_SNAPSHOT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PublishSnapshot;
+    return parsed && parsed.content ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function clearPublishSnapshot(): void {
+  try {
+    localStorage.removeItem(PUBLISH_SNAPSHOT_KEY);
+  } catch {
+    // Storage can be unavailable in private browsing.
+  }
+}
 
 /**
  * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
@@ -28,6 +71,14 @@ export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
       }
       const data = await res.json();
       if (data && data.profile) {
+        const snapshot = getPublishSnapshot();
+        if (snapshot) {
+          if (JSON.stringify(snapshot.content) !== JSON.stringify(data)) {
+            // سرور هنوز نسخه‌ی تازه را منتشر نکرده است؛ تغییرات محلی حفظ می‌شوند.
+            return null;
+          }
+          clearPublishSnapshot();
+        }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         return data;
       }

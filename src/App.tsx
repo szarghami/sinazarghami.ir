@@ -9,7 +9,10 @@ import {
   loadSiteContent,
   saveSiteContent,
   fetchRemoteSiteData,
+  getPublishSnapshot,
+  rememberPublish,
 } from './utils/storage';
+import { publishSiteContent } from './utils/transport';
 import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { HomeCategoryCards } from './components/HomeCategoryCards';
@@ -111,6 +114,19 @@ export default function App() {
       }
     });
   }, [currentPath]);
+
+  // اگر تغییر قبلی هرگز منتشر نشده بود (مثلاً شبکه قطع بود)، یک بار دیگر تلاش می‌شود.
+  useEffect(() => {
+    const pending = getPublishSnapshot();
+    if (!pending || pending.publishedAt !== null) return;
+    void publishSiteContent(pending.content).then((result) => {
+      if (!result.success) return;
+      const next = (result.content as SiteContent) || pending.content;
+      saveSiteContent(next);
+      rememberPublish(next, true);
+      setContent(next);
+    });
+  }, []);
 
   // بروزرسانی تایتل تب مرورگر و صفات lang / dir
   useEffect(() => {
