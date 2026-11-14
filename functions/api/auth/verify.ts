@@ -9,6 +9,7 @@ import {
   verifyPasscode,
   type Env,
 } from '../_shared/runtime';
+import { readRequestJson } from '../_shared/request';
 
 interface Context {
   request: Request;
@@ -28,12 +29,8 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     return json({ authenticated: false, error: 'ADMIN_SESSION_SECRET is not configured.' }, 503);
   }
 
-  let body: { passcode?: string; deviceLabel?: string };
-  try {
-    body = (await request.json()) as { passcode?: string; deviceLabel?: string };
-  } catch {
-    return json({ authenticated: false, error: 'Invalid JSON body.' }, 400);
-  }
+  const body =
+    (await readRequestJson<{ passcode?: string; deviceLabel?: string }>(request)) ?? {};
 
   const passcode = (body.passcode || '').trim();
   if (!passcode) return json({ authenticated: false, error: 'Passcode is required.' }, 400);

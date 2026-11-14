@@ -138,15 +138,40 @@ export interface AuthCheckResult {
   error?: string;
 }
 
+function encodeBase64Url(text: string): string {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function postPasscode(passcode: string, mode: 'json' | 'text'): Promise<Response> {
+  const payload = JSON.stringify({ passcode });
+  return fetch('/api/auth/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': mode === 'json' ? 'application/json' : 'text/plain' },
+    credentials: 'same-origin',
+    cache: 'no-store',
+    body: mode === 'json' ? payload : encodeBase64Url(payload),
+  });
+}
+
 export async function checkAdminPasscode(pin: string): Promise<AuthCheckResult> {
   if (!pin?.trim()) return { ok: false, error: 'رمز عبور را وارد کنید.' };
+  const clean = pin.trim();
   try {
-    const res = await fetch('/api/auth/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify({ passcode: pin.trim() }),
-    });
+    let res: Response | null = null;
+    try {
+      res = await postPasscode(clean, 'json');
+    } catch {
+      res = null;
+    }
+    // اگر POST معمولی توسط شبکه انداخته شد، با بدنه‌ی متنی دوباره تلاش کن.
+    if (!res || res.status === 400) {
+      res = await postPasscode(clean, 'text');
+    }
     const data = await res.json().catch(() => ({}));
     const authenticated = res.ok && data.authenticated === true;
     if (authenticated) {

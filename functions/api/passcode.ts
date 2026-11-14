@@ -1,4 +1,5 @@
 import { json, requireAdmin, savePasscode, type Env } from './_shared/runtime';
+import { readRequestJson } from './_shared/request';
 
 interface Context {
   request: Request;
@@ -15,12 +16,7 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     );
   }
 
-  let body: { passcode?: string };
-  try {
-    body = (await request.json()) as { passcode?: string };
-  } catch {
-    return json({ success: false, error: 'Invalid JSON body.' }, 400);
-  }
+  const body = (await readRequestJson<{ passcode?: string }>(request)) ?? {};
 
   const passcode = (body.passcode || '').trim();
   if (passcode.length < 8 || passcode.length > 128) {
