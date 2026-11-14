@@ -51,7 +51,7 @@ interface ServerChecks {
   initialPasscode: boolean;
   passcodeChanged: boolean;
   kv: { bound: boolean; ok: boolean | null; error?: string };
-  github: { configured: boolean; repo: string; branch: string };
+  github: { configured: boolean; repo: string; branch: string; read?: boolean; error?: string };
   gemini: boolean;
   telegram: boolean;
 }
@@ -5020,8 +5020,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             value: serverChecks.kv.bound && serverChecks.kv.ok !== false,
                           },
                           {
-                            label: isFa ? 'توکن گیت‌هاب' : 'GitHub token',
-                            value: serverChecks.github.configured,
+                            label: isFa
+                              ? 'توکن گیت‌هاب و دسترسی به مخزن'
+                              : 'GitHub token & repository',
+                            value:
+                              serverChecks.github.configured && serverChecks.github.read !== false,
                           },
                           {
                             label: isFa ? 'کلید هوش مصنوعی (Gemini)' : 'Gemini key',

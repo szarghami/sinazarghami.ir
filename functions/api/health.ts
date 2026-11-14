@@ -1,4 +1,11 @@
-import { getInitialPasscode, getRepo, getSessionSecret, json, type Env } from './_shared/runtime';
+import {
+  getGitHubFile,
+  getInitialPasscode,
+  getRepo,
+  getSessionSecret,
+  json,
+  type Env,
+} from './_shared/runtime';
 
 const VERSION = '2026-11-14-chunked';
 const KV_PROBE_KEY = 'health:probe';
@@ -40,6 +47,26 @@ async function probeKv(env: Env): Promise<{ bound: boolean; ok: boolean; error?:
   }
 }
 
+/**
+ * تست خواندن واقعی از مخزن با توکن. اگر توکن منقضی شده باشد یا به مخزن دسترسی نداشته باشد،
+ * همین‌جا معلوم می‌شود؛ نه بعد از این‌که کاربر یک پست کامل نوشت و انتشار شکست خورد.
+ */
+async function probeGitHub(
+  env: Env,
+): Promise<{ configured: boolean; read: boolean; error?: string }> {
+  if (!env.GITHUB_TOKEN) return { configured: false, read: false };
+  try {
+    const file = await getGitHubFile(env, 'public/site-data.json');
+    return { configured: true, read: Boolean(file) };
+  } catch (error) {
+    return {
+      configured: true,
+      read: false,
+      error: error instanceof Error ? error.message : 'خطای نامشخص گیت‌هاب',
+    };
+  }
+}
+
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
   const cf = (request as RequestWithCf).cf;
   const url = new URL(request.url);
@@ -65,7 +92,9 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
       initialPasscode: Boolean(getInitialPasscode(env)),
       passcodeChanged: storedPasscode,
       kv: deep ? await probeKv(env) : { bound: Boolean(env.ADMIN_KV), ok: null },
-      github: { configured: Boolean(env.GITHUB_TOKEN), repo, branch },
+      github: deep
+        ? { repo, branch, ...(await probeGitHub(env)) }
+        : { configured: Boolean(env.GITHUB_TOKEN), repo, branch },
       gemini: Boolean(env.GEMINI_API_KEY),
       telegram: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
     },
