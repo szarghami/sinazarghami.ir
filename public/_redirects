@@ -1,3 +1,7 @@
-# SPA fallback. Cloudflare Pages serves existing static files first,
-# so /assets/*, /media/* and /site-data.json are untouched.
-/*  /index.html  200
+# SPA fallback is handled by functions/_middleware.ts, not here.
+#
+# The old rule `/*  /index.html  200` also matched missing files such as
+# /assets/index-OLD.js. Cloudflare Pages then answered with index.html and
+# _headers applied `Cache-Control: immutable` to it, so the edge and the
+# browser cached HTML under a JavaScript URL for a year. Every deploy could
+# leave the site on a white page until that cache entry expired.

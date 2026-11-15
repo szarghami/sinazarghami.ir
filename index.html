@@ -3,6 +3,32 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- اگر فایل جاوااسکریپت نسخه‌ی جدید به هر دلیلی بارگذاری نشد (مثلاً کش
+         لبه‌ی کلادفلر هنوز نسخه‌ی قبلی را داشت)، یک بار با آدرس تازه دوباره
+         تلاش می‌کنیم تا کاربر صفحه‌ی سفید نبیند. -->
+    <script>
+      (function () {
+        var RETRY_KEY = 'sina_asset_retry_at';
+        window.addEventListener(
+          'error',
+          function (event) {
+            var target = event.target;
+            if (!target || target.tagName !== 'SCRIPT') return;
+            try {
+              var last = Number(sessionStorage.getItem(RETRY_KEY) || 0);
+              if (last && Date.now() - last < 60000) return;
+              sessionStorage.setItem(RETRY_KEY, String(Date.now()));
+            } catch (error) {
+              return;
+            }
+            var url = new URL(window.location.href);
+            url.searchParams.set('v', String(Date.now()));
+            window.location.replace(url.toString());
+          },
+          true,
+        );
+      })();
+    </script>
     <title>Sina Zarghami | سینا ضرغامی</title>
     <meta name="description" content="Personal flagship website of Sina Zarghami (sinazarghami.ir) - Photographer, Filmmaker, Tour Leader, Educator, and Software Creator." />
     <meta name="author" content="Sina Zarghami" />
@@ -77,7 +103,13 @@
     </script>
   </head>
   <body class="bg-[#FCFCFD] text-[#121316] antialiased selection:bg-amber-100 selection:text-amber-900">
-    <div id="root"></div>
+    <div id="root">
+      <div
+        style="min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: system-ui, sans-serif; color: #78716c; font-size: 14px"
+      >
+        در حال بارگذاری…
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

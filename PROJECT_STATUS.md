@@ -24,7 +24,8 @@
 - حذف مسیرهای بلااستفاده‌ی `/api/media`، `/api/github/sync` و مترجم سمت کلاینت؛
   تنها مسیر نوشتن، `/api/upload/*` است.
 - کاهش حجم `site-data.json` از ۵۲۰ کیلوبایت به حدود ۴۷ کیلوبایت.
-- افزودن `public/_redirects` و `public/_headers` برای SPA fallback و کش صحیح.
+- SPA fallback به `functions/_middleware.ts` منتقل شد تا درخواست فایل‌های
+  `/assets/*` هرگز HTML نگیرد و در کش لبه ذخیره نشود (علت صفحه‌ی سفید بعد از deploy).
 - افزودن مسیر `/studio`، صفحه‌ی ۴۰۴، ErrorBoundary و ریدایرکت مسیرهای قدیمی.
 - غیرفعال‌کردن بارگذاری blocking فونت گوگل (علت اصلی صفحه‌ی سفید و اسپینر بی‌پایان).
 - حذف workflowهای خطرناک `pre-check`، `deploy` (GitHub Pages) و `video-processor`.
