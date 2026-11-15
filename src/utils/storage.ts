@@ -53,6 +53,33 @@ export function clearPublishSnapshot(): void {
 }
 
 /**
+ * هر فیلدی که در نسخه‌ی ذخیره‌شده نبود با مقدار اولیه پر می‌شود تا افزودن
+ * فیلد تازه به مدل داده، سایت را با مقدار undefined نشکند.
+ */
+function mergeWithDefaults(parsed: Partial<SiteContent>): SiteContent {
+  return {
+    profile: { ...initialSiteContent.profile, ...(parsed.profile || {}) },
+    photos: parsed.photos || initialSiteContent.photos,
+    expeditions: parsed.expeditions || initialSiteContent.expeditions,
+    software: parsed.software || initialSiteContent.software,
+    resume: parsed.resume || initialSiteContent.resume,
+    books: parsed.books || initialSiteContent.books,
+    equipment: parsed.equipment || initialSiteContent.equipment,
+    commercialCategories: parsed.commercialCategories || initialSiteContent.commercialCategories,
+    travelCategories: parsed.travelCategories || initialSiteContent.travelCategories,
+    tripCategories: parsed.tripCategories || initialSiteContent.tripCategories,
+    gearCategories: parsed.gearCategories || initialSiteContent.gearCategories,
+    definedTechniques: parsed.definedTechniques || initialSiteContent.definedTechniques,
+    homeCategoryCards: parsed.homeCategoryCards || initialSiteContent.homeCategoryCards,
+    articles: parsed.articles || initialSiteContent.articles,
+    navLabels: parsed.navLabels || initialSiteContent.navLabels,
+    aboutBio: parsed.aboutBio || initialSiteContent.aboutBio,
+    aboutPage: parsed.aboutPage || initialSiteContent.aboutPage,
+    homeShowcaseConfig: parsed.homeShowcaseConfig || initialSiteContent.homeShowcaseConfig,
+  };
+}
+
+/**
  * دریافت اطلاعات سایت با اولویت سرور اختصاصی جهت هماهنگی کامل بین لپ‌تاپ و گوشی
  */
 export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
@@ -80,7 +107,7 @@ export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
           clearPublishSnapshot();
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        return data;
+        return mergeWithDefaults(data);
       }
     }
   } catch (e) {
@@ -106,26 +133,7 @@ export function loadSiteContent(): SiteContent {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return initialSiteContent;
     const parsed = JSON.parse(raw);
-    return {
-      profile: { ...initialSiteContent.profile, ...(parsed.profile || {}) },
-      photos: parsed.photos || initialSiteContent.photos,
-      expeditions: parsed.expeditions || initialSiteContent.expeditions,
-      software: parsed.software || initialSiteContent.software,
-      resume: parsed.resume || initialSiteContent.resume,
-      books: parsed.books || initialSiteContent.books,
-      equipment: parsed.equipment || initialSiteContent.equipment,
-      commercialCategories: parsed.commercialCategories || initialSiteContent.commercialCategories,
-      travelCategories: parsed.travelCategories || initialSiteContent.travelCategories,
-      tripCategories: parsed.tripCategories || initialSiteContent.tripCategories,
-      gearCategories: parsed.gearCategories || initialSiteContent.gearCategories,
-      definedTechniques: parsed.definedTechniques || initialSiteContent.definedTechniques,
-      homeCategoryCards: parsed.homeCategoryCards || initialSiteContent.homeCategoryCards,
-      articles: parsed.articles || initialSiteContent.articles,
-      navLabels: parsed.navLabels || initialSiteContent.navLabels,
-      aboutBio: parsed.aboutBio || initialSiteContent.aboutBio,
-      aboutPage: parsed.aboutPage || initialSiteContent.aboutPage,
-      homeShowcaseConfig: parsed.homeShowcaseConfig || initialSiteContent.homeShowcaseConfig,
-    };
+    return mergeWithDefaults(parsed);
   } catch (err) {
     console.warn('خطا در خواندن اطلاعات محلی:', err);
     return initialSiteContent;
