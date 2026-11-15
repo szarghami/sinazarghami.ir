@@ -31,4 +31,7 @@ React 19 + TypeScript + Vite + Tailwind 4. مسیریابی دستی با Histor
 - لینک تصویر خارجی (Unsplash و مشابه) اضافه نکن؛ تصاویر باید در `public/media/` باشند.
 - فونت‌ها و منابع خارجی نباید رندر صفحه را block کنند (به‌خصوص برای کاربران ایران).
 - صفحه‌های ناشناخته باید به `NotFoundPage` بروند، نه خروجی خالی.
-- `public/_redirects` برای SPA fallback ضروری است؛ حذفش نکن.
+- SPA fallback در `functions/_middleware.ts` است. `public/_redirects` عمداً خالی
+  است و نباید قاعده‌ی `/*  /index.html  200` به آن برگردد.
+- Cloudflare Pages برای مسیر ناموجود `200 text/html` می‌دهد؛ پس در middleware
+  «فایل گم‌شده» را از روی `Content-Type` تشخیص بده، نه از روی کد ۴۰۴.
