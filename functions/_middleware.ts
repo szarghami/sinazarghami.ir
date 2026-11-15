@@ -23,6 +23,14 @@ const ASSET_EXTENSION =
 export async function onRequest(context: Context): Promise<Response> {
   const url = new URL(context.request.url);
   const response = await context.next();
+  const probe = new Headers(response.headers);
+  probe.set(
+    'x-spa-probe',
+    `next=${response.status};ct=${response.headers.get('content-type') || '-'};assets=${context.env.ASSETS ? 'yes' : 'no'}`,
+  );
+  if (url.pathname.startsWith('/__probe')) {
+    return new Response(probe.get('x-spa-probe'), { status: 200, headers: probe });
+  }
   if (response.status !== 404) return response;
 
   const method = context.request.method.toUpperCase();
