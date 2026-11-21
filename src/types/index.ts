@@ -8,12 +8,23 @@ export type Language = 'fa' | 'en';
 // دسته‌بندی‌های تصاویر گالری
 export type PhotoCategory = 'all' | 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
 
+// هر منبع پخش یک ویدیو: یوتیوب، آپارات، آروان، فایل مستقیم یا HLS
+export interface VideoSource {
+  id: string;
+  provider: 'youtube' | 'aparat' | 'arvan' | 'file' | 'hls' | 'link';
+  url: string;
+  label?: string;
+}
+
 // ساختار اطلاعات هر قطعه عکس یا ویدیو
 export interface PostVideo {
   id: string;
-  url: string; // لینک یوتیوب، آپارات یا فایل مستقیم mp4/webm
+  url: string; // منبع اصلی (برای سازگاری با محتوای قدیمی)
+  sources?: VideoSource[]; // چند منبع برای یک ویدیو؛ پلیر دکمه‌ی هرکدام را نشان می‌دهد
+  arvanKey?: string; // کلید فایل در فضای ابری آروان
   titleFa?: string;
   titleEn?: string;
+  poster?: string;
 }
 
 export interface PhotoItem {

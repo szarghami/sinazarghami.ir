@@ -427,6 +427,9 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                 {activeVideo ? (
                   <VideoPlayer
                     url={activeVideo.url}
+                    sources={activeVideo.sources}
+                    poster={activePhoto.imageUrl || undefined}
+                    language={isFa ? 'fa' : 'en'}
                     title={
                       (isFa ? activeVideo.titleFa : activeVideo.titleEn) ||
                       (isFa ? activePhoto.titleFa : activePhoto.titleEn)

@@ -5,3 +5,7 @@
 # _headers applied `Cache-Control: immutable` to it, so the edge and the
 # browser cached HTML under a JavaScript URL for a year. Every deploy could
 # leave the site on a white page until that cache entry expired.
+
+# مرورگرهای قدیمی که آیکون را از مسیر پیش‌فرض می‌خواهند، به نسخه‌ی واقعی
+# هدایت می‌شوند تا در کنسول خطای ۴۰۴ نمانند.
+/favicon.ico /favicon.svg 302

@@ -12,7 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "lint:pages": "tsc --noEmit -p tsconfig.functions.json",
-    "test": "node --experimental-strip-types scripts/test-request-channels.mjs && node --experimental-strip-types scripts/test-transport.mjs && node --experimental-strip-types scripts/test-spa-fallback.mjs",
+    "test": "node --experimental-strip-types scripts/test-request-channels.mjs && node --experimental-strip-types scripts/test-transport.mjs && node --experimental-strip-types scripts/test-spa-fallback.mjs && node --experimental-strip-types scripts/test-arvan-signature.mjs",
     "pages:dev": "vite build && npx wrangler pages dev dist"
   },
   "dependencies": {

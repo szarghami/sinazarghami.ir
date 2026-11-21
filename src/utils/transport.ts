@@ -4,6 +4,10 @@
 // می‌کند. اندازه‌ی امن اینجا با تست واقعی روی همین دامنه پیدا شده است:
 //   - بدنه‌ی POST تا ۴۰ کیلوبایت سالم است و از حدود ۴۸ کیلوبایت قطع می‌شود.
 //   - URL تا حدود ۲۴ هزار کاراکتر سالم است و از ۳۲ هزار کاراکتر قطع می‌شود.
+//   - خود اتصال هم عمر کوتاهی دارد: اتصال بازمانده به همین دامنه بعد از حدود
+//     ۱۰ تا ۲۰ ثانیه بی‌صدا قطع می‌شود (ECONNRESET / ERR_CONNECTION_CLOSED).
+//     بنابراین هر تکه باید سریع شکست بخورد و روی اتصال تازه دوباره فرستاده شود؛
+//     منتظر ماندن تا تایم‌اوت طولانی فقط آپلود را کند و ناتمام می‌کند.
 // بنابراین همه‌ی نوشتن‌ها تکه‌تکه و کوچک ارسال می‌شوند و کانال GET که روی این
 // شبکه سریع‌ترین است، انتخاب پیش‌فرض است.
 // =====================================================================
@@ -20,10 +24,13 @@ const MODE_KEY = 'sina_transport_mode_v2';
 const MIN_CHUNK = 4 * 1024;
 const MAX_CHUNK = 12 * 1024;
 const REQUEST_TIMEOUT_MS = 12_000;
+const CHUNK_TIMEOUT_MS = 8_000;
 const COMPLETE_TIMEOUT_MS = 90_000;
-const CHUNK_CONCURRENCY = 3;
-const CHUNK_ATTEMPTS = 2;
-const MAX_UPLOAD_ATTEMPTS = 2;
+const CHUNK_CONCURRENCY = 2;
+const CHUNK_ATTEMPTS = 3;
+const MODE_ATTEMPTS = 2;
+const MAX_UPLOAD_ATTEMPTS = 4;
+const ROUND_BACKOFF_MS = [1_000, 2_500, 5_000];
 
 /**
  * کانال ارسال. روی بعضی شبکه‌ها بدنه‌ی POST کند یا قطع می‌شود ولی GET سالم است،
@@ -175,10 +182,10 @@ function sendChunkOnce(
     return fetchWithTimeout(
       url,
       { method: 'GET', credentials: 'same-origin', cache: 'no-store' },
-      REQUEST_TIMEOUT_MS,
+      CHUNK_TIMEOUT_MS,
     );
   }
-  return sendJsonOnce('/api/upload/chunk', { uploadId, index, data }, mode, REQUEST_TIMEOUT_MS);
+  return sendJsonOnce('/api/upload/chunk', { uploadId, index, data }, mode, CHUNK_TIMEOUT_MS);
 }
 
 async function sendChunk(
@@ -324,6 +331,9 @@ export async function sendChunked(
   let networkFailures = 0;
 
   for (let round = 0; round < MAX_UPLOAD_ATTEMPTS; round += 1) {
+    if (round > 0) {
+      await sleep(ROUND_BACKOFF_MS[Math.min(round - 1, ROUND_BACKOFF_MS.length - 1)]);
+    }
     let session: UploadSession | null = null;
     const pending = new Set<number>();
 
@@ -347,22 +357,30 @@ export async function sendChunked(
       }
 
       session.mode = mode;
-      try {
-        await pushChunks(session, pending, options.onProgress);
-      } catch (error) {
-        if (!(error instanceof NetworkError)) {
-          return {
-            success: false,
-            error: error instanceof Error ? error.message : lastError,
-            chunkSize,
-            chunkCount: session.total,
-          };
+      // یک قطع اتصال دلیل بر بد بودن کانال نیست؛ خود اتصال‌ها روی این شبکه
+      // عمر کوتاهی دارند. پس اول همان کانال را روی اتصال تازه دوباره امتحان
+      // می‌کنیم و فقط بعد از شکست دوباره به کانال بعدی می‌رویم.
+      let pushed = false;
+      for (let attempt = 0; attempt < MODE_ATTEMPTS; attempt += 1) {
+        try {
+          await pushChunks(session, pending, options.onProgress);
+          pushed = true;
+          break;
+        } catch (error) {
+          if (!(error instanceof NetworkError)) {
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : lastError,
+              chunkSize,
+              chunkCount: session.total,
+            };
+          }
+          networkFailures += 1;
+          lastError = `اتصال هنگام ارسال تکه‌ها قطع شد (${TRANSPORT_MODE_LABELS[mode]}).`;
+          if (attempt < MODE_ATTEMPTS - 1) await sleep(400 * (attempt + 1));
         }
-        networkFailures += 1;
-        lastError = `اتصال هنگام ارسال تکه‌ها قطع شد (${TRANSPORT_MODE_LABELS[mode]}).`;
-        continue;
       }
-      if (pending.size === 0) break;
+      if (pushed && pending.size === 0) break;
     }
 
     if (!session || pending.size > 0) {

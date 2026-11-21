@@ -6,6 +6,7 @@ import {
   json,
   type Env,
 } from './_shared/runtime';
+import { getArvanConfig } from './_shared/arvan';
 
 const VERSION = '2026-11-15-transport';
 const KV_PROBE_KEY = 'health:probe';
@@ -72,6 +73,7 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
   const url = new URL(request.url);
   const deep = url.searchParams.get('deep') === '1';
   const { repo, branch } = getRepo(env);
+  const arvan = getArvanConfig(env);
 
   let storedPasscode = false;
   if (env.ADMIN_KV) {
@@ -95,6 +97,9 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
       github: deep
         ? { repo, branch, ...(await probeGitHub(env)) }
         : { configured: Boolean(env.GITHUB_TOKEN), repo, branch },
+      arvan: arvan
+        ? { configured: true, bucket: arvan.bucket, endpoint: arvan.endpoint, prefix: arvan.prefix }
+        : { configured: false },
       gemini: Boolean(env.GEMINI_API_KEY),
       telegram: Boolean(env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_CHAT_ID),
     },

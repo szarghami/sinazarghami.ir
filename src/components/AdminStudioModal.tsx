@@ -25,6 +25,7 @@ import {
   AboutPageContent,
   NavLabelsItem,
   PostVideo,
+  VideoSource,
 } from '../types';
 import {
   checkAdminPasscode,
@@ -38,6 +39,8 @@ import {
   rememberPublish,
 } from '../utils/storage';
 import { getPostCoverUrl, smartUploadImage } from '../utils/media';
+import { uploadFileToArvan } from '../utils/arvanUpload';
+import { detectVideoProvider, VIDEO_PROVIDER_LABELS } from '../utils/videoEmbed';
 import {
   getChunkSize,
   getTransportMode,
@@ -105,6 +108,7 @@ import {
   Play,
   Film,
   Link2,
+  Loader2,
 } from 'lucide-react';
 
 interface AdminStudioModalProps {
@@ -195,10 +199,13 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   // آدرسی که عکس در مخزن گرفته است تا دوباره بارگذاری نشود.
   const [uploadedMainUrl, setUploadedMainUrl] = useState<string>('');
 
-  // ویدیوهای همین پست (فقط لینک؛ فایلی آپلود نمی‌شود)
+  // ویدیوهای همین پست: هر ویدیو می‌تواند چند منبع (یوتیوب، آپارات، آروان) داشته باشد
   const [photoVideos, setPhotoVideos] = useState<PostVideo[]>([]);
   const [videoUrlInput, setVideoUrlInput] = useState<string>('');
   const [videoTitleInput, setVideoTitleInput] = useState<string>('');
+  const [videoSourceTarget, setVideoSourceTarget] = useState<string | null>(null);
+  const [videoUploadProgress, setVideoUploadProgress] = useState<number | null>(null);
+  const videoFileInputRef = useRef<HTMLInputElement>(null);
 
   // فیلدهای تکمیلی داینامیک CMS برای اثر
   const [photoShowOnHome, setPhotoShowOnHome] = useState<boolean>(false);
@@ -560,6 +567,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoVideos(photo.videos || []);
     setVideoUrlInput('');
     setVideoTitleInput('');
+    setVideoSourceTarget(null);
     // فیلدهای تکمیلی داینامیک CMS
     setPhotoShowOnHome(photo.showOnHome || false);
     setPhotoHomeOrder(photo.homeOrder || 0);
@@ -588,6 +596,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoVideos([]);
     setVideoUrlInput('');
     setVideoTitleInput('');
+    setVideoSourceTarget(null);
     setPhotoShowOnHome(false);
     setPhotoHomeOrder(0);
     setPhotoPortfolioScope('commercial');
@@ -615,24 +624,123 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       );
       return;
     }
-    if (photoVideos.some((video) => video.url === url)) {
-      notifyError(isFa ? 'این ویدیو قبلاً اضافه شده است.' : 'This video is already added.');
-      return;
+
+    const source: VideoSource = {
+      id: `src-${Date.now()}`,
+      provider: detectVideoProvider(url),
+      url,
+    };
+
+    if (videoSourceTarget) {
+      const target = photoVideos.find((video) => video.id === videoSourceTarget);
+      if (!target) {
+        setVideoSourceTarget(null);
+        return;
+      }
+      const existingSources = target.sources?.length
+        ? target.sources
+        : [
+            {
+              id: `src-${target.id}`,
+              provider: detectVideoProvider(target.url),
+              url: target.url,
+            } satisfies VideoSource,
+          ];
+      if (existingSources.some((item) => item.url === url)) {
+        notifyError(isFa ? 'این منبع قبلاً برای همین ویدیو ثبت شده است.' : 'Source already added.');
+        return;
+      }
+      setPhotoVideos(
+        photoVideos.map((video) =>
+          video.id === videoSourceTarget
+            ? { ...video, sources: [...existingSources, source] }
+            : video,
+        ),
+      );
+      setVideoSourceTarget(null);
+    } else {
+      if (photoVideos.some((video) => video.url === url)) {
+        notifyError(isFa ? 'این ویدیو قبلاً اضافه شده است.' : 'This video is already added.');
+        return;
+      }
+      setPhotoVideos([
+        ...photoVideos,
+        {
+          id: `video-${Date.now()}`,
+          url,
+          sources: [source],
+          titleFa: videoTitleInput.trim() || undefined,
+        },
+      ]);
     }
-    setPhotoVideos([
-      ...photoVideos,
-      {
-        id: `video-${Date.now()}`,
-        url,
-        titleFa: videoTitleInput.trim() || undefined,
-      },
-    ]);
+
     setVideoUrlInput('');
     setVideoTitleInput('');
   };
 
   const handleRemoveVideo = (id: string) => {
     setPhotoVideos(photoVideos.filter((video) => video.id !== id));
+    if (videoSourceTarget === id) setVideoSourceTarget(null);
+  };
+
+  const handleRemoveVideoSource = (videoId: string, sourceId: string) => {
+    setPhotoVideos(
+      photoVideos.map((video) => {
+        if (video.id !== videoId || !video.sources) return video;
+        const sources = video.sources.filter((source) => source.id !== sourceId);
+        if (sources.length === 0) return video;
+        return { ...video, sources, url: sources[0].url };
+      }),
+    );
+  };
+
+  const handleVideoFileChosen = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setVideoUploadProgress(0);
+    try {
+      const uploaded = await uploadFileToArvan(file, {
+        filename: file.name,
+        mimeType: file.type || 'video/mp4',
+        kind: 'video',
+        fingerprint: `${file.name}|${file.size}|${file.lastModified}`,
+        onProgress: (loaded, total) => {
+          setVideoUploadProgress(total > 0 ? Math.round((loaded / total) * 100) : 0);
+        },
+      });
+      const source: VideoSource = {
+        id: `src-${Date.now()}`,
+        provider: 'arvan',
+        url: uploaded.publicUrl,
+      };
+      setPhotoVideos((previous) => [
+        ...previous,
+        {
+          id: `video-${Date.now()}`,
+          url: uploaded.publicUrl,
+          sources: [source],
+          arvanKey: uploaded.key,
+          titleFa: videoTitleInput.trim() || file.name,
+        },
+      ]);
+      notify(
+        uploaded.resumed
+          ? (isFa ? 'آپلود قبلی ادامه یافت و ویدیو ثبت شد.' : 'Resumed upload finished.')
+          : (isFa ? 'ویدیو در آروان ذخیره شد.' : 'Video saved to Arvan.'),
+      );
+    } catch (error) {
+      notifyError(
+        isFa
+          ? `آپلود ویدیو ناموفق بود: ${
+              error instanceof Error ? error.message : 'خطای ناشناخته'
+            }`
+          : 'Video upload failed.',
+      );
+    } finally {
+      setVideoUploadProgress(null);
+    }
   };
 
   const handleSavePhoto = async (e: React.FormEvent) => {
@@ -643,20 +751,41 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       let mainImageUrl = photoImageUrl;
       let additionalImages: string[] = [];
 
-      // تصاویر جدید فقط پس از ذخیره موفق در مخزن گیت‌هاب به محتوا اضافه می‌شوند.
+      // تصاویر جدید فقط پس از ذخیره موفق در آروان (یا گیت‌هاب) به محتوا اضافه می‌شوند.
       if (compressedResults.length > 0) {
-        setUploadMsg('در حال بارگذاری تصاویر در مخزن گیت‌هاب...');
+        setUploadMsg('در حال بارگذاری تصاویر در فضای ابری آروان...');
         if (uploadedMainUrl && uploadedMainUrl === photoImageUrl) {
           // عکس اصلی قبلاً (مثلاً هنگام تحلیل هوش مصنوعی) بارگذاری شده است.
           mainImageUrl = uploadedMainUrl;
         } else {
-          const mainUpload = await smartUploadImage(compressedResults[0].dataUrl, `photo_${Date.now()}`);
+          const mainUpload = await smartUploadImage(
+            compressedResults[0].dataUrl,
+            `photo_${Date.now()}`,
+            (loaded, total) => {
+              if (total > 0) {
+                setUploadMsg(`آپلود تصویر اصلی: ${Math.round((loaded / total) * 100)}%`);
+              }
+            },
+          );
           if (!mainUpload.success || !mainUpload.publicUrl) throw new Error(mainUpload.error || 'بارگذاری تصویر اصلی ناموفق بود.');
           mainImageUrl = mainUpload.publicUrl;
+          if (mainUpload.warning) notify(mainUpload.warning);
         }
 
         for (let i = 1; i < compressedResults.length; i++) {
-          const subUpload = await smartUploadImage(compressedResults[i].dataUrl, `sub_${Date.now()}_${i}`);
+          const subUpload = await smartUploadImage(
+            compressedResults[i].dataUrl,
+            `sub_${Date.now()}_${i}`,
+            (loaded, total) => {
+              if (total > 0) {
+                setUploadMsg(
+                  `آپلود تصویر ${i + 1} از ${compressedResults.length}: ${Math.round(
+                    (loaded / total) * 100,
+                  )}%`,
+                );
+              }
+            },
+          );
           if (!subUpload.success || !subUpload.publicUrl) throw new Error(subUpload.error || `بارگذاری تصویر ${i + 1} ناموفق بود.`);
           additionalImages.push(subUpload.publicUrl);
         }
@@ -1990,7 +2119,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         <Images className="w-4 h-4 text-amber-700" />
                         <span>{isFa ? 'انتخاب عکس یا مجموعه عکس (آلبوم چندعکسی)' : 'Upload Photo(s)'}</span>
                       </h4>
-                      <span className="text-xs text-emerald-800">{isFa ? 'ذخیره امن در مخزن گیت‌هاب' : 'Saved to the GitHub repository'}</span>
+                      <span className="text-xs text-emerald-800">
+                        {isFa ? 'ذخیره امن در فضای ابری آروان' : 'Saved to Arvan Cloud Storage'}
+                      </span>
                     </div>
 
                     <input
@@ -2011,7 +2142,32 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         {isFa ? 'کلیک کنید یا فایل‌ها را بکشید (تک عکس یا انتخاب همزمان چند عکس)' : 'Click or drop photos here'}
                       </div>
                       <p className="text-[11px] text-stone-400">
-                        {isFa ? 'تبدیل خودکار به WebP بسیار سبک با حفظ حداکثر رزولوشن' : 'Auto WebP format & 5MB bucket check'}
+                        {isFa
+                          ? 'تبدیل خودکار به WebP و آپلود مستقیم در آروان (با جایگزین گیت‌هاب)'
+                          : 'Auto WebP & direct Arvan upload (GitHub fallback)'}
+                      </p>
+                    </div>
+
+                    {/* جایگزین دستی: اگر آروان و گیت‌هاب هر دو در دسترس نبودند */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-stone-700">
+                        {isFa ? 'لینک تصویر (جایگزین دستی)' : 'Image URL (manual fallback)'}
+                      </label>
+                      <input
+                        type="url"
+                        dir="ltr"
+                        value={photoImageUrl}
+                        onChange={(event) => {
+                          setPhotoImageUrl(event.target.value);
+                          setUploadedMainUrl('');
+                        }}
+                        placeholder="https://raw.githubusercontent.com/..."
+                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                      />
+                      <p className="text-[10px] text-stone-500">
+                        {isFa
+                          ? 'اگر آپلود خودکار نشد، لینک مستقیم تصویر (raw گیت‌هاب یا هر لینک عمومی) را اینجا بگذار.'
+                          : 'Paste a direct public image URL if automatic upload fails.'}
                       </p>
                     </div>
 
@@ -2106,19 +2262,81 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                   </div>
                 </div>
 
-                {/* ویدیوهای همین پست: فقط لینک، بدون آپلود فایل */}
+                {/* ویدیوهای همین پست: چند منبع برای هر ویدیو + آپلود مستقیم در آروان */}
                 <div className="p-5 bg-stone-50 rounded-2xl border border-stone-200 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                     <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
                       <Film className="w-4 h-4 text-amber-700" />
-                      <span>{isFa ? 'ویدیوهای همین پست (لینک)' : 'Videos in this post (links)'}</span>
+                      <span>{isFa ? 'ویدیوهای همین پست' : 'Videos in this post'}</span>
                     </h4>
                     <span className="text-[11px] text-stone-500">
                       {isFa
-                        ? 'لینک یوتیوب، آپارات یا فایل مستقیم mp4 — هر تعداد که بخواهی'
-                        : 'YouTube, Aparat or direct mp4 — as many as you like'}
+                        ? 'هر ویدیو می‌تواند چند منبع داشته باشد: یوتیوب، آپارات، آروان، MP4 یا HLS'
+                        : 'Each video can have multiple sources: YouTube, Aparat, Arvan, MP4 or HLS'}
                     </span>
                   </div>
+
+                  <input
+                    ref={videoFileInputRef}
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoFileChosen}
+                    className="hidden"
+                  />
+
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => videoFileInputRef.current?.click()}
+                      disabled={videoUploadProgress !== null}
+                      className="px-3 py-2 bg-amber-700 hover:bg-amber-600 disabled:opacity-60 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                    >
+                      {videoUploadProgress !== null ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <CloudUpload className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {isFa ? 'آپلود فایل ویدیو در آروان' : 'Upload video file to Arvan'}
+                      </span>
+                    </button>
+                    <span className="text-[10px] text-stone-500">
+                      {isFa
+                        ? 'آپلود چندتکه‌ای است؛ اگر اینترنت قطع شد دوباره همان فایل را انتخاب کن تا از همان‌جا ادامه دهد.'
+                        : 'Multipart upload; reselect the same file to resume after a drop.'}
+                    </span>
+                  </div>
+
+                  {videoUploadProgress !== null && (
+                    <div className="space-y-1">
+                      <div className="h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-amber-600 transition-all"
+                          style={{ width: `${videoUploadProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-stone-500 font-mono">
+                        {isFa ? 'آپلود ویدیو' : 'Uploading'}: {videoUploadProgress}%
+                      </p>
+                    </div>
+                  )}
+
+                  {videoSourceTarget && (
+                    <div className="flex items-center justify-between gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900">
+                      <span>
+                        {isFa
+                          ? 'منبع جدید برای ویدیوی انتخاب‌شده اضافه می‌شود.'
+                          : 'The next link is added to the selected video.'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setVideoSourceTarget(null)}
+                        className="text-amber-800 hover:underline cursor-pointer"
+                      >
+                        {isFa ? 'انصراف' : 'Cancel'}
+                      </button>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                     <input
@@ -2148,7 +2366,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       className="sm:col-span-2 px-3 py-2 bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>{isFa ? 'افزودن' : 'Add'}</span>
+                      <span>
+                        {videoSourceTarget
+                          ? (isFa ? 'افزودن منبع' : 'Add source')
+                          : (isFa ? 'افزودن ویدیو' : 'Add video')}
+                      </span>
                     </button>
                   </div>
 
@@ -2157,31 +2379,76 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       {photoVideos.map((video, index) => (
                         <li
                           key={video.id}
-                          className="flex items-center gap-2.5 bg-white border border-stone-200 rounded-lg px-3 py-2"
+                          className="bg-white border border-stone-200 rounded-lg px-3 py-2 space-y-2"
                         >
-                          <span className="w-6 h-6 rounded-md bg-stone-900 text-white flex items-center justify-center shrink-0">
-                            <Play className="w-3 h-3 fill-current" />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-xs font-bold text-stone-800 truncate">
-                              {video.titleFa || (isFa ? `ویدیو ${index + 1}` : `Video ${index + 1}`)}
+                          <div className="flex items-center gap-2.5">
+                            <span className="w-6 h-6 rounded-md bg-stone-900 text-white flex items-center justify-center shrink-0">
+                              <Play className="w-3 h-3 fill-current" />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-stone-800 truncate">
+                                {video.titleFa || (isFa ? `ویدیو ${index + 1}` : `Video ${index + 1}`)}
+                              </div>
+                              <div
+                                className="text-[10px] text-stone-500 truncate font-mono"
+                                dir="ltr"
+                                title={video.url}
+                              >
+                                {video.url}
+                              </div>
                             </div>
-                            <div
-                              className="text-[10px] text-stone-500 truncate font-mono"
-                              dir="ltr"
-                              title={video.url}
+                            <button
+                              type="button"
+                              onClick={() => setVideoSourceTarget(video.id)}
+                              className="px-2 py-1 text-[10px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-md cursor-pointer transition-colors"
                             >
-                              {video.url}
-                            </div>
+                              {isFa ? 'افزودن منبع' : 'Add source'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVideo(video.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
+                              title={isFa ? 'حذف ویدیو' : 'Remove video'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVideo(video.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-md cursor-pointer transition-colors"
-                            title={isFa ? 'حذف ویدیو' : 'Remove video'}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            {(video.sources?.length
+                              ? video.sources
+                              : [
+                                  {
+                                    id: `${video.id}-primary`,
+                                    provider: detectVideoProvider(video.url),
+                                    url: video.url,
+                                  },
+                                ]
+                            ).map((source) => (
+                              <span
+                                key={source.id}
+                                className="inline-flex items-center gap-1 bg-stone-100 border border-stone-200 rounded-md px-1.5 py-0.5 text-[10px] text-stone-600"
+                              >
+                                <span className="font-bold">
+                                  {VIDEO_PROVIDER_LABELS[source.provider]?.[isFa ? 'fa' : 'en'] ||
+                                    source.provider}
+                                </span>
+                                <span className="max-w-[160px] truncate font-mono" dir="ltr">
+                                  {source.url}
+                                </span>
+                                {video.sources && video.sources.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveVideoSource(video.id, source.id)}
+                                    className="text-red-600 hover:text-red-700 cursor-pointer"
+                                    title={isFa ? 'حذف منبع' : 'Remove source'}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </span>
+                            ))}
+                          </div>
                         </li>
                       ))}
                     </ul>

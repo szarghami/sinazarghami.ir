@@ -74,6 +74,11 @@ Cloudflare Dashboard → Workers & Pages → پروژه‌ی سایت → Settin
 | `SITE_URL` | `https://sinazarghami.ir` |
 | `GEMINI_MODEL` | `gemini-2.5-flash` |
 | `NODE_VERSION` | `22` |
+| `ARVAN_S3_ENDPOINT` | `https://s3.ir-thr-at1.arvanstorage.ir` |
+| `ARVAN_S3_REGION` | `ir-thr-at1` |
+| `ARVAN_S3_BUCKET` | `sinazarghamimedia` |
+| `ARVAN_PUBLIC_BASE` | `https://s3.ir-thr-at1.arvanstorage.ir/sinazarghamimedia` |
+| `ARVAN_MEDIA_PREFIX` | `media` |
 
 ### مقادیر محرمانه (Secret)
 
@@ -88,6 +93,8 @@ Cloudflare Dashboard → Workers & Pages → پروژه‌ی سایت → Settin
 | `TELEGRAM_BOT_TOKEN` | ارسال پیام فرم‌ها و اعلان‌ها |
 | `TELEGRAM_CHAT_ID` | مقصد پیام‌های تلگرام |
 | `ARTICLE_CRON_SECRET` | محافظ تولید مقاله‌ی روزانه |
+| `ARVAN_S3_ACCESS_KEY` | کلید دسترسی فضای ابری آروان (بخش ۳.۲) |
+| `ARVAN_S3_SECRET_KEY` | کلید محرمانه‌ی فضای ابری آروان (بخش ۳.۲) |
 
 نکته: کد هم `ADMIN_SESSION_SECRET` و هم `SESSION_SECRET` را می‌پذیرد؛ فقط یکی کافی است.
 
@@ -134,6 +141,79 @@ KV برای سه چیز لازم است: تغییر رمز، فهرست دستگ
 را نشان می‌دهد. اگر کانال اول قطع شد، لازم نیست کاری کنی؛ ذخیره و انتشار خودش
 کانال بعدی را انتخاب می‌کند.
 
+## ۳.۲. آروان کلاود — فضای ابری عکس و ویدیو (S3)
+
+عکس‌ها و ویدیوهای پنل مستقیم در «فضای ابری آروان» (Object Storage سازگار با S3)
+ذخیره می‌شوند و فقط آدرس عمومی آن‌ها داخل `site-data.json` می‌نشیند. اگر آروان
+تنظیم نشده باشد یا آپلود شکست بخورد، مسیر قدیمی گیت‌هاب به‌عنوان جایگزین اجرا
+می‌شود؛ پس پنل هیچ‌وقت قفل نمی‌شود. کلیدها هرگز به مرورگر نمی‌روند؛ مرورگر فقط
+لینک امضاشده‌ی کوتاه‌عمر (presigned) می‌گیرد.
+
+### ۳.۲.۱. ساخت باکت
+
+1. پنل آروان → «فضای ابری» (Object Storage) → فعال‌سازی سرویس.
+2. باکت جدید:
+   - نام: `sinazarghamimedia` (فقط حروف کوچک انگلیسی و رقم؛ نقطه و خط تیره نگذار)
+   - سطح دسترسی: **عمومی (Public Read)**
+   - منطقه: `ir-thr-at1` (تهران)
+3. آدرس عمومی فایل‌ها: `https://s3.ir-thr-at1.arvanstorage.ir/sinazarghamimedia/media/...`
+
+### ۳.۲.۲. کلید دسترسی
+
+Object Storage → «کلیدهای دسترسی» → ساخت کلید جدید. `Access Key` و `Secret Key`
+را همان لحظه کپی کن؛ Secret بعداً نمایش داده نمی‌شود.
+
+### ۳.۲.۳. CORS باکت (اجباری)
+
+بدون CORS آپلود مستقیم از مرورگر شکست می‌خورد. تنظیمات باکت → CORS:
+
+| فیلد | مقدار |
+| --- | --- |
+| AllowedOrigins | `https://sinazarghami.ir`، `https://www.sinazarghami.ir`، `http://localhost:5173`، `http://localhost:8788` |
+| AllowedMethods | `GET, HEAD, PUT` |
+| AllowedHeaders | `*` |
+| ExposeHeaders | `ETag` ← **بدون این، آپلود چندتکه‌ای تمام نمی‌شود** |
+| MaxAgeSeconds | `3600` |
+
+### ۳.۲.۴. متغیرهای Cloudflare Pages
+
+مسیر: پروژه → Settings → Variables and Secrets → Production.
+
+| نام | نوع | مقدار |
+| --- | --- | --- |
+| `ARVAN_S3_ENDPOINT` | Plaintext | `https://s3.ir-thr-at1.arvanstorage.ir` |
+| `ARVAN_S3_REGION` | Plaintext | `ir-thr-at1` |
+| `ARVAN_S3_BUCKET` | Plaintext | `sinazarghamimedia` |
+| `ARVAN_PUBLIC_BASE` | Plaintext | `https://s3.ir-thr-at1.arvanstorage.ir/sinazarghamimedia` |
+| `ARVAN_MEDIA_PREFIX` | Plaintext | `media` |
+| `ARVAN_S3_ACCESS_KEY` | Secret | Access Key آروان |
+| `ARVAN_S3_SECRET_KEY` | Secret | Secret Key آروان |
+
+بعد از ثبت، یک‌بار Redeploy بزن. `https://sinazarghami.ir/api/health` باید
+`"arvan": { "configured": true, ... }` برگرداند.
+
+### ۳.۲.۵. تست
+
+1. یک فایل تست در باکت بگذار و آدرس عمومی‌اش را در مرورگر باز کن؛ باید تصویر/فایل را ببینی.
+2. با `curl.exe -I` روی همان آدرس، هدر `Content-Type` درست و کد `200` را ببین.
+3. برای ویدیو، درخواست بازه‌ای بزن؛ باید `206 Partial Content` بدهد:
+
+```powershell
+curl.exe -sS -o NUL -w "%{http_code}`n" -H "Range: bytes=0-1023" "https://s3.ir-thr-at1.arvanstorage.ir/sinazarghamimedia/media/test.mp4"
+```
+
+4. از پنل یک عکس آپلود کن؛ در تب شبکه باید یک `PUT` به `arvanstorage.ir` ببینی و
+   آدرس نهایی داخل `site-data.json` با `https://s3.ir-thr-at1.arvanstorage.ir/` شروع شود.
+
+### ۳.۲.۶. محدودیت‌ها و هزینه
+
+- پلن رایگان: ۵ گیگابایت فضا و ۲۰ گیگابایت ترافیک در ماه.
+- ترنسکد ویدیو و CDN آروان **لازم نیست** و در کد استفاده نشده.
+- پخش ویدیو با MP4 معمولی و درخواست بازه‌ای (Range) انجام می‌شود؛ اگر بعداً
+  پلی‌لیست HLS (`.m3u8` + تکه‌ها) خودت داشتی، همان لینک هم پخش می‌شود.
+- آپلودها چندتکه‌ای (۸ مگابایتی) هستند؛ اگر اینترنت وسط کار قطع شود، فقط
+  تکه‌های باقی‌مانده دوباره فرستاده می‌شوند.
+
 ## ۴. توکن گیت‌هاب
 
 GitHub → Settings → Developer settings → Fine-grained tokens → Generate new token:
@@ -168,6 +248,8 @@ GitHub → مخزن → Settings → Secrets and variables → Actions → New r
 - [ ] ورود با رمز اولیه موفق است.
 - [ ] تغییر رمز از تب امنیت ذخیره می‌شود.
 - [ ] آپلود یک عکس تست، فایل را در `public/media/` مخزن می‌گذارد.
+- [ ] آپلود یک عکس تست، فایل را در باکت آروان می‌گذارد و آدرس `arvanstorage.ir` برمی‌گردد.
+- [ ] آپلود یک ویدیو تست، با آپلود چندتکه‌ای انجام می‌شود و در پلیر پخش می‌شود.
 - [ ] دکمه‌ی «ذخیره و انتشار»، فایل `public/site-data.json` و معادل انگلیسی را در مخزن کامیت می‌کند.
 - [ ] فرم تماس پیام را به تلگرام می‌فرستد.
 
@@ -183,6 +265,10 @@ GitHub → مخزن → Settings → Secrets and variables → Actions → New r
 | انتشار انجام می‌شود ولی سایت تغییر نمی‌کند | کش مرورگر یا کش Pages | چند دقیقه صبر کن و با `Ctrl+Shift+R` صفحه را نو کن |
 | `503 GITHUB_TOKEN is not configured` | توکن گیت‌هاب ثبت نشده | بخش ۴ را انجام بده |
 | `503 GEMINI_API_KEY در Cloudflare تنظیم نشده است` | کلید جمینای ثبت نشده | Secret را اضافه کن |
+| آپلود عکس با خطای CORS در کنسول متوقف می‌شود | CORS باکت آروان تنظیم نشده | بخش ۳.۲.۳ را انجام بده |
+| `آروان ETag را برنگرداند` | `ExposeHeaders` شامل `ETag` نیست | در CORS باکت `ETag` را به ExposeHeaders اضافه کن |
+| `503 تنظیمات آروان کامل نیست` | متغیرهای `ARVAN_*` ثبت نشده‌اند | بخش ۳.۲.۴ را انجام بده و Redeploy کن |
+| آپلود در آروان شکست می‌خورد ولی عکس ذخیره می‌شود | مسیر جایگزین گیت‌هاب فعال شده | پیام هشدار پنل را ببین و تنظیمات آروان را درست کن |
 | صفحه سفید بعد از تغییر | نسخه‌ی قدیمی فونت/تصاویر خارجی را blocking لود می‌کرد | با نسخه‌ی فعلی برطرف شده؛ کش مرورگر را پاک کن |
 
 ## اجرای محلی (اختیاری)

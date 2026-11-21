@@ -14,6 +14,13 @@ export interface Env {
   GITHUB_TOKEN?: string;
   GITHUB_REPO?: string;
   GITHUB_BRANCH?: string;
+  ARVAN_S3_ENDPOINT?: string;
+  ARVAN_S3_REGION?: string;
+  ARVAN_S3_BUCKET?: string;
+  ARVAN_S3_ACCESS_KEY?: string;
+  ARVAN_S3_SECRET_KEY?: string;
+  ARVAN_PUBLIC_BASE?: string;
+  ARVAN_MEDIA_PREFIX?: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
   TELEGRAM_BOT_TOKEN?: string;

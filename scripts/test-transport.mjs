@@ -52,6 +52,8 @@ function createServer(options = {}) {
     initDeadModes = [],
     conflictOnce = false,
     failChunkOnce = new Set(),
+    failEveryNthChunk = 0,
+    deadChunkCalls = 0,
   } = options;
   const state = { inits: 0, completes: 0, chunkCalls: 0, stored: new Map(), assembled: null };
   const failedOnce = new Set();
@@ -70,6 +72,10 @@ function createServer(options = {}) {
     if (path === '/api/upload/chunk') {
       state.chunkCalls += 1;
       if (deadModes.includes(mode)) throw new TypeError('Failed to fetch');
+      if (state.chunkCalls <= deadChunkCalls) throw new TypeError('Failed to fetch');
+      if (failEveryNthChunk > 0 && state.chunkCalls % failEveryNthChunk === 0) {
+        throw new TypeError('Failed to fetch');
+      }
       const parsed = new URL(url, 'https://example.com');
       const index =
         mode === 'get' ? Number(parsed.searchParams.get('index')) : payloadOf(url, init).index;
@@ -166,6 +172,27 @@ const base64 = Buffer.from('x'.repeat(60_000), 'utf8').toString('base64');
   const result = await sendChunked({ kind: 'media', base64, mimeType: 'image/webp', filename: 'd' });
   check('falls back when init fails', result.success === true);
   check('init fallback reassembles exact bytes', state.assembled === base64);
+}
+
+// ۶) اتصال‌ها روی این شبکه عمر کوتاهی دارند: هر چند درخواست یک‌بار قطع می‌شود.
+// آپلود باید با تلاش دوباره روی اتصال تازه کامل شود، نه با شکست.
+{
+  store.clear();
+  const { fetchImpl, state } = createServer({ failEveryNthChunk: 3 });
+  globalThis.fetch = fetchImpl;
+  const result = await sendChunked({ kind: 'media', base64, mimeType: 'image/webp', filename: 'e' });
+  check('survives a connection dropped every few chunks', result.success === true);
+  check('flaky connection reassembles exact bytes', state.assembled === base64);
+}
+
+// ۷) چند درخواست پشت‌سرهم قطع می‌شوند (قطعی کوتاه شبکه): باید دورهای بعدی جبران کنند.
+{
+  store.clear();
+  const { fetchImpl, state } = createServer({ deadChunkCalls: 5 });
+  globalThis.fetch = fetchImpl;
+  const result = await sendChunked({ kind: 'media', base64, mimeType: 'image/webp', filename: 'f' });
+  check('recovers after a short outage', result.success === true);
+  check('outage recovery reassembles exact bytes', state.assembled === base64);
 }
 
 for (const [name, ok] of results) console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`);
