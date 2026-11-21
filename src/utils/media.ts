@@ -1,5 +1,6 @@
 import { dataUrlToParts, uploadImageFile } from './transport';
 import { uploadFileToArvan } from './arvanUpload';
+import { arvanProxyUrl } from './arvanUrl';
 import { videoThumbnail } from './videoEmbed';
 import type { PhotoItem } from '../types';
 
@@ -69,7 +70,7 @@ export async function smartUploadImage(
 }
 
 export function getReliableImageUrl(url?: string): string {
-  return url || '';
+  return arvanProxyUrl(url);
 }
 
 /**

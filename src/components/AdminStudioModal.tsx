@@ -38,7 +38,7 @@ import {
   saveSiteContent,
   rememberPublish,
 } from '../utils/storage';
-import { getPostCoverUrl, smartUploadImage } from '../utils/media';
+import { getPostCoverUrl, getReliableImageUrl, smartUploadImage } from '../utils/media';
 import { uploadFileToArvan } from '../utils/arvanUpload';
 import { detectVideoProvider, VIDEO_PROVIDER_LABELS } from '../utils/videoEmbed';
 import {
@@ -3086,7 +3086,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           </button>
 
                           <img
-                            src={getPostCoverUrl(p)}
+                            src={getReliableImageUrl(getPostCoverUrl(p))}
                             alt=""
                             className="w-14 h-11 object-cover rounded-md bg-stone-200 shrink-0 border border-stone-300"
                             referrerPolicy="no-referrer"
@@ -3854,7 +3854,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         >
                           <div className="flex items-center gap-3 truncate">
                             <img
-                              src={art.coverImage || art.coverUrl}
+                              src={getReliableImageUrl(art.coverImage || art.coverUrl)}
                               alt=""
                               className="w-12 h-10 object-cover rounded-md bg-stone-200 shrink-0 border border-stone-300"
                               referrerPolicy="no-referrer"
@@ -4736,7 +4736,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       >
                         <div className="flex items-center gap-3 truncate">
                           <img
-                            src={ex.coverImage}
+                            src={getReliableImageUrl(ex.coverImage)}
                             alt=""
                             className="w-12 h-10 object-cover rounded-md bg-stone-200 shrink-0 border border-stone-300"
                             referrerPolicy="no-referrer"
@@ -4942,7 +4942,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       >
                         <div className="flex items-center gap-3 truncate">
                           <img
-                            src={b.coverImage}
+                            src={getReliableImageUrl(b.coverImage)}
                             alt=""
                             className="w-10 h-12 object-cover rounded bg-stone-200 shrink-0 border border-stone-300"
                             referrerPolicy="no-referrer"
