@@ -68,6 +68,37 @@ async function probeGitHub(
   }
 }
 
+/**
+ * آیا توکن گیت‌هاب اجازه‌ی نوشتن دارد؟ بدون ساختن کامیت، فقط سطح دسترسی
+ * توکن روی مخزن خوانده می‌شود. اگر این مقدار false باشد، انتشار محتوا از پنل
+ * همیشه با خطا برمی‌گردد و مشکل از توکن است، نه از کد.
+ */
+async function probeGitHubWrite(
+  env: Env,
+): Promise<{ canPush: boolean | null; writeError?: string }> {
+  if (!env.GITHUB_TOKEN) return { canPush: null };
+  const { repo } = getRepo(env);
+  try {
+    const response = await fetch(`https://api.github.com/repos/${repo}`, {
+      headers: {
+        Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'sinazarghami-site',
+      },
+    });
+    if (!response.ok) {
+      return { canPush: null, writeError: `repo read failed (${response.status})` };
+    }
+    const data = (await response.json()) as { permissions?: { push?: boolean } };
+    return { canPush: Boolean(data.permissions?.push) };
+  } catch (error) {
+    return {
+      canPush: null,
+      writeError: error instanceof Error ? error.message : 'خطای نامشخص گیت‌هاب',
+    };
+  }
+}
+
 export async function onRequestGet({ request, env }: Context): Promise<Response> {
   const cf = (request as RequestWithCf).cf;
   const url = new URL(request.url);
@@ -95,7 +126,7 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
       passcodeChanged: storedPasscode,
       kv: deep ? await probeKv(env) : { bound: Boolean(env.ADMIN_KV), ok: null },
       github: deep
-        ? { repo, branch, ...(await probeGitHub(env)) }
+        ? { repo, branch, ...(await probeGitHub(env)), ...(await probeGitHubWrite(env)) }
         : { configured: Boolean(env.GITHUB_TOKEN), repo, branch },
       arvan: arvan
         ? { configured: true, bucket: arvan.bucket, endpoint: arvan.endpoint, prefix: arvan.prefix }

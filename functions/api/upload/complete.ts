@@ -33,6 +33,38 @@ interface CompleteBody {
 
 const CONTENT_PATH = 'public/site-data.json';
 const MAX_CONTENT_BYTES = 1_500_000;
+const WRITE_ATTEMPTS = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * نوشتن فایل محتوا در گیت‌هاب با تلاش مجدد.
+ *
+ * هر تلاش sha را از نو می‌خواند؛ اگر بین خواندن و نوشتن کسی فایل را تغییر داده
+ * باشد (مثلاً انتشار هم‌زمان از گوشی) گیت‌هاب ۴۰۹ می‌دهد و بدون این کار انتشار
+ * برای همیشه شکست می‌خورد.
+ */
+async function writeContentWithRetry(env: Env, content: unknown): Promise<string> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < WRITE_ATTEMPTS; attempt += 1) {
+    if (attempt > 0) await sleep(400 * attempt);
+    try {
+      const file = await getGitHubFile(env, CONTENT_PATH);
+      return await putGitHubFile(
+        env,
+        CONTENT_PATH,
+        `${JSON.stringify(content)}\n`,
+        'content: publish from admin studio',
+        file?.sha,
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('ثبت محتوا در گیت‌هاب ناموفق بود.');
+}
 const MIME_EXTENSIONS: Record<string, string> = {
   'image/jpeg': 'jpg',
   'image/jpg': 'jpg',
@@ -103,13 +135,7 @@ async function handle(request: Request, env: Env): Promise<Response> {
         content as Record<string, unknown>,
         previous,
       );
-      const commitSha = await putGitHubFile(
-        env,
-        CONTENT_PATH,
-        `${JSON.stringify(content)}\n`,
-        'content: publish from admin studio',
-        file?.sha,
-      );
+      const commitSha = await writeContentWithRetry(env, content);
       return json({ success: true, content, commitSha, translation });
     } catch (error) {
       return json(

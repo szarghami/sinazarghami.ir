@@ -78,6 +78,12 @@ const COLLECTIONS: CollectionRule[] = [
 
 const MAX_TRANSLATIONS = 12;
 const CONCURRENCY = 3;
+/**
+ * سقف زمانی ترجمه. انتشار محتوا نباید به‌خاطر کندی یا قطعی Gemini معلق بماند؛
+ * هر فیلدی که در این بازه ترجمه نشود در انتشار بعدی (که خودکار ادامه می‌دهد)
+ * پر می‌شود.
+ */
+const TRANSLATION_DEADLINE_MS = 12_000;
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
@@ -205,8 +211,13 @@ export async function ensureEnglishFields(
   const tone = await getTone(env);
   let translated = 0;
   let failed = 0;
+  const startedAt = Date.now();
 
   await runLimited(jobs, CONCURRENCY, async (job) => {
+    if (Date.now() - startedAt > TRANSLATION_DEADLINE_MS) {
+      pending += 1;
+      return;
+    }
     const value = await translateOne(env, tone, job.source, job.pair.kind, job.hint);
     if (value) {
       job.item[job.pair.en] = value;

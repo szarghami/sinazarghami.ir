@@ -54,6 +54,46 @@ import { sendTelegramNotification } from '../utils/telegram';
 import { VoiceDictationButton } from './VoiceDictationButton';
 import { ToastHost, useToasts } from './ToastHost';
 
+/** سقف ایمن برای عکسی که به Gemini می‌رود (خود سرویس حداکثر ۵ مگابایت قبول می‌کند). */
+const AI_MAX_BYTES = 4 * 1024 * 1024;
+
+/**
+ * نسخه‌ی کوچک‌تر یک data URL می‌سازد. اگر مرورگر نتواند تصویر را باز کند،
+ * همان ورودی برگردانده می‌شود تا جریان تحلیل متوقف نشود.
+ */
+function shrinkDataUrl(dataUrl: string, maxDimension: number, quality: number): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(dataUrl);
+        return;
+      }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/webp', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 interface ServerChecks {
   sessionSecret: boolean;
   initialPasscode: boolean;
@@ -477,10 +517,16 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       setIsAiSuggesting(true);
       setAiSuggestError(null);
 
+      // ترتیب کار عمداً این است: اول فشرده‌سازی، بعد ارسال به جمینای.
       // بدنه‌ی درخواست هوش مصنوعی باید کوچک بماند؛ روی این شبکه هر درخواست
-      // سنگین قطع می‌شود. پس عکس اول در مخزن ذخیره می‌شود و بعد فقط آدرسش
-      // به جمینای می‌رود.
+      // سنگین قطع می‌شود. پس نسخه‌ی فشرده در مخزن ذخیره می‌شود و بعد فقط
+      // آدرسش به جمینای می‌رود.
       if (currentImage.startsWith('data:')) {
+        const approxBytes = Math.floor((currentImage.length * 3) / 4);
+        if (approxBytes > AI_MAX_BYTES) {
+          setUploadMsg(isFa ? 'در حال فشرده‌سازی بیشتر عکس...' : 'Compressing photo...');
+          currentImage = await shrinkDataUrl(currentImage, 1024, 0.6);
+        }
         setUploadMsg(
           isFa ? 'در حال بارگذاری عکس برای تحلیل هوش مصنوعی...' : 'Uploading photo for AI analysis...',
         );
