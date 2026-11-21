@@ -4,8 +4,6 @@
 // پلی‌لیست HLS باشد. هر ویدیو می‌تواند چند منبع داشته باشد.
 // =====================================================================
 
-import { arvanProxyUrl } from './arvanUrl';
-
 export type VideoProvider = 'youtube' | 'aparat' | 'arvan' | 'file' | 'hls' | 'link';
 
 export interface ParsedVideo {
@@ -48,14 +46,11 @@ export function parseVideoUrl(raw: string): ParsedVideo {
   }
 
   if (DIRECT_FILE_PATTERN.test(url)) {
-    if (ARVAN_PATTERN.test(url)) {
-      return { provider: 'arvan', embedUrl: arvanProxyUrl(url) };
-    }
-    return { provider: 'file', embedUrl: url };
+    return { provider: ARVAN_PATTERN.test(url) ? 'arvan' : 'file', embedUrl: url };
   }
 
   if (ARVAN_PATTERN.test(url)) {
-    return { provider: 'arvan', embedUrl: arvanProxyUrl(url) };
+    return { provider: 'arvan', embedUrl: url };
   }
 
   return { provider: 'link', embedUrl: url };

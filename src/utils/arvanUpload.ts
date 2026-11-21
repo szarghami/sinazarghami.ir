@@ -212,6 +212,14 @@ async function uploadSingle(
   });
   options.onProgress?.(file.size, file.size);
 
+  // فایل تازه را برای خواندن عمومی باز می‌کنیم تا مرورگر بتواند مستقیم از
+  // آروان (سرور ایرانی) بارگذاری کند، نه از مسیر جایگزین.
+  try {
+    await callApi({ action: 'acl', key: ticket.key });
+  } catch {
+    // اگر نشد، مسیر جایگزین در نمایش جبران می‌کند.
+  }
+
   return { key: ticket.key, publicUrl: ticket.publicUrl, provider: 'arvan', resumed: false };
 }
 

@@ -8,6 +8,7 @@ import {
   parseJsonObject,
 } from '../_shared/ai';
 import { getGitHubRaw, json, requireAdmin, type Env } from '../_shared/runtime';
+import { getArvanConfig, keyFromPublicUrl, presignObject } from '../_shared/arvan';
 
 interface Context {
   request: Request;
@@ -118,7 +119,17 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
         );
       }
     } else if (/^https?:\/\//i.test(url)) {
-      const remote = await fetchRemoteImage(url);
+      // اگر فایل روی صندوقچه‌ی خودمان است، حتی وقتی عمومی نشده باشد با
+      // درخواست امضاشده خوانده می‌شود تا تحلیل عکس هیچ‌وقت به تنظیمات
+      // دسترسی صندوقچه وابسته نباشد.
+      let target = url;
+      const arvanConfig = getArvanConfig(env);
+      const arvanKey = arvanConfig ? keyFromPublicUrl(arvanConfig, url) : null;
+      if (arvanConfig && arvanKey) {
+        target = await presignObject(arvanConfig, 'GET', arvanKey, {}, 300);
+      }
+
+      const remote = await fetchRemoteImage(target);
       if (!remote.ok) {
         return json({ success: false, error: remote.error }, remote.status === 403 ? 502 : 400);
       }

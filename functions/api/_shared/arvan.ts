@@ -150,6 +150,7 @@ export interface SignedRequestOptions {
   query?: Record<string, string>;
   body?: string;
   contentType?: string;
+  headers?: Record<string, string>;
   accessKey: string;
   secretKey: string;
   region: string;
@@ -177,6 +178,9 @@ export async function signedS3Request(options: SignedRequestOptions): Promise<Re
     'x-amz-date': full,
   };
   if (options.contentType) headers['content-type'] = options.contentType;
+  for (const [name, value] of Object.entries(options.headers || {})) {
+    headers[name.toLowerCase()] = value.trim();
+  }
 
   const sortedNames = Object.keys(headers).sort();
   const canonicalHeaders = sortedNames
@@ -211,6 +215,9 @@ export async function signedS3Request(options: SignedRequestOptions): Promise<Re
     Authorization: authorization,
   };
   if (options.contentType) requestHeaders['Content-Type'] = options.contentType;
+  for (const [name, value] of Object.entries(options.headers || {})) {
+    requestHeaders[name] = value;
+  }
 
   return fetch(url, {
     method: options.method,
@@ -242,7 +249,12 @@ export async function arvanRequest(
   config: ArvanConfig,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD',
   key: string,
-  options: { query?: Record<string, string>; body?: string; contentType?: string } = {},
+  options: {
+    query?: Record<string, string>;
+    body?: string;
+    contentType?: string;
+    headers?: Record<string, string>;
+  } = {},
 ): Promise<Response> {
   return signedS3Request({
     method,
@@ -253,6 +265,62 @@ export async function arvanRequest(
     region: config.region,
     ...options,
   });
+}
+
+/**
+ * آبجکت را برای خواندن عمومی باز می‌کند.
+ *
+ * صندوقچه‌ی آروان به‌صورت پیش‌فرض فقط لیست‌کردن را عمومی می‌کند و خود فایل‌ها
+ * خصوصی می‌مانند، پس مرورگر با ۴۰۳ روبه‌رو می‌شود. با ست‌کردن ACL هر آبجکت،
+ * فایل مستقیم از آروان (سرور ایرانی) و بدون عبور از Cloudflare سرو می‌شود.
+ */
+export async function setObjectAcl(config: ArvanConfig, key: string): Promise<void> {
+  const response = await arvanRequest(config, 'PUT', key, {
+    query: { acl: '' },
+    headers: { 'x-amz-acl': 'public-read' },
+  });
+  if (response.ok) return;
+  const text = await response.text().catch(() => '');
+  throw new Error(s3Error(text) || `ØªÙ†Ø¸ÛŒÙ… Ø¯Ø³ØªØ±Ø³ÛŒ Ø¹Ù…ÙˆÙ…ÛŒ Ù†Ø§Ù…ÙˆÙÙ‚ Ø¨ÙˆØ¯ (${response.status}).`);
+}
+
+/** کلید همه‌ی آبجکت‌های زیر یک پیشوند (حداکثر `limit` مورد). */
+export async function listObjectKeys(
+  config: ArvanConfig,
+  prefix: string,
+  limit = 500,
+): Promise<string[]> {
+  const keys: string[] = [];
+  let token: string | null = null;
+
+  while (keys.length < limit) {
+    const query: Record<string, string> = {
+      'list-type': '2',
+      prefix,
+      'max-keys': String(Math.min(1000, limit - keys.length)),
+    };
+    if (token) query['continuation-token'] = token;
+
+    const response = await arvanRequest(config, 'GET', '', { query });
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(s3Error(text) || `Ø®ÙˆØ§Ù†Ø¯Ù† ÙÙ‡Ø±Ø³Øª Ø§Ø¨Ø± Ù†Ø§Ù…ÙˆÙÙ‚ Ø¨ÙˆØ¯ (${response.status}).`);
+    }
+
+    const xml = await response.text();
+    const regex = /<Contents>([\s\S]*?)<\/Contents>/g;
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(xml))) {
+      const key = xmlValue(match[1], 'Key');
+      if (key) keys.push(key);
+    }
+
+    const truncated = xmlValue(xml, 'IsTruncated') === 'true';
+    token = truncated ? xmlValue(xml, 'NextContinuationToken') : null;
+    if (!token) break;
+  }
+
+  return keys;
 }
 
 export function xmlValue(xml: string, tag: string): string | null {
@@ -353,6 +421,17 @@ export function buildObjectKey(
       .replace(/^-+|-+$/g, '')
       .slice(0, 48) || 'file';
   return `${config.prefix}/${folder}/${safeName}-${crypto.randomUUID()}.${extension}`;
+}
+
+/**
+ * اگر آدرس داده‌شده به همین صندوقچه اشاره کند، کلید آبجکت را برمی‌گرداند.
+ * برای خواندن امضاشده‌ی فایلی که هنوز عمومی نشده استفاده می‌شود.
+ */
+export function keyFromPublicUrl(config: ArvanConfig, url: string): string | null {
+  const base = `${config.publicBase}/`;
+  if (!url.startsWith(base)) return null;
+  const key = url.slice(base.length).split(/[?#]/)[0];
+  return key && isSafeArvanKey(config, key) ? key : null;
 }
 
 export function publicUrlFor(config: ArvanConfig, key: string): string {

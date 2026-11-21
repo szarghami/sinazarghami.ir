@@ -70,7 +70,7 @@ export async function smartUploadImage(
 }
 
 export function getReliableImageUrl(url?: string): string {
-  return arvanProxyUrl(url);
+  return url || '';
 }
 
 /**

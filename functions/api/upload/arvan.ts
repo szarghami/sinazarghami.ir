@@ -14,6 +14,8 @@ import {
   presignObject,
   publicUrlFor,
   s3Error,
+  setObjectAcl,
+  listObjectKeys,
   xmlValue,
   type ArvanConfig,
 } from '../_shared/arvan';
@@ -23,7 +25,7 @@ interface Context {
   env: Env;
 }
 
-type Action = 'single' | 'create' | 'parts' | 'complete' | 'abort' | 'list';
+type Action = 'single' | 'create' | 'parts' | 'complete' | 'abort' | 'list' | 'acl' | 'acl-scan';
 
 interface ArvanUploadBody {
   action?: Action;
@@ -36,6 +38,7 @@ interface ArvanUploadBody {
   from?: number;
   to?: number;
   parts?: { partNumber?: number; etag?: string }[];
+  all?: boolean;
 }
 
 const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
@@ -54,7 +57,9 @@ function isAction(value: unknown): value is Action {
     value === 'parts' ||
     value === 'complete' ||
     value === 'abort' ||
-    value === 'list'
+    value === 'list' ||
+    value === 'acl' ||
+    value === 'acl-scan'
   );
 }
 
@@ -231,7 +236,58 @@ async function handleComplete(
   const result = await readS3Response(response);
   if (!result.ok) return fail(result.error || 'ثبت نهایی آپلود ناموفق بود.', 502);
 
-  return json({ success: true, publicUrl: publicUrlFor(config, key) });
+  // فایل تازه را برای خواندن عمومی باز می‌کنیم تا مستقیم از آروان سرو شود.
+  // اگر آروان قبول نکند، آپلود سالم می‌ماند و سایت از مسیر جایگزین استفاده می‌کند.
+  let aclWarning: string | null = null;
+  try {
+    await setObjectAcl(config, key);
+  } catch (error) {
+    aclWarning = error instanceof Error ? error.message : 'تنظیم دسترسی عمومی ناموفق بود.';
+  }
+
+  return json({
+    success: true,
+    publicUrl: publicUrlFor(config, key),
+    ...(aclWarning ? { warning: aclWarning } : {}),
+  });
+}
+
+async function handleAcl(
+  config: ArvanConfig,
+  body: ArvanUploadBody,
+): Promise<Response> {
+  const key = readKey(config, body.key);
+  if (!key) return fail('کلید فایل نامعتبر است.');
+  try {
+    await setObjectAcl(config, key);
+    return json({ success: true });
+  } catch (error) {
+    return fail(
+      error instanceof Error ? error.message : 'تنظیم دسترسی عمومی ناموفق بود.',
+      502,
+    );
+  }
+}
+
+/**
+ * همه‌ی فایل‌های قبلی را یک‌جا عمومی می‌کند؛ برای فایل‌هایی که قبل از این
+ * تغییر آپلود شده‌اند و در مرورگر ۴۰۳ می‌گیرند.
+ */
+async function handleAclScan(config: ArvanConfig): Promise<Response> {
+  const keys = await listObjectKeys(config, `${config.prefix}/`, 500);
+  let fixed = 0;
+  const failed: string[] = [];
+
+  for (const key of keys) {
+    try {
+      await setObjectAcl(config, key);
+      fixed += 1;
+    } catch {
+      failed.push(key);
+    }
+  }
+
+  return json({ success: true, total: keys.length, fixed, failed: failed.slice(0, 10) });
 }
 
 async function handleAbort(
@@ -292,6 +348,10 @@ async function handle(request: Request, env: Env): Promise<Response> {
       return handleAbort(config, body);
     case 'list':
       return handleList(config, body);
+    case 'acl':
+      return handleAcl(config, body);
+    case 'acl-scan':
+      return handleAclScan(config);
     default:
       return fail('عملیات نامعتبر است.');
   }

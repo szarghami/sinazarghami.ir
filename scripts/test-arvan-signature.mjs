@@ -8,6 +8,7 @@ import {
   buildObjectKey,
   getArvanConfig,
   isSafeArvanKey,
+  keyFromPublicUrl,
   presignObject,
   presignUrl,
   publicUrlFor,
@@ -82,6 +83,25 @@ check(
   'public url',
   publicUrlFor(config, 'media/2026/01/a-b.jpg'),
   'https://s3.ir-thr-at1.arvanstorage.ir/sinazarghamimedia/media/2026/01/a-b.jpg',
+);
+
+check(
+  'key from public url',
+  keyFromPublicUrl(
+    config,
+    'https://s3.ir-thr-at1.arvanstorage.ir/sinazarghamimedia/media/2026/01/a-b.jpg',
+  ),
+  'media/2026/01/a-b.jpg',
+);
+check(
+  'key from public url with query',
+  keyFromPublicUrl(config, `${publicUrlFor(config, 'media/2026/01/c.jpg')}?v=2`),
+  'media/2026/01/c.jpg',
+);
+check(
+  'key rejects foreign bucket',
+  keyFromPublicUrl(config, 'https://s3.ir-thr-at1.arvanstorage.ir/other-bucket/media/a.jpg'),
+  null,
 );
 
 const partUrl = await presignObject(

@@ -102,6 +102,7 @@ interface ServerChecks {
   github: { configured: boolean; repo: string; branch: string; read?: boolean; error?: string };
   gemini: boolean;
   telegram: boolean;
+  arvan?: { configured: boolean; bucket?: string };
 }
 import {
   Lock,
@@ -427,6 +428,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [activeMode, setActiveMode] = useState(() => getTransportMode());
   const [probeChannels, setProbeChannels] = useState<ChannelProbe[] | null>(null);
   const [serverChecks, setServerChecks] = useState<ServerChecks | null>(null);
+  const [arvanAclMsg, setArvanAclMsg] = useState<string | null>(null);
+  const [arvanAclBusy, setArvanAclBusy] = useState(false);
   const publishQueueRef = useRef<SiteContent | null>(null);
   const publishingRef = useRef(false);
 
@@ -504,6 +507,42 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    * ترجمه‌ی دستی فیلدها لازم نیست؛ سرور هنگام انتشار کمبودها را خودکار
    * ترجمه می‌کند.
    */
+  /**
+   * فایل‌هایی که قبل از فعال شدن دسترسی عمومی آپلود شده‌اند را یک‌جا اصلاح می‌کند
+   * تا مرورگر بتواند آن‌ها را مستقیم از آروان بارگذاری کند.
+   */
+  const handleFixArvanAcl = async () => {
+    setArvanAclBusy(true);
+    setArvanAclMsg(isFa ? 'در حال اصلاح دسترسی فایل‌ها...' : 'Fixing file permissions...');
+    try {
+      const response = await fetch('/api/upload/arvan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ action: 'acl-scan' }),
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        success?: boolean;
+        total?: number;
+        fixed?: number;
+        failed?: string[];
+        error?: string;
+      };
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'اصلاح دسترسی ناموفق بود.');
+      }
+      setArvanAclMsg(
+        isFa
+          ? `${data.fixed ?? 0} فایل از ${data.total ?? 0} فایل عمومی شد.`
+          : `${data.fixed ?? 0} of ${data.total ?? 0} files made public.`,
+      );
+    } catch (error) {
+      setArvanAclMsg(error instanceof Error ? error.message : 'اصلاح دسترسی ناموفق بود.');
+    } finally {
+      setArvanAclBusy(false);
+    }
+  };
+
   const handleAiSuggestPhoto = async () => {
     let currentImage =
       compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl;
@@ -5560,6 +5599,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             label: isFa ? 'ربات تلگرام' : 'Telegram bot',
                             value: serverChecks.telegram,
                           },
+                          {
+                            label: isFa ? 'فضای ابری آروان' : 'Arvan object storage',
+                            value: Boolean(serverChecks.arvan?.configured),
+                          },
                         ].map((row) => (
                           <div key={row.label} className="flex items-center justify-between px-3 py-1.5 gap-2">
                             <span className="text-[11px] text-stone-600">{row.label}</span>
@@ -5588,6 +5631,32 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             {isFa
                               ? 'KV وصل نیست: در Cloudflare، بخش Pages ← Settings ← Bindings یک KV با نام متغیر ADMIN_KV اضافه کن.'
                               : 'KV not bound: add a KV binding named ADMIN_KV.'}
+                          </div>
+                        )}
+                        {serverChecks.arvan?.configured && (
+                          <div className="px-3 py-2 space-y-2">
+                            <p className="text-[11px] text-stone-500">
+                              {isFa
+                                ? 'اگر عکسی در سایت بالا نمی‌آید، این دکمه دسترسی عمومی فایل‌های قبلی را اصلاح می‌کند.'
+                                : 'If an image is missing on the site, this fixes public access for older files.'}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleFixArvanAcl}
+                              disabled={arvanAclBusy}
+                              className="w-full px-3 py-2 rounded-lg bg-stone-900 text-white text-[11px] font-bold hover:bg-stone-800 disabled:opacity-50 transition-colors"
+                            >
+                              {arvanAclBusy
+                                ? isFa
+                                  ? 'در حال اصلاح...'
+                                  : 'Fixing...'
+                                : isFa
+                                  ? 'اصلاح دسترسی فایل‌های آروان'
+                                  : 'Fix Arvan file permissions'}
+                            </button>
+                            {arvanAclMsg && (
+                              <p className="text-[11px] text-stone-600">{arvanAclMsg}</p>
+                            )}
                           </div>
                         )}
                       </div>
