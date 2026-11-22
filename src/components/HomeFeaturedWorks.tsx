@@ -58,7 +58,7 @@ export const HomeFeaturedWorks: React.FC<HomeFeaturedWorksProps> = ({
         </div>
 
         {/* Bento / Grid Showcase */}
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {sortedPhotos.map((photo) => (
             <div
               key={photo.id}
@@ -66,8 +66,8 @@ export const HomeFeaturedWorks: React.FC<HomeFeaturedWorksProps> = ({
             >
               <div>
                 {/* Media Container */}
-                <div className="relative aspect-4/3 overflow-hidden bg-stone-900">
-                  <PhotoSlideshow photo={photo} alt={isFa ? photo.titleFa : photo.titleEn} className="w-full h-full object-cover" />
+                <div className="relative aspect-[16/10] overflow-hidden bg-stone-950">
+                  <PhotoSlideshow photo={photo} alt={isFa ? photo.titleFa : photo.titleEn} className="w-full h-full object-contain" />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   {/* Top Location & Year */}

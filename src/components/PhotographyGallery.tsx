@@ -238,7 +238,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                         <PhotoSlideshow
                           photo={photo}
                           alt={isFa ? photo.titleFa : photo.titleEn}
-                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104"
+                          className="w-full h-full object-contain transition-opacity duration-300"
                         />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-stone-850 via-stone-900 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-white">

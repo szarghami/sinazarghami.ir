@@ -59,9 +59,9 @@ export const Hero: React.FC<HeroProps> = ({
     <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 border-b border-stone-200/70 overflow-hidden bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* چیدمان دو ستونه هیرو (متن در یک ستون و عکس شاخص در ستون دیگر) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center min-h-[calc(100svh-5rem)]">
           {/* ستون متن و تایپوگرافی */}
-          <div className="lg:col-span-7 flex flex-col justify-between space-y-8">
+          <div className="order-last lg:order-first lg:col-span-5 flex flex-col justify-between space-y-8 py-8 lg:py-12">
             <div className="space-y-6">
               {/* نشانگر کوچک بالای تیتر اصلی (Kicker) */}
               <div className="flex items-center gap-3 text-xs tracking-wider uppercase text-stone-500 font-semibold">
@@ -165,8 +165,8 @@ export const Hero: React.FC<HeroProps> = ({
           </div>
 
           {/* ستون قاب تصویر شاخص */}
-          <div className="lg:col-span-5 relative flex flex-col justify-center">
-            <div className="relative group min-h-84 rounded-2xl overflow-hidden bg-stone-900 border border-stone-200/80 shadow-md">
+          <div className="order-first lg:order-last lg:col-span-7 relative flex flex-col justify-center">
+            <div className="relative group h-[58svh] min-h-[420px] max-h-[760px] rounded-2xl overflow-hidden bg-stone-950 border border-stone-200/80 shadow-xl">
               <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-stone-300">
                 <Camera className="w-12 h-12 text-amber-500/70 mb-3" />
                 <span className="text-sm font-semibold">{isFa ? 'اثری برای این بخش انتخاب نشده است' : 'No featured items in this section'}</span>
@@ -175,7 +175,7 @@ export const Hero: React.FC<HeroProps> = ({
                 key={`${currentSlide.collection}:${currentSlide.id}`}
                 src={getReliableImageUrl(currentSlide.image)}
                 alt={isFa ? currentSlide.titleFa : currentSlide.titleEn}
-                className="relative w-full h-84 sm:h-96 lg:h-[430px] object-cover transition-transform duration-700 group-hover:scale-102 z-10"
+                className="relative w-full h-full object-contain transition-opacity duration-700 z-10"
                 loading="eager"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
@@ -183,7 +183,7 @@ export const Hero: React.FC<HeroProps> = ({
                   target.style.display = 'none';
                 }}
               />}
-              <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent pointer-events-none z-10" />
+              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-stone-950/80 to-transparent pointer-events-none z-10" />
 
               {currentSlide && <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1 z-20">
                 <h3 className="text-lg font-semibold tracking-tight text-white">

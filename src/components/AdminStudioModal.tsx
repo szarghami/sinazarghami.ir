@@ -454,6 +454,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     try {
       setIsProcessing(true);
       setUploadedMainUrl('');
+      setCompressedResults([]);
       const res = await compressMultipleImagesToWebP(files, compressMaxDim, compressQuality);
       setCompressedResults(res.results);
       setOverallStats({
@@ -548,6 +549,10 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   };
 
   const handleAiSuggestPhoto = async (mode: 'all' | 'title' | 'description' = 'all') => {
+    if (isProcessing) {
+      notify(isFa ? 'کمی صبر کن تا فشرده‌سازی عکس تمام شود.' : 'Wait for photo compression to finish.');
+      return;
+    }
     let currentImage =
       compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl;
 
@@ -582,6 +587,20 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         setUploadedMainUrl(upload.publicUrl);
       }
 
+      const galleryUrls: string[] = compressedResults.length === 0
+        ? content.photos.find((photo) => photo.id === editingPhotoId)?.galleryImages?.slice(0, 4) || []
+        : [];
+      for (const [index, image] of compressedResults.slice(1, 5).entries()) {
+        setUploadMsg(isFa ? `در حال بارگذاری عکس ${index + 2} از آلبوم...` : `Uploading gallery photo ${index + 2}...`);
+        const compactImage = await shrinkDataUrl(image.dataUrl, 800, 0.55);
+        const upload = await smartUploadImage(compactImage, `ai_${Date.now()}_${index + 2}`);
+        if (!upload.success || !upload.publicUrl) {
+          throw new Error(upload.error || (isFa ? `بارگذاری عکس ${index + 2} ناموفق بود.` : `Could not upload gallery photo ${index + 2}.`));
+        }
+        galleryUrls.push(upload.publicUrl);
+      }
+
+      setUploadMsg(isFa ? 'در حال ارسال عکس‌های بارگذاری‌شده برای تحلیل...' : 'Sending uploaded photos for analysis...');
       const res = await fetch('/api/gemini/suggest-photo-details', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -592,8 +611,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           descriptionHint: photoDescFa || undefined,
           categoryHint: `${photoPortfolioScope === 'travel' ? 'سفر و روایت شخصی' : 'نمونه‌کار حرفه‌ای'} / ${PHOTO_CATEGORIES.find((category) => category.id === photoCommercialCategory)?.titleFa || content.commercialCategories?.find((category) => category.id === photoCommercialCategory)?.titleFa || photoCommercialCategory} / ${photoSubcategory}`,
           mode,
-          galleryImages: await Promise.all(compressedResults.slice(1, 5).map((image) => shrinkDataUrl(image.dataUrl, 800, 0.55))),
-          galleryUrls: compressedResults.length === 0 ? content.photos.find((photo) => photo.id === editingPhotoId)?.galleryImages?.slice(0, 4) : [],
+          galleryUrls,
         }),
       });
 
@@ -2663,7 +2681,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAiSuggestPhoto('all')}
-                      disabled={isAiSuggesting || (compressedResults.length === 0 && !photoImageUrl)}
+                      disabled={isAiSuggesting || isProcessing || (compressedResults.length === 0 && !photoImageUrl)}
                       className="px-4 py-2 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
                     >
                       {isAiSuggesting ? (
@@ -2710,7 +2728,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-700">{isFa ? 'عنوان اثر به فارسی:' : 'Persian Title:'}</label>
-                        <button type="button" disabled={isAiSuggesting} onClick={() => handleAiSuggestPhoto('title')} className="text-amber-700 font-bold">پیشنهاد عنوان ✨</button>
+                        <button type="button" disabled={isAiSuggesting || isProcessing || (compressedResults.length === 0 && !photoImageUrl)} onClick={() => handleAiSuggestPhoto('title')} className="text-amber-700 font-bold">پیشنهاد عنوان ✨</button>
 
                       </div>
                       <div className="flex items-center gap-2">
@@ -2782,7 +2800,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <label className="font-bold text-stone-700">{isFa ? 'روایت و توضیح فارسی اثر:' : 'Persian Description:'}</label>
-                          <button type="button" disabled={isAiSuggesting} onClick={() => handleAiSuggestPhoto('description')} className="text-amber-700 font-bold">پیشنهاد توضیح ✨</button>
+                          <button type="button" disabled={isAiSuggesting || isProcessing || (compressedResults.length === 0 && !photoImageUrl)} onClick={() => handleAiSuggestPhoto('description')} className="text-amber-700 font-bold">پیشنهاد توضیح ✨</button>
                           <VoiceDictationButton
                             onTranscript={(t) => setPhotoDescFa((prev) => (prev ? prev + ' ' + t : t))}
                             title={isFa ? 'دیکته صوتی توضیحات' : 'Dictate description'}

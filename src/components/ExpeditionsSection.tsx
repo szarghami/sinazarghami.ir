@@ -372,7 +372,7 @@ export const ExpeditionsSection: React.FC<ExpeditionsSectionProps> = ({
                     <PhotoSlideshow
                       photo={photo}
                       alt={isFa ? photo.titleFa : photo.titleEn}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-104"
+                      className="w-full h-full object-contain transition-opacity duration-300"
                     />
                     <div className="absolute top-3 right-3 bg-stone-900/80 backdrop-blur-md text-white text-[11px] font-mono px-2 py-0.5 rounded">
                       {photo.year}
