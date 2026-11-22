@@ -22,9 +22,6 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
   const text = (body.text || '').trim();
   if (!text) return json({ success: false, error: 'متن ورودی خالی است.' }, 400);
   if (text.length > MAX_TEXT) return json({ success: false, error: 'متن بیش از حد طولانی است.' }, 413);
-  if (!env.GEMINI_API_KEY) {
-    return json({ success: false, error: 'GEMINI_API_KEY در Cloudflare تنظیم نشده است.' }, 503);
-  }
 
   const tone = await getTone(env);
   const kind = body.type === 'description' ? 'توضیح اثر' : body.type === 'tagline' ? 'شعار کوتاه' : 'عنوان اثر';

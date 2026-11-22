@@ -1,3 +1,5 @@
+import { PhotoSlideshow } from './PhotoSlideshow';
+import { PHOTO_CATEGORIES } from '../data/photoCategories';
 import React, { useState } from 'react';
 import {
   CategoryItem,
@@ -51,6 +53,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
 }) => {
   const isFa = language === 'fa';
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('');
   const [activePhoto, setActivePhoto] = useState<PhotoItem | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState<number>(0);
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
@@ -67,8 +70,8 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
   const countForCategory = (id: string) =>
     scopedPhotos.filter((photo) => photo.commercialCategory === id).length;
 
-  const portfolioCategories = [...commercialCategories].sort(
-    (left, right) => (left.order ?? 0) - (right.order ?? 0),
+  const portfolioCategories = [...PHOTO_CATEGORIES.filter((category) => category.id !== 'travel'), ...commercialCategories.filter((category) => !PHOTO_CATEGORIES.some((item) => item.id === category.id))].sort(
+    (left, right) => ('order' in left ? left.order ?? 0 : 0) - ('order' in right ? right.order ?? 0 : 0),
   );
 
   const dynamicCategories: {
@@ -85,16 +88,17 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
     },
     ...portfolioCategories.map((category) => ({
       id: category.id,
-      labelFa: category.titleFa || category.nameFa || category.id,
-      labelEn: category.titleEn || category.nameEn || category.id,
+      labelFa: category.titleFa || ('nameFa' in category && category.nameFa) || category.id,
+      labelEn: category.titleEn || ('nameEn' in category && category.nameEn) || category.id,
       count: countForCategory(category.id),
     })),
   ].filter((category) => category.id === 'all' || category.count > 0);
 
-  const filteredPhotos =
+  const filteredPhotos = (
     selectedCategory === 'all'
       ? scopedPhotos
-      : scopedPhotos.filter((photo) => photo.commercialCategory === selectedCategory);
+      : scopedPhotos.filter((photo) => photo.commercialCategory === selectedCategory)
+  ).filter((photo) => !selectedSubcategory || photo.photoSubcategory === selectedSubcategory || photo.natureTags?.includes(selectedSubcategory));
 
 
   const openLightbox = (photo: PhotoItem) => {
@@ -176,7 +180,7 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
               return (
                 <button
                   key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
+                  onClick={() => { setSelectedCategory(cat.id); setSelectedSubcategory(''); }}
                   className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 cursor-pointer whitespace-nowrap ${
                     active
                       ? 'bg-stone-900 text-white shadow-xs'
@@ -197,6 +201,10 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
           </div>
         </div>
 
+        {PHOTO_CATEGORIES.find((category) => category.id === selectedCategory) && <div className="flex flex-wrap gap-2 mb-6">
+          <button type="button" onClick={() => setSelectedSubcategory('')} className={`px-3 py-1 rounded-lg text-xs ${!selectedSubcategory ? 'bg-amber-700 text-white' : 'bg-white text-stone-700'}`}>{isFa ? 'همه زیرشاخه‌ها' : 'All subcategories'}</button>
+          {PHOTO_CATEGORIES.find((category) => category.id === selectedCategory)?.children.map((child) => <button type="button" key={child} onClick={() => setSelectedSubcategory(child)} className={`px-3 py-1 rounded-lg text-xs ${selectedSubcategory === child ? 'bg-amber-700 text-white' : 'bg-white text-stone-700'}`}>{child}</button>)}
+        </div>}
         {/* Masonry / Bento Grid */}
         {filteredPhotos.length === 0 ? (
           <div className="p-16 text-center bg-white rounded-2xl border border-stone-200 text-stone-500 text-sm">
@@ -227,15 +235,10 @@ export const PhotographyGallery: React.FC<PhotographyGalleryProps> = ({
                       onClick={() => openLightbox(photo)}
                     >
                       {!isFailed ? (
-                        <img
-                          src={displayUrl}
+                        <PhotoSlideshow
+                          photo={photo}
                           alt={isFa ? photo.titleFa : photo.titleEn}
                           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={() => {
-                            setFailedImages((prev) => ({ ...prev, [photo.id]: true }));
-                          }}
                         />
                       ) : (
                         <div className="absolute inset-0 bg-gradient-to-br from-stone-850 via-stone-900 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-white">

@@ -1,0 +1,16 @@
+name: Retry website translations
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+permissions: {}
+jobs:
+  retry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retry pending translations
+        env:
+          TRANSLATION_CRON_SECRET: ${{ secrets.TRANSLATION_CRON_SECRET }}
+        run: |
+          test -n "$TRANSLATION_CRON_SECRET"
+          curl --fail --silent --show-error --max-time 120 -X POST -H "Authorization: Bearer $TRANSLATION_CRON_SECRET" https://sinazarghami.ir/api/translation-retry

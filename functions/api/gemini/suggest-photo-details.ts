@@ -80,11 +80,8 @@ async function fetchRemoteImage(url: string): Promise<RemoteImage> {
 export async function onRequestPost({ request, env }: Context): Promise<Response> {
   const session = await requireAdmin(request, env);
   if (!session) return json({ success: false, error: 'Unauthorized.' }, 401);
-  if (!env.GEMINI_API_KEY) {
-    return json({ success: false, error: 'GEMINI_API_KEY در Cloudflare تنظیم نشده است.' }, 503);
-  }
 
-  let body: { imageBase64?: string; imageUrl?: string; titleHint?: string };
+  let body: { imageBase64?: string; imageUrl?: string; titleHint?: string; descriptionHint?: string; categoryHint?: string; mode?: string; galleryImages?: string[]; galleryUrls?: string[] };
   try {
     body = (await request.json()) as typeof body;
   } catch {
@@ -150,18 +147,38 @@ ${tone}
 
 فقط یک شیء JSON معتبر برگردان و هیچ متن اضافه‌ای ننویس. کلیدها:
 category (یکی از landscape, aerial, architecture, documentary, portrait)
-categoryFa, titleFa, titleEn, locationFa, locationEn, descriptionFa, descriptionEn, camera, lens, tags (آرایه رشته)
+categoryFa, titleFa, titleOptions (آرایه سه عنوان پیشنهادی فارسی), titleEn, locationFa, locationEn, descriptionFa, descriptionEn, camera, lens, tags (آرایه رشته)
 titleFa حداکثر ۹ کلمه و descriptionFa بین ۲ تا ۴ جمله باشد. اگر مطمئن نیستی، حدس محتاطانه بزن و از ذکر جزئیات نادرست پرهیز کن.`;
 
-  const prompt = hint
-    ? `این تصویر را تحلیل کن. راهنمای عنوان از خود عکاس: «${hint}»`
-    : 'این تصویر را تحلیل کن و پیشنهاد مناسب بده.';
+  const prompt = `این تصاویر یک مجموعه هستند؛ همه را با هم بررسی کن.
+دسته: ${pickString(body.categoryHint, 200)}
+عنوان نوشته‌شده: ${hint}
+توضیح نوشته‌شده: ${pickString(body.descriptionHint, 1200)}
+${body.mode === 'title' ? 'عنوان مناسب پیشنهاد بده.' : body.mode === 'description' ? 'توضیح موجود را ویرایش کن یا با توجه به تصاویر و عنوان توضیح بنویس.' : 'برای مجموعه پیشنهاد بده.'}`;
+  const extraImages = (await Promise.all((Array.isArray(body.galleryImages) ? body.galleryImages.slice(0, 4) : []).map(imagePartFromDataUrl))).filter((part): part is NonNullable<typeof part> => part !== null);
+  for (const url of (Array.isArray(body.galleryUrls) ? body.galleryUrls : []).slice(0, 4 - extraImages.length)) {
+    let extra: { mimeType: string; data: string } | null = null;
+    if (url.startsWith('/media/') && !url.includes('..')) {
+      const path = `public${url}`;
+      const raw = await getGitHubRaw(env, path);
+      if (raw) extra = imagePartFromBytes(raw.bytes, mimeFromPath(path) || raw.mimeType);
+    } else {
+      const config = getArvanConfig(env);
+      const key = config ? keyFromPublicUrl(config, url) : null;
+      if (config && key) {
+        const remote = await fetchRemoteImage(await presignObject(config, 'GET', key, {}, 300));
+        if (remote.ok) extra = remote.part;
+      }
+    }
+    if (!extra) return json({ success: false, error: 'یکی از تصاویر ذخیره‌شده گالری قابل دریافت نیست؛ دوباره تلاش کنید.' }, 400);
+    extraImages.push(extra);
+  }
 
   try {
     const raw = await callGemini(env, {
       system,
       json: true,
-      parts: [{ text: prompt }, { inlineData: image }],
+      parts: [{ text: prompt }, { inlineData: image }, ...extraImages.map((inlineData) => ({ inlineData }))],
     });
     const parsed = parseJsonObject(raw);
     if (!parsed) throw new Error('پاسخ هوش مصنوعی قابل خواندن نبود.');
@@ -179,6 +196,7 @@ titleFa حداکثر ۹ کلمه و descriptionFa بین ۲ تا ۴ جمله ب�
         category,
         categoryFa: pickString(parsed.categoryFa, 60),
         titleFa: pickString(parsed.titleFa, 120),
+        titleOptions: Array.isArray(parsed.titleOptions) ? parsed.titleOptions.map((value) => pickString(value, 120)).filter(Boolean).slice(0, 3) : [],
         titleEn: pickString(parsed.titleEn, 160),
         locationFa: pickString(parsed.locationFa, 120),
         locationEn: pickString(parsed.locationEn, 160),

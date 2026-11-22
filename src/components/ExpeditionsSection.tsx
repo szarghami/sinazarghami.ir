@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PhotoSlideshow } from './PhotoSlideshow';
 import { ExpeditionItem, Language, PhotoItem } from '../types';
 import {
   Compass,
@@ -54,7 +55,7 @@ export const ExpeditionsSection: React.FC<ExpeditionsSectionProps> = ({
 
   // ۳. گالری عکس‌های سفر (عکس‌هایی با portfolioScope === 'travel' یا پیش‌فرض عکس‌های چشم‌انداز و کویر)
   const travelPhotos = photos.filter(
-    (p) => p.portfolioScope === 'travel' || p.category === 'landscape' || p.category === 'documentary'
+    (p) => p.portfolioScope === 'travel' || (!p.portfolioScope && (p.category === 'landscape' || p.category === 'documentary'))
   );
 
   const handleSubmitInquiry = (e: React.FormEvent) => {
@@ -368,12 +369,10 @@ export const ExpeditionsSection: React.FC<ExpeditionsSectionProps> = ({
                   className="group bg-stone-50 rounded-2xl overflow-hidden border border-stone-200/80 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between"
                 >
                   <div className="relative aspect-16/10 overflow-hidden bg-stone-900">
-                    <img
-                      src={getReliableImageUrl(photo.imageUrl)}
+                    <PhotoSlideshow
+                      photo={photo}
                       alt={isFa ? photo.titleFa : photo.titleEn}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-104"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
                     />
                     <div className="absolute top-3 right-3 bg-stone-900/80 backdrop-blur-md text-white text-[11px] font-mono px-2 py-0.5 rounded">
                       {photo.year}

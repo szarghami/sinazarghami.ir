@@ -23,9 +23,14 @@ export interface Env {
   ARVAN_MEDIA_PREFIX?: string;
   GEMINI_API_KEY?: string;
   GEMINI_MODEL?: string;
+  OPENAI_API_KEY?: string;
+  OPENAI_MODEL?: string;
+  ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_MODEL?: string;
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
   ARTICLE_CRON_SECRET?: string;
+  TRANSLATION_CRON_SECRET?: string;
   SITE_URL?: string;
 }
 

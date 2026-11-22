@@ -161,6 +161,13 @@ export default function App() {
     };
 
     document.title = (isFa ? pageTitlesFa[pathOnly] : pageTitlesEn[pathOnly]) || (isFa ? 'سینا ضرغامی' : 'Sina Zarghami');
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (canonical && pageTitlesFa[pathOnly]) {
+      const url = new URL(pathOnly, 'https://sinazarghami.ir');
+      const slug = new URLSearchParams(currentPath.split('?')[1] || '').get('slug');
+      if (pathOnly === '/articles' && slug) url.searchParams.set('slug', slug);
+      canonical.href = url.href;
+    }
   }, [language, currentPath]);
 
   const handleToggleLanguage = () => {

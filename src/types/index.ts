@@ -68,6 +68,8 @@ export interface PhotoItem {
   homeOrder?: number; // ترتیب نمایش در صفحه اصلی برای جابجایی
   portfolioScope?: 'commercial' | 'travel'; // تفکیک نمونه‌کار تخصصی/تجاری از عکس‌های سفر
   commercialCategory?: string; // شناسه یا نام دسته‌بندی تخصصی که ادمین در پنل تعریف می‌کند
+  photoSubcategory?: string;
+  natureTags?: string[];
   clientName?: string; // نام شرکت/کارفرما
   clientInfo?: string; // توضیحات پروژه برای آن شرکت
   gearIds?: string[]; // تجهیزات استفاده‌شده
@@ -196,6 +198,7 @@ export interface ArticleItem {
 // ساختار اطلاعات پروژه‌های نرم‌افزاری و وب‌سایت‌های ساخته‌شده
 export interface SoftwareItem {
   id: string;
+  coverImage?: string;
   title: string; // نام نرم‌افزار یا سایت
   taglineFa: string; // شعار کوتاه فارسی
   taglineEn: string;
@@ -377,6 +380,7 @@ export interface SiteContent {
   };
   definedTechniques?: DefinedTechnique[];
   homeCategoryCards?: HomeCategoryCard[];
+  homeSlides?: { collection: 'photos' | 'expeditions' | 'articles' | 'books' | 'software'; id: string; general: boolean; facet: boolean }[];
 }
 
 // ساختار رویدادهای رفتار و آمار بازدیدکنندگان وب‌سایت
@@ -437,6 +441,7 @@ export interface AnalyticsSummary {
 
 // پیشنهادات تولید شده توسط هوش مصنوعی جمینای برای عکس بارگذاری‌شده
 export interface AiPhotoSuggestion {
+  titleOptions?: string[];
   category: 'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait';
   categoryFa: string;
   titleFa: string;

@@ -8,6 +8,8 @@
 // =====================================================================
 
 import React, { useState, useRef, useEffect } from 'react';
+import { AiProviderSettings } from './AiProviderSettings';
+import { PHOTO_CATEGORIES } from '../data/photoCategories';
 import {
   SiteContent,
   PhotoItem,
@@ -219,6 +221,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   // استیت‌های هوش مصنوعی جمینای برای تحلیل عکس
   const [isAiSuggesting, setIsAiSuggesting] = useState<boolean>(false);
   const [aiSuggestError, setAiSuggestError] = useState<string | null>(null);
+  const [aiTitleOptions, setAiTitleOptions] = useState<string[]>([]);
   const [instantPublishSuccess, setInstantPublishSuccess] = useState<boolean>(false);
 
   // فرم افزودن یا ویرایش عکس / آلبوم
@@ -228,8 +231,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [photoCategory, setPhotoCategory] = useState<'landscape' | 'aerial' | 'architecture' | 'documentary' | 'portrait'>('landscape');
   const [photoLocationFa, setPhotoLocationFa] = useState('');
   const [photoLocationEn, setPhotoLocationEn] = useState('');
-  const [photoCamera, setPhotoCamera] = useState('Canon R8');
-  const [photoLens, setPhotoLens] = useState('Canon EF 50mm f/1.8');
   const [photoYear, setPhotoYear] = useState('1403');
   const [photoDescFa, setPhotoDescFa] = useState('');
   const [photoDescEn, setPhotoDescEn] = useState('');
@@ -250,9 +251,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
   // فیلدهای تکمیلی داینامیک CMS برای اثر
   const [photoShowOnHome, setPhotoShowOnHome] = useState<boolean>(false);
-  const [photoHomeOrder, setPhotoHomeOrder] = useState<number>(0);
+  const [photoShowOnFacet, setPhotoShowOnFacet] = useState(false);
   const [photoPortfolioScope, setPhotoPortfolioScope] = useState<'commercial' | 'travel'>('commercial');
   const [photoCommercialCategory, setPhotoCommercialCategory] = useState<string>('');
+  const [photoSubcategory, setPhotoSubcategory] = useState('');
+  const [photoNatureTags, setPhotoNatureTags] = useState<string[]>([]);
   const [photoClientName, setPhotoClientName] = useState<string>('');
   const [photoClientInfo, setPhotoClientInfo] = useState<string>('');
   const [photoGearIds, setPhotoGearIds] = useState<string[]>([]);
@@ -364,6 +367,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   // استیت فرم نرم‌افزار (افزودن و ویرایش)
   const [editingSoftId, setEditingSoftId] = useState<string | null>(null);
   const [softTitle, setSoftTitle] = useState('');
+  const [softCoverImage, setSoftCoverImage] = useState('');
   const [softTaglineFa, setSoftTaglineFa] = useState('');
   const [softTaglineEn, setSoftTaglineEn] = useState('');
   const [softDescFa, setSoftDescFa] = useState('');
@@ -543,7 +547,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     }
   };
 
-  const handleAiSuggestPhoto = async () => {
+  const handleAiSuggestPhoto = async (mode: 'all' | 'title' | 'description' = 'all') => {
     let currentImage =
       compressedResults.length > 0 ? compressedResults[0].dataUrl : photoImageUrl;
 
@@ -585,6 +589,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
         body: JSON.stringify({
           imageUrl: currentImage,
           titleHint: photoTitleFa || undefined,
+          descriptionHint: photoDescFa || undefined,
+          categoryHint: `${photoPortfolioScope === 'travel' ? 'سفر و روایت شخصی' : 'نمونه‌کار حرفه‌ای'} / ${PHOTO_CATEGORIES.find((category) => category.id === photoCommercialCategory)?.titleFa || content.commercialCategories?.find((category) => category.id === photoCommercialCategory)?.titleFa || photoCommercialCategory} / ${photoSubcategory}`,
+          mode,
+          galleryImages: await Promise.all(compressedResults.slice(1, 5).map((image) => shrinkDataUrl(image.dataUrl, 800, 0.55))),
+          galleryUrls: compressedResults.length === 0 ? content.photos.find((photo) => photo.id === editingPhotoId)?.galleryImages?.slice(0, 4) : [],
         }),
       });
 
@@ -594,15 +603,26 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       }
 
       const suggestion = data.suggestion as AiPhotoSuggestion;
-      if (suggestion.titleFa) setPhotoTitleFa(suggestion.titleFa);
-      if (suggestion.titleEn) setPhotoTitleEn(suggestion.titleEn);
-      if (suggestion.category) setPhotoCategory(suggestion.category);
-      if (suggestion.locationFa) setPhotoLocationFa(suggestion.locationFa);
-      if (suggestion.locationEn) setPhotoLocationEn(suggestion.locationEn);
-      if (suggestion.descriptionFa) setPhotoDescFa(suggestion.descriptionFa);
-      if (suggestion.descriptionEn) setPhotoDescEn(suggestion.descriptionEn);
-      if (suggestion.camera) setPhotoCamera(suggestion.camera);
-      if (suggestion.lens) setPhotoLens(suggestion.lens);
+      if (mode === 'title') setAiTitleOptions(suggestion.titleOptions?.length ? suggestion.titleOptions : suggestion.titleFa ? [suggestion.titleFa] : []);
+      if (suggestion.titleFa && mode === 'all') setPhotoTitleFa(suggestion.titleFa);
+      if (mode === 'all' && suggestion.titleEn) setPhotoTitleEn(suggestion.titleEn);
+      if (suggestion.category && mode === 'all') setPhotoCategory(suggestion.category);
+      if (mode === 'all' && suggestion.locationFa) setPhotoLocationFa(suggestion.locationFa);
+      if (mode === 'all' && suggestion.locationEn) setPhotoLocationEn(suggestion.locationEn);
+      if (suggestion.descriptionFa && mode !== 'title') setPhotoDescFa(suggestion.descriptionFa);
+      if (mode === 'all' && suggestion.descriptionEn) setPhotoDescEn(suggestion.descriptionEn);
+      if (mode === 'all' && (suggestion.camera || suggestion.lens)) {
+        const equipment = content.equipment || [];
+        const suggestedGearIds = equipment
+          .filter((item) => {
+            const suggestedName = item.category === 'cameras' ? suggestion.camera : item.category === 'lenses' ? suggestion.lens : '';
+            return Boolean(suggestedName && item.name.trim().toLocaleLowerCase() === suggestedName.trim().toLocaleLowerCase());
+          })
+          .map((item) => item.id);
+        if (suggestedGearIds.length > 0) {
+          setPhotoGearIds((current) => Array.from(new Set([...current, ...suggestedGearIds])));
+        }
+      }
       if (suggestion.suggestedPriceToman) setPhotoPriceToman(suggestion.suggestedPriceToman);
       if (suggestion.suggestedPriceUsd) setPhotoPriceUsd(suggestion.suggestedPriceUsd);
 
@@ -639,8 +659,6 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setPhotoCategory(photo.category);
     setPhotoLocationFa(photo.locationFa);
     setPhotoLocationEn(photo.locationEn);
-    setPhotoCamera(photo.camera);
-    setPhotoLens(photo.lens);
     setPhotoYear(photo.year);
     setPhotoDescFa(photo.descriptionFa);
     setPhotoDescEn(photo.descriptionEn);
@@ -654,13 +672,28 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setVideoTitleInput('');
     setVideoSourceTarget(null);
     // فیلدهای تکمیلی داینامیک CMS
-    setPhotoShowOnHome(photo.showOnHome || false);
-    setPhotoHomeOrder(photo.homeOrder || 0);
+    const homeChoice = content.homeSlides?.find((item) => item.collection === 'photos' && item.id === photo.id);
+    setPhotoShowOnHome(homeChoice?.general ?? photo.showOnHome ?? false);
+    setPhotoShowOnFacet(homeChoice?.facet ?? photo.showOnHome ?? false);
     setPhotoPortfolioScope(photo.portfolioScope || 'commercial');
     setPhotoCommercialCategory(photo.commercialCategory || '');
+    setPhotoSubcategory(photo.photoSubcategory || '');
+    setPhotoNatureTags(photo.natureTags || []);
     setPhotoClientName(photo.clientName || '');
     setPhotoClientInfo(photo.clientInfo || '');
-    setPhotoGearIds(photo.gearIds || []);
+    const equipment = content.equipment || [];
+    const existingGearIds = (photo.gearIds || []).map(
+      (gearId) => equipment.find((item) => item.id === gearId || item.name === gearId)?.id || gearId,
+    );
+    const normalizedCamera = photo.camera?.trim().toLocaleLowerCase();
+    const normalizedLens = photo.lens?.trim().toLocaleLowerCase();
+    const legacyGearIds = equipment
+      .filter((item) =>
+        (item.category === 'cameras' && normalizedCamera && item.name.trim().toLocaleLowerCase() === normalizedCamera) ||
+        (item.category === 'lenses' && normalizedLens && item.name.trim().toLocaleLowerCase() === normalizedLens),
+      )
+      .map((item) => item.id);
+    setPhotoGearIds(existingGearIds.length > 0 ? existingGearIds : legacyGearIds);
     setPhotoTechniques(photo.techniques || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -671,6 +704,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const handleCancelEditPhoto = () => {
     setEditingPhotoId(null);
     setPhotoTitleFa('');
+    setAiTitleOptions([]);
     setPhotoTitleEn('');
     setPhotoLocationFa('');
     setPhotoLocationEn('');
@@ -683,9 +717,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
     setVideoTitleInput('');
     setVideoSourceTarget(null);
     setPhotoShowOnHome(false);
-    setPhotoHomeOrder(0);
+    setPhotoShowOnFacet(false);
     setPhotoPortfolioScope('commercial');
     setPhotoCommercialCategory('');
+    setPhotoSubcategory('');
+    setPhotoNatureTags([]);
     setPhotoClientName('');
     setPhotoClientInfo('');
     setPhotoGearIds([]);
@@ -894,27 +930,28 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
             return {
               ...p,
               titleFa: photoTitleFa || p.titleFa,
-              titleEn: photoTitleEn || p.titleEn,
+              titleEn: photoTitleFa !== p.titleFa ? '' : p.titleEn,
               category: photoCategory,
               locationFa: photoLocationFa || p.locationFa,
-              locationEn: photoLocationEn || p.locationEn,
+              locationEn: photoLocationFa !== p.locationFa ? '' : p.locationEn,
               year: photoYear,
-              camera: photoCamera,
-              lens: photoLens,
+              camera: (content.equipment || []).filter((item) => photoGearIds.includes(item.id) && item.category === 'cameras').map((item) => item.name).join(', ') || p.camera,
+              lens: (content.equipment || []).filter((item) => photoGearIds.includes(item.id) && item.category === 'lenses').map((item) => item.name).join(', ') || p.lens,
               imageUrl: mainImageUrl,
               galleryImages: additionalImages.length > 0 ? additionalImages : p.galleryImages,
               isAlbum: additionalImages.length > 0 ? true : p.isAlbum,
               videos: photoVideos.length > 0 ? photoVideos : undefined,
               isVideo: photoVideos.length > 0,
               descriptionFa: photoDescFa,
-              descriptionEn: photoDescEn,
+              descriptionEn: photoDescFa !== p.descriptionFa ? '' : p.descriptionEn,
               printAvailable: photoPrintAvail,
               printPriceToman: photoPriceToman,
               printPriceUsd: photoPriceUsd,
               showOnHome: photoShowOnHome,
-              homeOrder: Number(photoHomeOrder) || 0,
               portfolioScope: photoPortfolioScope,
               commercialCategory: photoCommercialCategory,
+              photoSubcategory,
+              natureTags: photoCommercialCategory === 'nature' ? photoNatureTags : [],
               clientName: photoClientName,
               clientInfo: photoClientInfo,
               gearIds: photoGearIds,
@@ -924,25 +961,26 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           return p;
         });
 
-        void persistContent({ ...content, photos: updatedPhotos });
+        const homeSlides = [...(content.homeSlides || []).filter((item) => item.collection !== 'photos' || item.id !== editingPhotoId), { collection: 'photos' as const, id: editingPhotoId, general: photoShowOnHome, facet: photoShowOnFacet }];
+        void persistContent({ ...content, photos: updatedPhotos, homeSlides });
         notify(isFa ? 'اثر با موفقیت ویرایش شد!' : 'Photo updated.');
       } else {
         // ایجاد اثر یا آلبوم جدید
         const newPhoto: PhotoItem = {
           id: `photo-${Date.now()}`,
           titleFa: photoTitleFa || (isAlbum ? 'آلبوم عکس‌های تازه' : 'اثر عکاسی برگزیده'),
-          titleEn: photoTitleEn || (isAlbum ? 'New Photo Monograph' : 'Selected Fine Art Photograph'),
+          titleEn: '',
           category: photoCategory,
           locationFa: photoLocationFa || 'ایران',
-          locationEn: photoLocationEn || 'Iran',
+          locationEn: '',
           year: photoYear || '1403',
           imageUrl: mainImageUrl,
           galleryImages: additionalImages,
           isAlbum: isAlbum,
           videos: photoVideos.length > 0 ? photoVideos : undefined,
           isVideo: photoVideos.length > 0,
-          camera: photoCamera,
-          lens: photoLens,
+          camera: (content.equipment || []).filter((item) => photoGearIds.includes(item.id) && item.category === 'cameras').map((item) => item.name).join(', '),
+          lens: (content.equipment || []).filter((item) => photoGearIds.includes(item.id) && item.category === 'lenses').map((item) => item.name).join(', '),
           exif: {
             focalLength: '35mm',
             aperture: 'f/4.0',
@@ -950,21 +988,23 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
             iso: '100',
           },
           descriptionFa: photoDescFa || (isAlbum ? `مجموعه شامل ${compressedResults.length} تصویر اختصاصی` : 'ثبت‌شده توسط سینا ضرغامی'),
-          descriptionEn: photoDescEn || 'Captured by Sina Zarghami',
+          descriptionEn: '',
           printAvailable: photoPrintAvail,
           printPriceToman: photoPriceToman,
           printPriceUsd: photoPriceUsd,
           showOnHome: photoShowOnHome,
-          homeOrder: Number(photoHomeOrder) || 0,
           portfolioScope: photoPortfolioScope,
           commercialCategory: photoCommercialCategory,
+          photoSubcategory,
+          natureTags: photoCommercialCategory === 'nature' ? photoNatureTags : [],
           clientName: photoClientName,
           clientInfo: photoClientInfo,
           gearIds: photoGearIds,
           techniques: photoTechniques,
         };
 
-        void persistContent({ ...content, photos: [newPhoto, ...content.photos] });
+        const homeSlides = [...(content.homeSlides || []), { collection: 'photos' as const, id: newPhoto.id, general: photoShowOnHome, facet: photoShowOnFacet }];
+        void persistContent({ ...content, photos: [newPhoto, ...content.photos], homeSlides });
         notify(isFa ? (isAlbum ? `آلبوم با ${1 + additionalImages.length} عکس منتشر شد!` : 'اثر در گالری ثبت گردید!') : 'Published!');
       }
 
@@ -981,13 +1021,17 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
    * ستاره‌دار کردن یا لغو ستاره برای نمایش در ویترین صفحه اصلی با ۱ کلیک
    */
   const handleTogglePhotoShowOnHome = (id: string) => {
+    const existing = content.homeSlides?.find((item) => item.collection === 'photos' && item.id === id);
+    const current = content.photos.find((photo) => photo.id === id);
+    const general = !(existing?.general ?? current?.showOnHome ?? false);
     const updatedPhotos = content.photos.map((p) => {
       if (p.id === id) {
-        return { ...p, showOnHome: !p.showOnHome };
+        return { ...p, showOnHome: general };
       }
       return p;
     });
-    void persistContent({ ...content, photos: updatedPhotos });
+    const homeSlides = [...(content.homeSlides || []).filter((item) => item.collection !== 'photos' || item.id !== id), { collection: 'photos' as const, id, general, facet: existing?.facet ?? current?.showOnHome ?? false }];
+    void persistContent({ ...content, photos: updatedPhotos, homeSlides });
   };
 
   /**
@@ -1050,6 +1094,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const handleStartEditSoftware = (soft: SoftwareItem) => {
     setEditingSoftId(soft.id);
     setSoftTitle(soft.title);
+    setSoftCoverImage(soft.coverImage || '');
     setSoftTaglineFa(soft.taglineFa);
     setSoftTaglineEn(soft.taglineEn);
     setSoftDescFa(soft.descriptionFa);
@@ -1063,6 +1108,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const handleCancelEditSoftware = () => {
     setEditingSoftId(null);
     setSoftTitle('');
+    setSoftCoverImage('');
     setSoftTaglineFa('');
     setSoftTaglineEn('');
     setSoftDescFa('');
@@ -1086,6 +1132,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           return {
             ...s,
             title: softTitle,
+            coverImage: softCoverImage.trim() || undefined,
             taglineFa: softTaglineFa,
             taglineEn: softTaglineEn || softTaglineFa,
             descriptionFa: softDescFa,
@@ -1105,6 +1152,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
       const newSoft: SoftwareItem = {
         id: `soft-${Date.now()}`,
         title: softTitle,
+        coverImage: softCoverImage.trim() || undefined,
         taglineFa: softTaglineFa || 'پلتفرم نرم‌افزاری اختصاصی',
         taglineEn: softTaglineEn || 'Specialized Software Platform',
         descriptionFa: softDescFa || 'توسعه‌یافته توسط سینا ضرغامی با فناوری‌های روز.',
@@ -1824,6 +1872,8 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
           ? `\n${translation.translated} فیلد انگلیسی هم خودکار ترجمه شد.`
           : translation?.failed
           ? `\n${translation.failed} فیلد انگلیسی ترجمه نشد.`
+          : translation?.pending
+          ? `\n${translation.pending} فیلد در صف ترجمه خودکار قرار دارد.`
           : '';
         setPublishStatus({
           success: true,
@@ -2499,6 +2549,9 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             </button>
                           </div>
 
+                          <label className="block text-xs text-stone-600">آدرس عکس کاور ویدیو (اختیاری)
+                            <input type="url" dir="ltr" value={video.poster || ''} onChange={(event) => setPhotoVideos((current) => current.map((item) => item.id === video.id ? { ...item, poster: event.target.value } : item))} className="mt-1 w-full px-2 py-1 border border-stone-200 rounded-lg" />
+                          </label>
                           <div className="flex flex-wrap gap-1.5">
                             {(video.sources?.length
                               ? video.sources
@@ -2552,6 +2605,43 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 </div>
 
                 {/* دکمه واحد هوش مصنوعی: تحلیل عکس و پر کردن همه فیلدها */}
+                <div className="p-4 bg-white rounded-xl border border-stone-200 space-y-2">
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">
+                          {isFa ? 'دسته‌بندی نمونه‌کار:' : 'Portfolio Category:'}
+                        </label>
+                        <select
+                          value={photoCommercialCategory}
+                          onChange={(e) => { const value = e.target.value; setPhotoCommercialCategory(value); setPhotoSubcategory(''); setPhotoPortfolioScope(value === 'travel' ? 'travel' : 'commercial'); setPhotoCategory(value === 'portrait' ? 'portrait' : value === 'architecture' ? 'architecture' : value === 'nature' || value === 'travel' ? 'landscape' : 'documentary'); }}
+                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
+                        >
+                          <option value="">
+                            {isFa ? '-- بدون دسته (فقط در آرشیو دیده می‌شود) --' : '-- No category --'}
+                          </option>
+                          {PHOTO_CATEGORIES.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                              {isFa ? cat.titleFa : cat.titleEn}
+                            </option>
+                          ))}
+                          {(content.commercialCategories || []).filter((cat) => !PHOTO_CATEGORIES.some((item) => item.id === cat.id)).map((cat) => (
+                            <option key={cat.id} value={cat.id}>{isFa ? cat.titleFa || cat.nameFa : cat.titleEn || cat.nameEn}</option>
+                          ))}
+                        </select>
+                        {photoCommercialCategory !== 'nature' && PHOTO_CATEGORIES.find((category) => category.id === photoCommercialCategory) && (
+                          <select value={photoSubcategory} onChange={(e) => setPhotoSubcategory(e.target.value)} className="w-full mt-2 px-3 py-2 border border-stone-300 rounded-lg bg-white">
+                            <option value="">{isFa ? 'عمومی، بدون زیرشاخه' : 'General, no subcategory'}</option>
+                            {PHOTO_CATEGORIES.find((category) => category.id === photoCommercialCategory)?.children.map((child) => <option key={child} value={child}>{child}</option>)}
+                          </select>
+                        )}
+                        {photoCommercialCategory === 'nature' && <div className="flex flex-wrap gap-2 mt-2">{PHOTO_CATEGORIES.find((category) => category.id === 'nature')?.children.map((tag) => <label key={tag} className="px-2 py-1 rounded-lg bg-white border"><input type="checkbox" checked={photoNatureTags.includes(tag)} onChange={(event) => setPhotoNatureTags((current) => event.target.checked ? [...current, tag] : current.filter((item) => item !== tag))} /> {tag}</label>)}</div>}
+                        <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
+                          {isFa
+                            ? 'همین دسته، چیپ فیلتر صفحه نمونه‌کار را می‌سازد. دسته‌ها را در تب «دسته‌بندی‌ها و تکنیک‌ها» مدیریت کن.'
+                            : 'This drives the portfolio filter chips. Manage categories in the Categories tab.'}
+                        </p>
+                      </div>
+                </div>
+
                 <div className="p-4 bg-gradient-to-r from-amber-50 via-stone-50 to-indigo-50/60 rounded-2xl border border-amber-200/90 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
@@ -2572,7 +2662,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
 
                     <button
                       type="button"
-                      onClick={handleAiSuggestPhoto}
+                      onClick={() => handleAiSuggestPhoto('all')}
                       disabled={isAiSuggesting || (compressedResults.length === 0 && !photoImageUrl)}
                       className="px-4 py-2 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
                     >
@@ -2620,6 +2710,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-700">{isFa ? 'عنوان اثر به فارسی:' : 'Persian Title:'}</label>
+                        <button type="button" disabled={isAiSuggesting} onClick={() => handleAiSuggestPhoto('title')} className="text-amber-700 font-bold">پیشنهاد عنوان ✨</button>
 
                       </div>
                       <div className="flex items-center gap-2">
@@ -2635,37 +2726,14 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           title={isFa ? 'دیکته صوتی عنوان' : 'Dictate title'}
                         />
                       </div>
+                      {aiTitleOptions.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{aiTitleOptions.map((title) => <button key={title} type="button" onClick={() => { setPhotoTitleFa(title); setAiTitleOptions([]); }} className="px-2 py-1 border border-amber-300 rounded-lg text-amber-800">{title}</button>)}</div>}
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی گالری (Editorial Title):' : 'English Title:'}</label>
-                      <input
-                        type="text"
-                        value={photoTitleEn}
-                        onChange={(e) => setPhotoTitleEn(e.target.value)}
-                        placeholder="e.g. Silence of Horizons: Twilight Shadows Across the Shahdad Kaluts"
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   {/* موقعیت مکانی و دسته‌بندی */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'دسته‌بندی اثر:' : 'Category:'}</label>
-                      <select
-                        value={photoCategory}
-                        onChange={(e) => setPhotoCategory(e.target.value as any)}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      >
-                        <option value="landscape">{isFa ? 'چشم‌انداز و کویر (Landscape)' : 'Landscape'}</option>
-                        <option value="aerial">{isFa ? 'هوایی و پهپاد (Aerial & Drone)' : 'Aerial'}</option>
-                        <option value="architecture">{isFa ? 'معماری و ساختارها (Architecture)' : 'Architecture'}</option>
-                        <option value="documentary">{isFa ? 'مستند و پرتره (Documentary)' : 'Documentary'}</option>
-                        <option value="portrait">{isFa ? 'پرتره محیطی (Portrait)' : 'Portrait'}</option>
-                      </select>
-                    </div>
-
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="font-bold text-stone-700">{isFa ? 'موقعیت مکانی (فارسی):' : 'Location (FA):'}</label>
@@ -2680,62 +2748,11 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       />
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'موقعیت مکانی (انگلیسی):' : 'Location (EN):'}</label>
-                      <input
-                        type="text"
-                        value={photoLocationEn}
-                        onChange={(e) => setPhotoLocationEn(e.target.value)}
-                        placeholder="e.g. Lut Desert, Kerman"
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   {/* مشخصات دوربین و لنز */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'مدل دوربین:' : 'Camera:'}</label>
-                      <input
-                        type="text"
-                        value={photoCamera}
-                        onChange={(e) => setPhotoCamera(e.target.value)}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {['Canon R8', 'Canon 70D', 'GoPro Max 360', 'iPhone 13 Pro Max'].map((cam) => (
-                          <button
-                            key={cam}
-                            type="button"
-                            onClick={() => setPhotoCamera(cam)}
-                            className="px-2 py-0.5 text-[10px] bg-stone-100 hover:bg-amber-100 text-stone-700 rounded border border-stone-200 cursor-pointer"
-                          >
-                            {cam}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'لنز استفاده‌شده:' : 'Lens:'}</label>
-                      <input
-                        type="text"
-                        value={photoLens}
-                        onChange={(e) => setPhotoLens(e.target.value)}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {['Canon EF 50mm f/1.8', 'Canon EF-S 55–250mm', 'رینگ معکوس ماکرو', 'Canon RF 24-50mm'].map((l) => (
-                          <button
-                            key={l}
-                            type="button"
-                            onClick={() => setPhotoLens(l)}
-                            className="px-2 py-0.5 text-[10px] bg-stone-100 hover:bg-amber-100 text-stone-700 rounded border border-stone-200 cursor-pointer"
-                          >
-                            {l}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                     <div>
                       <label className="block font-bold text-stone-700 mb-1">{isFa ? 'سال ثبت:' : 'Year:'}</label>
                       <input
@@ -2765,6 +2782,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       <div className="flex items-center justify-between mb-1">
                         <div className="flex items-center gap-2">
                           <label className="font-bold text-stone-700">{isFa ? 'روایت و توضیح فارسی اثر:' : 'Persian Description:'}</label>
+                          <button type="button" disabled={isAiSuggesting} onClick={() => handleAiSuggestPhoto('description')} className="text-amber-700 font-bold">پیشنهاد توضیح ✨</button>
                           <VoiceDictationButton
                             onTranscript={(t) => setPhotoDescFa((prev) => (prev ? prev + ' ' + t : t))}
                             title={isFa ? 'دیکته صوتی توضیحات' : 'Dictate description'}
@@ -2781,16 +2799,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                       />
                     </div>
 
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'توضیحات انگلیسی (Editorial Curated):' : 'English Description:'}</label>
-                      <textarea
-                        rows={2}
-                        value={photoDescEn}
-                        onChange={(e) => setPhotoDescEn(e.target.value)}
-                        placeholder="Evocative editorial narrative in English..."
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white resize-none"
-                      />
-                    </div>
+
                   </div>
 
                   {/* تفکیک داینامیک CMS: محل نمایش، دسته‌بندی تجاری و کارفرما */}
@@ -2850,46 +2859,15 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                             <span>{isFa ? 'نمایش در پست‌های برگزیده صفحه اصلی' : 'Show on Homepage'}</span>
                           </span>
                         </label>
-                        {photoShowOnHome && (
-                          <div className="flex items-center gap-2 pt-1 border-t border-stone-100">
-                            <label className="text-[11px] text-stone-600 shrink-0">{isFa ? 'ترتیب در صفحه اصلی:' : 'Home Order:'}</label>
-                            <input
-                              type="number"
-                              value={photoHomeOrder}
-                              onChange={(e) => setPhotoHomeOrder(parseInt(e.target.value) || 0)}
-                              className="w-20 px-2 py-1 text-center border border-stone-300 rounded font-mono text-xs"
-                            />
-                            <span className="text-[10px] text-stone-400">{isFa ? '(عدد کمتر = نمایش اول)' : '(Lower = first)'}</span>
-                          </div>
-                        )}
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-900">
+                          <input type="checkbox" checked={photoShowOnFacet} onChange={(event) => setPhotoShowOnFacet(event.target.checked)} className="rounded text-amber-700 w-4 h-4" />
+                          <span>نمایش در اسلاید حوزه فعالیت</span>
+                        </label>
                       </div>
                     </div>
 
                     <div className="space-y-3 pt-2 border-t border-amber-200/60">
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">
-                          {isFa ? 'دسته‌بندی نمونه‌کار:' : 'Portfolio Category:'}
-                        </label>
-                        <select
-                          value={photoCommercialCategory}
-                          onChange={(e) => setPhotoCommercialCategory(e.target.value)}
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        >
-                          <option value="">
-                            {isFa ? '-- بدون دسته (فقط در آرشیو دیده می‌شود) --' : '-- No category --'}
-                          </option>
-                          {(content.commercialCategories || []).map((cat) => (
-                            <option key={cat.id} value={cat.id}>
-                              {isFa ? cat.titleFa || cat.nameFa : cat.titleEn || cat.nameEn}
-                            </option>
-                          ))}
-                        </select>
-                        <p className="text-[10px] text-stone-500 mt-1 leading-relaxed">
-                          {isFa
-                            ? 'همین دسته، چیپ فیلتر صفحه نمونه‌کار را می‌سازد. دسته‌ها را در تب «دسته‌بندی‌ها و تکنیک‌ها» مدیریت کن.'
-                            : 'This drives the portfolio filter chips. Manage categories in the Categories tab.'}
-                        </p>
-                      </div>
+
 
                       {photoPortfolioScope === 'commercial' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3291,16 +3269,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           />
                         </div>
 
-                        <div>
-                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Title (English):' : 'Title (EN):'}</label>
-                          <input
-                            type="text"
-                            value={catTitleEn}
-                            onChange={(e) => setCatTitleEn(e.target.value)}
-                            placeholder="e.g. Industrial & Factory"
-                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
-                          />
-                        </div>
+
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -3494,16 +3463,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           />
                         </div>
 
-                        <div>
-                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'نام انگلیسی (EN):' : 'Technique Name (EN):'}</label>
-                          <input
-                            type="text"
-                            value={techNameEn}
-                            onChange={(e) => setTechNameEn(e.target.value)}
-                            placeholder="e.g. Long Exposure with ND1000"
-                            className="w-full px-3 py-1.5 border border-stone-300 rounded-lg bg-white text-xs"
-                          />
-                        </div>
+
                       </div>
 
                       <div>
@@ -3692,16 +3652,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           />
                         </div>
 
-                        <div>
-                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی (EN):' : 'Title (EN):'}</label>
-                          <input
-                            type="text"
-                            value={artTitleEn}
-                            onChange={(e) => setArtTitleEn(e.target.value)}
-                            placeholder="e.g. The Art of Seeing: Desert Photography Guide in Lut Dunes"
-                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-stone-50 focus:bg-white text-xs"
-                          />
-                        </div>
+
                       </div>
 
                       {/* نامک اسلاگ، دسته‌بندی و زمان مطالعه */}
@@ -3767,16 +3718,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           />
                         </div>
 
-                        <div>
-                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Summary (English):' : 'Summary (EN):'}</label>
-                          <textarea
-                            rows={2}
-                            value={artExcerptEn}
-                            onChange={(e) => setArtExcerptEn(e.target.value)}
-                            placeholder="Short 2-3 sentence summary in English..."
-                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs resize-none"
-                          />
-                        </div>
+
                       </div>
 
                       {/* متن کامل مقاله */}
@@ -3798,16 +3740,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                           />
                         </div>
 
-                        <div>
-                          <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Full Content (EN):' : 'Full Content (EN):'}</label>
-                          <textarea
-                            rows={6}
-                            value={artContentEn}
-                            onChange={(e) => setArtContentEn(e.target.value)}
-                            placeholder="Full English article text..."
-                            className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white text-xs leading-relaxed"
-                          />
-                        </div>
+
                       </div>
 
                       {/* برچسب‌ها و کلمات کلیدی سئو */}
@@ -4001,15 +3934,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Hero Bio (EN):' : 'Hero Bio (EN):'}</label>
-                      <textarea
-                        rows={3}
-                        value={aboutPageForm.heroBioEn}
-                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, heroBioEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   {/* بیوگرافی جامع و تفصیلی */}
@@ -4023,15 +3948,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white leading-relaxed"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Detailed Narrative (EN):' : 'Detailed Narrative (EN):'}</label>
-                      <textarea
-                        rows={5}
-                        value={aboutPageForm.detailedBioEn}
-                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, detailedBioEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white leading-relaxed"
-                      />
-                    </div>
+
                   </div>
 
                   {/* فلسفه بصری */}
@@ -4045,15 +3962,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Visual Philosophy (EN):' : 'Visual Philosophy (EN):'}</label>
-                      <textarea
-                        rows={3}
-                        value={aboutPageForm.philosophyEn || ''}
-                        onChange={(e) => setAboutPageForm({ ...aboutPageForm, philosophyEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   {/* تحصیلات و مهارت‌ها */}
@@ -4115,6 +4024,36 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                 </div>
 
                 {/* بخش دوم: تنظیمات ویترین صفحه اصلی (homeShowcaseConfig) */}
+                <AiProviderSettings />
+                <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
+                  <h4 className="text-sm font-bold">انتخاب محتوا برای اسلاید صفحه اصلی و حوزه فعالیت</h4>
+                  <p className="text-xs text-stone-500">برای هر اثر، نمایش در اسلاید همه و اسلاید حوزه مربوط را جداگانه انتخاب کنید.</p>
+                  {([
+                    { key: 'photos' as const, label: 'عکس‌ها', items: content.photos.map((item) => ({ id: item.id, title: item.titleFa, legacy: !!item.showOnHome })) },
+                    { key: 'expeditions' as const, label: 'سفرها', items: content.expeditions.map((item) => ({ id: item.id, title: item.titleFa, legacy: false })) },
+                    { key: 'articles' as const, label: 'مقالات منتشرشده', items: (content.articles || []).filter((item) => item.isPublished).map((item) => ({ id: item.id, title: item.titleFa, legacy: false })) },
+                    { key: 'books' as const, label: 'کتاب‌ها', items: content.books.map((item) => ({ id: item.id, title: item.titleFa, legacy: false })) },
+                    { key: 'software' as const, label: 'پروژه‌های نرم‌افزاری', items: content.software.map((item) => ({ id: item.id, title: item.title, legacy: false })) },
+                  ]).map((group) => group.items.length > 0 && <div key={group.key} className="space-y-2">
+                    <h5 className="font-bold text-xs">{group.label}</h5>
+                    {group.items.map((item) => {
+                      const selection = content.homeSlides?.find((entry) => entry.collection === group.key && entry.id === item.id);
+                      const update = (field: 'general' | 'facet', checked: boolean) => {
+                        const entries = (content.homeSlides || []).filter((entry) => !(entry.collection === group.key && entry.id === item.id));
+                        entries.push({ collection: group.key, id: item.id, general: selection?.general ?? item.legacy, facet: selection?.facet ?? item.legacy, [field]: checked });
+                        const photos = group.key === 'photos' && field === 'general'
+                          ? content.photos.map((photo) => photo.id === item.id ? { ...photo, showOnHome: checked } : photo)
+                          : content.photos;
+                        void persistContent({ ...content, photos, homeSlides: entries });
+                      };
+                      return <div key={item.id} className="flex flex-wrap items-center gap-3 p-2 rounded-lg bg-white text-xs">
+                        <span className="flex-1 min-w-32">{item.title}</span>
+                        <label><input type="checkbox" checked={selection?.general ?? item.legacy} onChange={(event) => update('general', event.target.checked)} /> اسلاید همه</label>
+                        <label><input type="checkbox" checked={selection?.facet ?? item.legacy} onChange={(event) => update('facet', event.target.checked)} /> اسلاید حوزه</label>
+                      </div>;
+                    })}
+                  </div>)}
+                </div>
                 <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 space-y-4">
                   <div className="border-b border-stone-200 pb-2.5">
                     <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
@@ -4136,15 +4075,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Showcase Title (EN):' : 'Showcase Title (EN):'}</label>
-                      <input
-                        type="text"
-                        value={homeShowcaseForm.titleEn}
-                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, titleEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -4157,15 +4088,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-700 mb-1">{isFa ? 'Showcase Subtitle (EN):' : 'Showcase Subtitle (EN):'}</label>
-                      <input
-                        type="text"
-                        value={homeShowcaseForm.subtitleEn}
-                        onChange={(e) => setHomeShowcaseForm({ ...homeShowcaseForm, subtitleEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -4213,13 +4136,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: صفحه اصلی"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.homeEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, homeEn: e.target.value })}
-                        placeholder="English: Home"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* Portfolio */}
@@ -4232,13 +4149,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: نمونه‌کارها"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.portfolioEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, portfolioEn: e.target.value })}
-                        placeholder="English: Portfolio"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* Trips */}
@@ -4251,13 +4162,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: سفر و تورها"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.tripsEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, tripsEn: e.target.value })}
-                        placeholder="English: Trips & Tours"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* Gear */}
@@ -4270,13 +4175,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: تجهیزات"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.gearEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, gearEn: e.target.value })}
-                        placeholder="English: Gear"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* Articles */}
@@ -4289,13 +4188,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: مقالات"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.articlesEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, articlesEn: e.target.value })}
-                        placeholder="English: Articles"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* Resume */}
@@ -4308,13 +4201,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: رزومه"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.resumeEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, resumeEn: e.target.value })}
-                        placeholder="English: Resume"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* About */}
@@ -4327,13 +4214,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: درباره من"
                         className="w-full px-2 py-1 border border-stone-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.aboutEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, aboutEn: e.target.value })}
-                        placeholder="English: About"
-                        className="w-full px-2 py-1 border border-stone-300 rounded text-xs font-mono"
-                      />
+
                     </div>
 
                     {/* Order CTA */}
@@ -4346,13 +4227,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         placeholder="فارسی: ثبت سفارش پروژه"
                         className="w-full px-2 py-1 border border-amber-300 rounded text-xs"
                       />
-                      <input
-                        type="text"
-                        value={navLabelsForm.orderEn || ''}
-                        onChange={(e) => setNavLabelsForm({ ...navLabelsForm, orderEn: e.target.value })}
-                        placeholder="English: Hire Me"
-                        className="w-full px-2 py-1 border border-amber-300 rounded text-xs font-mono"
-                      />
+
                     </div>
                   </div>
                 </div>
@@ -4419,16 +4294,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         />
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'شعار انگلیسی (Editorial):' : 'Tagline (EN):'}</label>
-                        <input
-                          type="text"
-                          value={softTaglineEn}
-                          onChange={(e) => setSoftTaglineEn(e.target.value)}
-                          placeholder="Intelligent Cinema Dailies Platform"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
+
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -4446,19 +4312,14 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         />
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'توضیحات انگلیسی پروژه:' : 'Description (EN):'}</label>
-                        <textarea
-                          rows={2}
-                          value={softDescEn}
-                          onChange={(e) => setSoftDescEn(e.target.value)}
-                          placeholder="High-end software narrative in English..."
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white resize-none"
-                        />
-                      </div>
+
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block font-bold text-stone-700 mb-1">آدرس عکس کاور پروژه برای اسلایدر:</label>
+                        <input type="url" value={softCoverImage} onChange={(event) => setSoftCoverImage(event.target.value)} className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white" />
+                      </div>
                       <div>
                         <label className="block font-bold text-stone-700 mb-1">{isFa ? 'فناوری‌ها (با کاما جدا کنید):' : 'Tech Stack:'}</label>
                         <input
@@ -4631,16 +4492,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         />
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی سفر:' : 'Title (EN):'}</label>
-                        <input
-                          type="text"
-                          value={expTitleEn}
-                          onChange={(e) => setExpTitleEn(e.target.value)}
-                          placeholder="e.g. Rig Yalan Deep Megadune Expedition"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
+
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -4716,15 +4568,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         />
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'شرح به انگلیسی (Monograph Style):' : 'Description (EN):'}</label>
-                        <textarea
-                          rows={2}
-                          value={expDescEn}
-                          onChange={(e) => setExpDescEn(e.target.value)}
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white resize-none"
-                        />
-                      </div>
+
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
@@ -4875,16 +4719,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         />
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'نام انگلیسی کتاب:' : 'Book Title (EN):'}</label>
-                        <input
-                          type="text"
-                          value={bookTitleEn}
-                          onChange={(e) => setBookTitleEn(e.target.value)}
-                          placeholder="e.g. Silence of Horizons"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
+
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -5090,16 +4925,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         </select>
                       </div>
 
-                      <div>
-                        <label className="block font-bold text-stone-700 mb-1">{isFa ? 'عنوان انگلیسی سمت:' : 'English Title:'}</label>
-                        <input
-                          type="text"
-                          value={resTitleEn}
-                          onChange={(e) => setResTitleEn(e.target.value)}
-                          placeholder="e.g. Senior Field Expedition Leader"
-                          className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                        />
-                      </div>
+
                     </div>
 
                     <div>
@@ -5193,15 +5019,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-800 mb-1">{isFa ? 'نشانگر بالای تیتر (انگلیسی):' : 'Hero Kicker (EN):'}</label>
-                      <input
-                        type="text"
-                        value={profileForm.heroKickerEn}
-                        onChange={(e) => setProfileForm({ ...profileForm, heroKickerEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white"
-                      />
-                    </div>
+
                   </div>
 
                   {/* ۳ بخش تیتر بزرگ اصلی */}
@@ -5259,15 +5077,7 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
                         className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white resize-none"
                       />
                     </div>
-                    <div>
-                      <label className="block font-bold text-stone-800 mb-1">{isFa ? 'متن معرفی درباره من (انگلیسی):' : 'About Bio (EN):'}</label>
-                      <textarea
-                        rows={3}
-                        value={profileForm.aboutEn}
-                        onChange={(e) => setProfileForm({ ...profileForm, aboutEn: e.target.value })}
-                        className="w-full px-3 py-2 border border-stone-300 rounded-lg bg-white resize-none"
-                      />
-                    </div>
+
                   </div>
 
                   {/* اطلاعات تماس و شبکه‌های اجتماعی */}

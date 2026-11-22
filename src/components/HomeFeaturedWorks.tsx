@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { PhotoSlideshow } from './PhotoSlideshow';
 import { Language, PhotoItem } from '../types';
 import { Camera, MapPin, ArrowRight, ArrowLeft, Eye, ShoppingBag, Sparkles } from 'lucide-react';
-import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
 
 interface HomeFeaturedWorksProps {
   photos: PhotoItem[];
@@ -18,17 +18,15 @@ export const HomeFeaturedWorks: React.FC<HomeFeaturedWorksProps> = ({
 }) => {
   const isFa = language === 'fa';
 
-  // فیلتر پست‌های منتخب صفحه اصلی بر اساس showOnHome (یا فال‌بک به آثار شاخص)
-  let homePhotos = photos.filter((p) => p.showOnHome);
-  if (homePhotos.length === 0) {
-    homePhotos = photos.filter((p) => p.featured).slice(0, 6);
-  }
-  if (homePhotos.length === 0) {
-    homePhotos = photos.slice(0, 6);
-  }
+  const homePhotos = photos.filter((p) => p.showOnHome);
 
-  // مرتب‌سازی بر اساس اولویت مشخص‌شده توسط ادمین
-  const sortedPhotos = [...homePhotos].sort((a, b) => (a.homeOrder || 999) - (b.homeOrder || 999));
+  const [slideIndex, setSlideIndex] = useState(0);
+  useEffect(() => {
+    if (homePhotos.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % homePhotos.length), 3000);
+    return () => window.clearInterval(timer);
+  }, [homePhotos.length]);
+  const sortedPhotos = homePhotos.length ? [homePhotos[slideIndex % homePhotos.length]] : [];
 
   return (
     <section className="py-20 bg-white border-b border-stone-200/80">
@@ -60,7 +58,7 @@ export const HomeFeaturedWorks: React.FC<HomeFeaturedWorksProps> = ({
         </div>
 
         {/* Bento / Grid Showcase */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="max-w-2xl mx-auto">
           {sortedPhotos.map((photo) => (
             <div
               key={photo.id}
@@ -69,13 +67,7 @@ export const HomeFeaturedWorks: React.FC<HomeFeaturedWorksProps> = ({
               <div>
                 {/* Media Container */}
                 <div className="relative aspect-4/3 overflow-hidden bg-stone-900">
-                  <img
-                    src={getReliableImageUrl(getPostCoverUrl(photo))}
-                    alt={isFa ? photo.titleFa : photo.titleEn}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-104"
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                  />
+                  <PhotoSlideshow photo={photo} alt={isFa ? photo.titleFa : photo.titleEn} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-950/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
                   {/* Top Location & Year */}

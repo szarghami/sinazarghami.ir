@@ -12,6 +12,7 @@ interface FieldPair {
 interface CollectionRule {
   key: string;
   pairs: FieldPair[];
+  singleton?: boolean;
 }
 
 const COLLECTIONS: CollectionRule[] = [
@@ -67,6 +68,10 @@ const COLLECTIONS: CollectionRule[] = [
     key: 'commercialCategories',
     pairs: [{ fa: 'titleFa', en: 'titleEn', kind: 'title' }],
   },
+  { key: 'definedTechniques', pairs: [
+    { fa: 'nameFa', en: 'nameEn', kind: 'title' },
+    { fa: 'descriptionFa', en: 'descriptionEn', kind: 'description' },
+  ] },
   {
     key: 'homeCategoryCards',
     pairs: [
@@ -74,6 +79,24 @@ const COLLECTIONS: CollectionRule[] = [
       { fa: 'subtitleFa', en: 'subtitleEn', kind: 'title' },
     ],
   },
+  { key: 'aboutPage', singleton: true, pairs: [
+    { fa: 'heroBioFa', en: 'heroBioEn', kind: 'description' },
+    { fa: 'detailedBioFa', en: 'detailedBioEn', kind: 'description' },
+    { fa: 'philosophyFa', en: 'philosophyEn', kind: 'description' },
+  ] },
+  { key: 'profile', singleton: true, pairs: [
+    { fa: 'heroKickerFa', en: 'heroKickerEn', kind: 'title' },
+    { fa: 'heroHeadlineMainFa', en: 'heroHeadlineMainEn', kind: 'title' },
+    { fa: 'heroHeadlineHighlightFa', en: 'heroHeadlineHighlightEn', kind: 'title' },
+    { fa: 'heroHeadlineEndFa', en: 'heroHeadlineEndEn', kind: 'title' },
+    { fa: 'taglineFa', en: 'taglineEn', kind: 'title' },
+    { fa: 'aboutFa', en: 'aboutEn', kind: 'description' },
+  ] },
+  { key: 'homeShowcaseConfig', singleton: true, pairs: [
+    { fa: 'titleFa', en: 'titleEn', kind: 'title' },
+    { fa: 'subtitleFa', en: 'subtitleEn', kind: 'description' },
+  ] },
+  { key: 'navLabels', singleton: true, pairs: ['home', 'portfolio', 'trips', 'gear', 'articles', 'resume', 'about', 'order'].map((name) => ({ fa: `${name}Fa`, en: `${name}En`, kind: 'title' as const })) },
 ];
 
 const MAX_TRANSLATIONS = 12;
@@ -85,8 +108,44 @@ const CONCURRENCY = 3;
  */
 const TRANSLATION_DEADLINE_MS = 12_000;
 
+/** Mark changed source text for retranslation before publishing the Persian content. */
+export function prepareEnglishFields(content: Record<string, unknown>, previous: Record<string, unknown> | null): number {
+  let pending = 0;
+  for (const rule of COLLECTIONS) {
+    const collection = itemsForRule(content, rule);
+    const oldCollection = previous?.[rule.key];
+    const oldItems = new Map<string, Record<string, unknown>>();
+    const oldEntries = rule.singleton && oldCollection && typeof oldCollection === 'object' && !Array.isArray(oldCollection) ? [oldCollection] : oldCollection;
+    if (Array.isArray(oldEntries)) for (const raw of oldEntries) {
+      if (raw && typeof raw === 'object') {
+        const item = raw as Record<string, unknown>;
+        if (rule.singleton || text(item.id)) oldItems.set(rule.singleton ? '__single__' : text(item.id), item);
+      }
+    }
+    for (const raw of collection) {
+      if (!raw || typeof raw !== 'object') continue;
+      const item = raw as Record<string, unknown>;
+      const before = oldItems.get(rule.singleton ? '__single__' : text(item.id));
+      for (const pair of rule.pairs) {
+        const source = text(item[pair.fa]);
+        if (!source) continue;
+        if ((before && text(before[pair.fa]) !== source) || (previous && !before)) item[pair.en] = '';
+        else if (before && !text(item[pair.en]) && text(before[pair.fa]) === source) item[pair.en] = before[pair.en];
+        if (!text(item[pair.en])) pending += 1;
+      }
+    }
+  }
+  return pending;
+}
+
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function itemsForRule(content: Record<string, unknown>, rule: CollectionRule): unknown[] {
+  const value = content[rule.key];
+  if (Array.isArray(value)) return value;
+  return rule.singleton && value && typeof value === 'object' ? [value] : [];
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
@@ -158,7 +217,6 @@ export async function ensureEnglishFields(
   content: Record<string, unknown>,
   previous?: Record<string, unknown> | null,
 ): Promise<TranslationReport> {
-  if (!env.GEMINI_API_KEY) return { translated: 0, failed: 0, pending: 0 };
 
   interface Job {
     item: Record<string, unknown>;
@@ -172,25 +230,23 @@ export async function ensureEnglishFields(
   const previousById = new Map<string, Record<string, unknown>>();
   if (previous) {
     for (const rule of COLLECTIONS) {
-      const collection = previous[rule.key];
-      if (!Array.isArray(collection)) continue;
+      const collection = itemsForRule(previous, rule);
       for (const raw of collection) {
         if (!raw || typeof raw !== 'object') continue;
         const item = raw as Record<string, unknown>;
-        const id = text(item.id);
+        const id = rule.singleton ? '__single__' : text(item.id);
         if (id) previousById.set(`${rule.key}:${id}`, item);
       }
     }
   }
 
   for (const rule of COLLECTIONS) {
-    const collection = content[rule.key];
-    if (!Array.isArray(collection)) continue;
+    const collection = itemsForRule(content, rule);
     for (const raw of collection) {
       if (!raw || typeof raw !== 'object') continue;
       const item = raw as Record<string, unknown>;
       const hint = text(item.categoryFa) || text(item.category) || text(item.commercialCategory);
-      const id = text(item.id);
+      const id = rule.singleton ? '__single__' : text(item.id);
       const before = id ? previousById.get(`${rule.key}:${id}`) : undefined;
       for (const pair of rule.pairs) {
         const source = text(item[pair.fa]);

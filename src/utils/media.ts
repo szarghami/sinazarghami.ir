@@ -80,5 +80,5 @@ export function getReliableImageUrl(url?: string): string {
 export function getPostCoverUrl(photo: Pick<PhotoItem, 'imageUrl' | 'videos'>): string {
   if (photo.imageUrl) return photo.imageUrl;
   const firstVideo = photo.videos?.find((video) => video.url);
-  return firstVideo ? videoThumbnail(firstVideo.url) || '' : '';
+  return firstVideo ? firstVideo.poster || videoThumbnail(firstVideo.url) || '' : '';
 }

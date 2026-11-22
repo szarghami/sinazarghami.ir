@@ -16,11 +16,13 @@ import {
   isUploadId,
   readChunks,
 } from '../_shared/uploads';
-import { ensureEnglishFields } from '../_shared/translateContent';
+import { prepareEnglishFields } from '../_shared/translateContent';
+import { translateLatestContent } from '../_shared/translationJob';
 
 interface Context {
   request: Request;
   env: Env;
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 interface CompleteBody {
@@ -72,7 +74,7 @@ const MIME_EXTENSIONS: Record<string, string> = {
   'image/webp': 'webp',
 };
 
-async function handle(request: Request, env: Env): Promise<Response> {
+async function handle(request: Request, env: Env, waitUntil?: (promise: Promise<unknown>) => void): Promise<Response> {
   const session = await requireAdmin(request, env);
   if (!session) return json({ success: false, error: 'Unauthorized.' }, 401);
   if (!env.ADMIN_KV) {
@@ -130,12 +132,10 @@ async function handle(request: Request, env: Env): Promise<Response> {
           previous = null;
         }
       }
-      const translation = await ensureEnglishFields(
-        env,
-        content as Record<string, unknown>,
-        previous,
-      );
+      const pending = prepareEnglishFields(content as Record<string, unknown>, previous);
+      const translation = { translated: 0, failed: 0, pending };
       const commitSha = await writeContentWithRetry(env, content);
+      if (pending && waitUntil) waitUntil(translateLatestContent(env).catch(() => undefined));
       return json({ success: true, content, commitSha, translation });
     } catch (error) {
       return json(
@@ -183,10 +183,10 @@ async function handle(request: Request, env: Env): Promise<Response> {
   return json({ success: false, error: 'نوع آپلود نامعتبر است.' }, 400);
 }
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
-  return handle(request, env);
+export async function onRequestPost({ request, env, waitUntil }: Context): Promise<Response> {
+  return handle(request, env, waitUntil);
 }
 
-export async function onRequestGet({ request, env }: Context): Promise<Response> {
-  return handle(request, env);
+export async function onRequestGet({ request, env, waitUntil }: Context): Promise<Response> {
+  return handle(request, env, waitUntil);
 }

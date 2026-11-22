@@ -6,11 +6,13 @@ import {
   requireAdmin,
   type Env,
 } from './_shared/runtime';
-import { ensureEnglishFields } from './_shared/translateContent';
+import { prepareEnglishFields } from './_shared/translateContent';
+import { translateLatestContent } from './_shared/translationJob';
 
 interface Context {
   request: Request;
   env: Env;
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 const CONTENT_PATH = 'public/site-data.json';
@@ -32,7 +34,7 @@ export async function onRequestGet({ request, env }: Context): Promise<Response>
   }
 }
 
-export async function onRequestPost({ request, env }: Context): Promise<Response> {
+export async function onRequestPost({ request, env, waitUntil }: Context): Promise<Response> {
   const session = await requireAdmin(request, env);
   if (!session) return json({ success: false, error: 'Unauthorized.' }, 401);
 
@@ -46,15 +48,14 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
     return json({ success: false, error: 'ساختار محتوا معتبر نیست.' }, 400);
   }
 
-  const translation = await ensureEnglishFields(env, content as Record<string, unknown>);
-
-  const serialized = JSON.stringify(content);
-  if (new TextEncoder().encode(serialized).byteLength > MAX_CONTENT_BYTES) {
-    return json({ success: false, error: 'حجم محتوا بیش از حد مجاز است.' }, 413);
-  }
-
   try {
     let file = await getGitHubFile(env, CONTENT_PATH);
+    let previous: Record<string, unknown> | null = null;
+    try { if (file) previous = JSON.parse(file.content) as Record<string, unknown>; } catch { /* no previous snapshot */ }
+    const pending = prepareEnglishFields(content as Record<string, unknown>, previous);
+    const translation = { translated: 0, failed: 0, pending };
+    const serialized = JSON.stringify(content);
+    if (new TextEncoder().encode(serialized).byteLength > MAX_CONTENT_BYTES) return json({ success: false, error: 'حجم محتوا بیش از حد مجاز است.' }, 413);
     let commitSha: string;
     try {
       commitSha = await putGitHubFile(
@@ -75,6 +76,7 @@ export async function onRequestPost({ request, env }: Context): Promise<Response
         file?.sha,
       );
     }
+    if (pending && waitUntil) waitUntil(translateLatestContent(env).catch(() => undefined));
     return json({ success: true, content, commitSha, translation });
   } catch (error) {
     return json(

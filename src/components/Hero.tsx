@@ -4,10 +4,10 @@
 // متن‌ها به صورت پویا از profile لود می‌شوند و از داخل پنل مدیریت قابل ویرایش هستند.
 // =====================================================================
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Language, SiteContent } from '../types';
 import { Camera, Compass, Code2, GraduationCap, ArrowDown, Sparkles, Phone } from 'lucide-react';
-import { getReliableImageUrl } from '../utils/media';
+import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
 
 interface HeroProps {
   content: SiteContent;
@@ -27,6 +27,25 @@ export const Hero: React.FC<HeroProps> = ({
 
   // تب فعال در انتخاب حوزه‌های فعالیت
   const [activeFacet, setActiveFacet] = useState<'all' | 'photo' | 'expeditions' | 'code' | 'educator'>('all');
+  const [slideIndex, setSlideIndex] = useState(0);
+  const choices = content.homeSlides || [];
+  const slides = [
+    ...content.photos.map((item) => ({ id: item.id, collection: 'photos', facet: item.portfolioScope === 'travel' ? 'expeditions' : 'photo', image: getPostCoverUrl(item), titleFa: item.titleFa, titleEn: item.titleEn, legacy: !!item.showOnHome })),
+    ...content.expeditions.map((item) => ({ id: item.id, collection: 'expeditions', facet: 'expeditions', image: item.coverImage, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false })),
+    ...(content.articles || []).filter((item) => item.isPublished).map((item) => ({ id: item.id, collection: 'articles', facet: 'educator', image: item.coverImage || item.coverUrl, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false })),
+    ...content.books.map((item) => ({ id: item.id, collection: 'books', facet: 'educator', image: item.coverImage, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false })),
+    ...content.software.map((item) => ({ id: item.id, collection: 'software', facet: 'code', image: item.coverImage || '', titleFa: item.title, titleEn: item.title, legacy: false })),
+  ].filter((item) => {
+    const choice = choices.find((entry) => entry.collection === item.collection && entry.id === item.id);
+    return !!item.image && (activeFacet === 'all' ? (choice?.general ?? item.legacy) : item.facet === activeFacet && (choice?.facet ?? item.legacy));
+  });
+  useEffect(() => { setSlideIndex(0); }, [activeFacet]);
+  useEffect(() => {
+    if (slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % slides.length), 3000);
+    return () => window.clearInterval(timer);
+  }, [slides.length, activeFacet]);
+  const currentSlide = slides[slideIndex % slides.length];
 
   const facets = [
     { id: 'all', labelFa: 'همه ابعاد', labelEn: 'Overview' },
@@ -147,14 +166,15 @@ export const Hero: React.FC<HeroProps> = ({
 
           {/* ستون قاب تصویر شاخص */}
           <div className="lg:col-span-5 relative flex flex-col justify-center">
-            <div className="relative group rounded-2xl overflow-hidden bg-stone-900 border border-stone-200/80 shadow-md">
+            <div className="relative group min-h-84 rounded-2xl overflow-hidden bg-stone-900 border border-stone-200/80 shadow-md">
               <div className="absolute inset-0 bg-gradient-to-br from-stone-900 via-stone-800 to-stone-950 flex flex-col items-center justify-center p-6 text-center text-stone-300">
                 <Camera className="w-12 h-12 text-amber-500/70 mb-3" />
-                <span className="text-sm font-semibold">{content.photos[0]?.titleFa || 'آثار برگزیده سینا ضرغامی'}</span>
+                <span className="text-sm font-semibold">{isFa ? 'اثری برای این بخش انتخاب نشده است' : 'No featured items in this section'}</span>
               </div>
-              <img
-                  src={getReliableImageUrl(content.photos[0]?.imageUrl)}
-                alt="Sina Zarghami Photography Showcase"
+              {currentSlide && <img
+                key={`${currentSlide.collection}:${currentSlide.id}`}
+                src={getReliableImageUrl(currentSlide.image)}
+                alt={isFa ? currentSlide.titleFa : currentSlide.titleEn}
                 className="relative w-full h-84 sm:h-96 lg:h-[430px] object-cover transition-transform duration-700 group-hover:scale-102 z-10"
                 loading="eager"
                 referrerPolicy="no-referrer"
@@ -162,21 +182,14 @@ export const Hero: React.FC<HeroProps> = ({
                   const target = e.currentTarget as HTMLImageElement;
                   target.style.display = 'none';
                 }}
-              />
+              />}
               <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/20 to-transparent pointer-events-none z-10" />
 
-              <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1 z-20">
-                <div className="flex items-center justify-between text-xs font-mono text-stone-300">
-                  <span>{content.photos[0]?.locationFa || 'کویر لوت، ایران'}</span>
-                  <span>{content.photos[0]?.camera || 'Canon R8'}</span>
-                </div>
+              {currentSlide && <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1 z-20">
                 <h3 className="text-lg font-semibold tracking-tight text-white">
-                  {isFa ? (content.photos[0]?.titleFa || 'کلوت‌های شهداد در غروب آفتاب') : (content.photos[0]?.titleEn || 'Shahdad Kaluts at Twilight')}
+                  {isFa ? currentSlide.titleFa : currentSlide.titleEn}
                 </h3>
-                <p className="text-xs text-stone-300 line-clamp-1">
-                  {isFa ? 'ثبت‌شده در سفر اکتشافی · اثر سینا ضرغامی' : 'Captured on expedition by Sina Zarghami'}
-                </p>
-              </div>
+              </div>}
             </div>
           </div>
         </div>
