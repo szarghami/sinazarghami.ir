@@ -14,6 +14,10 @@
           function (event) {
             var target = event.target;
             if (!target || target.tagName !== 'SCRIPT') return;
+            // فقط اسکریپت‌های خود سایت باعث بارگذاری مجدد می‌شوند. اسکریپت‌های شخص ثالث
+            // (مثل بیکن آمار کلادفلر) در ایران بلاک می‌شوند و نباید صفحه را رفرش کنند.
+            var src = target.src || '';
+            if (src && src.indexOf(window.location.origin + '/') !== 0) return;
             try {
               var last = Number(sessionStorage.getItem(RETRY_KEY) || 0);
               if (last && Date.now() - last < 60000) return;
