@@ -21,8 +21,14 @@ export class NetworkError extends Error {
 
 const CHUNK_KEY = 'sina_chunk_size_v2';
 const MODE_KEY = 'sina_transport_mode_v2';
-const MIN_CHUNK = 4 * 1024;
+const MIN_CHUNK = 2 * 1024;
 const MAX_CHUNK = 12 * 1024;
+/**
+ * سقف اندازه‌ی تکته روی کانال GET. اندازه‌گیری روی همین دامنه نشان داد URLهای بزرگ‌تر از
+ * حدود ۵ کیلوبایت روی این شبکه بی‌صدا معطل می‌مانند (حدود ۲۰ ثانیه) و پیش از رسیدن پاسخ
+ * تایم‌اوت می‌شوند؛ URL چهار کیلوبایتی همیشه سالم بود. POST چنین محدودیتی ندارد.
+ */
+const GET_CHUNK_MAX = 4 * 1024;
 const REQUEST_TIMEOUT_MS = 12_000;
 const CHUNK_TIMEOUT_MS = 8_000;
 const COMPLETE_TIMEOUT_MS = 90_000;
@@ -30,6 +36,8 @@ const CHUNK_CONCURRENCY = 2;
 const CHUNK_ATTEMPTS = 3;
 const MODE_ATTEMPTS = 2;
 const MAX_UPLOAD_ATTEMPTS = 4;
+const COMPLETE_ATTEMPTS = 3;
+const PROBE_FAST_MS = 5_000;
 const ROUND_BACKOFF_MS = [1_000, 2_500, 5_000];
 
 /**
@@ -91,6 +99,12 @@ export function setChunkSize(size: number): void {
   } catch {
     // ignore storage errors
   }
+}
+
+/** اندازه‌ی تکته برای هر کانال؛ GET به‌خاطر محدودیت طول URL سقف جداگانه دارد. */
+export function chunkSizeFor(mode: TransportMode): number {
+  const base = getChunkSize();
+  return mode === 'get' ? Math.min(base, GET_CHUNK_MAX) : base;
 }
 
 async function fetchWithTimeout(
@@ -321,11 +335,38 @@ async function finishUpload(
   );
 }
 
+/**
+ * ثبت نهایی با بازیابی. خطای موقت سرور (5xx) تکته‌ها را از بین نمی‌برد، پس همان درخواست
+ * دوباره فرستاده می‌شود؛ فقط در 409 باید تکته‌ها دوباره ارسال شوند.
+ */
+async function completeUpload(
+  session: UploadSession,
+  options: ChunkedUploadOptions,
+  pending: Set<number>,
+): Promise<Response> {
+  let response = await finishUpload(session, options);
+  for (let attempt = 0; attempt < COMPLETE_ATTEMPTS; attempt += 1) {
+    if (response.status === 409) {
+      for (let index = 0; index < session.total; index += 1) pending.add(index);
+      await pushChunks(session, pending, options.onProgress);
+      response = await finishUpload(session, options);
+      continue;
+    }
+    if (response.status >= 500 && attempt < COMPLETE_ATTEMPTS - 1) {
+      await sleep(1_000 * (attempt + 1));
+      response = await finishUpload(session, options);
+      continue;
+    }
+    break;
+  }
+  return response;
+}
+
 export async function sendChunked(
   options: ChunkedUploadOptions,
 ): Promise<ChunkedUploadResult> {
-  const chunkSize = getChunkSize();
   const preferred = getTransportMode();
+  let chunkSize = chunkSizeFor(preferred);
   const modes: TransportMode[] = [preferred, ...MODE_ORDER.filter((mode) => mode !== preferred)];
   let lastError = 'اتصال به سرور قطع شد.';
   let networkFailures = 0;
@@ -338,9 +379,15 @@ export async function sendChunked(
     const pending = new Set<number>();
 
     for (const mode of modes) {
+      const wantChunkSize = mode === 'get' ? Math.min(chunkSize, GET_CHUNK_MAX) : chunkSize;
+      // اگر کانال جدید سقف متفاوتی دارد و هنوز تکته‌ای مانده، با اندازه‌ی درست از نو شروع می‌کنیم.
+      if (session && session.chunkSize !== wantChunkSize && pending.size > 0) {
+        session = null;
+        pending.clear();
+      }
       if (!session) {
         try {
-          session = await openUpload(options, mode, chunkSize);
+          session = await openUpload(options, mode, wantChunkSize);
         } catch (error) {
           if (!(error instanceof NetworkError)) {
             return {
@@ -353,6 +400,7 @@ export async function sendChunked(
           lastError = `آماده‌سازی آپلود با ${TRANSPORT_MODE_LABELS[mode]} ناموفق بود.`;
           continue;
         }
+        chunkSize = session.chunkSize;
         for (let index = 0; index < session.total; index += 1) pending.add(index);
       }
 
@@ -388,12 +436,7 @@ export async function sendChunked(
     }
 
     try {
-      let doneRes = await finishUpload(session, options);
-      if (doneRes.status === 409) {
-        for (let index = 0; index < session.total; index += 1) pending.add(index);
-        await pushChunks(session, pending, options.onProgress);
-        doneRes = await finishUpload(session, options);
-      }
+      const doneRes = await completeUpload(session, options, pending);
       const doneData = (await doneRes.json().catch(() => ({}))) as {
         success?: boolean;
         publicUrl?: string;
@@ -522,32 +565,57 @@ export async function probeConnection(): Promise<{
 
   if (working) {
     setTransportMode(working.mode);
-    const targetsKb = working.mode === 'get' ? [8, 16, 24] : [8, 24, 40];
-    for (const kb of targetsKb) {
-      const target = kb * 1024;
-      const padChars = working.mode === 'get' ? Math.floor((target * 3) / 4) - 24 : target - 24;
-      const started = Date.now();
-      try {
-        const res = await sendJson(
-          '/api/health',
-          { pad: 'x'.repeat(Math.max(0, padChars)) },
-          working.mode,
-          1,
-          15_000,
-        );
-        const payload = (await res.json().catch(() => ({}))) as { colo?: string };
-        if (payload.colo) colo = payload.colo;
-        steps.push({
-          bytes: target,
-          ok: res.ok,
-          status: res.status,
-          elapsedMs: Date.now() - started,
-        });
-      } catch {
-        steps.push({ bytes: target, ok: false, status: 0, elapsedMs: Date.now() - started });
+    if (working.mode === 'get') {
+      // روی کانال GET طول URL تعیین‌کننده است، نه حجم داده؛ پس همان اندازه‌هایی سنجیده
+      // می‌شود که واقعاً در آدرس تکته‌ها ساخته می‌شوند.
+      let best = 0;
+      for (const chars of [3_500, 7_500, 11_500]) {
+        const started = Date.now();
+        try {
+          const res = await sendJson('/api/health', { pad: 'x'.repeat(chars) }, 'get', 1, 15_000);
+          const payload = (await res.json().catch(() => ({}))) as { colo?: string };
+          if (payload.colo) colo = payload.colo;
+          const elapsedMs = Date.now() - started;
+          const ok = res.ok && elapsedMs < PROBE_FAST_MS;
+          steps.push({ bytes: Math.round((chars * 3) / 4), ok, status: res.status, elapsedMs });
+          if (ok) best = chars;
+        } catch {
+          steps.push({
+            bytes: Math.round((chars * 3) / 4),
+            ok: false,
+            status: 0,
+            elapsedMs: Date.now() - started,
+          });
+        }
       }
+      setChunkSize(best || MIN_CHUNK);
+    } else {
+      for (const kb of [8, 24, 40]) {
+        const target = kb * 1024;
+        const padChars = target - 24;
+        const started = Date.now();
+        try {
+          const res = await sendJson(
+            '/api/health',
+            { pad: 'x'.repeat(Math.max(0, padChars)) },
+            working.mode,
+            1,
+            15_000,
+          );
+          const payload = (await res.json().catch(() => ({}))) as { colo?: string };
+          if (payload.colo) colo = payload.colo;
+          steps.push({
+            bytes: target,
+            ok: res.ok,
+            status: res.status,
+            elapsedMs: Date.now() - started,
+          });
+        } catch {
+          steps.push({ bytes: target, ok: false, status: 0, elapsedMs: Date.now() - started });
+        }
+      }
+      setChunkSize(MAX_CHUNK);
     }
-    setChunkSize(MAX_CHUNK);
   }
 
   return { steps, colo, channels };

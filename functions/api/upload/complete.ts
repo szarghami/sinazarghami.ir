@@ -106,7 +106,6 @@ async function handle(request: Request, env: Env, waitUntil?: (promise: Promise<
   } catch {
     return json({ success: false, error: 'داده ارسالی معتبر نیست.' }, 400);
   }
-  await deleteChunks(env, body.uploadId, total);
 
   if (body.kind === 'content') {
     if (bytes.byteLength > MAX_CONTENT_BYTES) {
@@ -135,6 +134,9 @@ async function handle(request: Request, env: Env, waitUntil?: (promise: Promise<
       const pending = prepareEnglishFields(content as Record<string, unknown>, previous);
       const translation = { translated: 0, failed: 0, pending };
       const commitSha = await writeContentWithRetry(env, content);
+      // تکته‌ها فقط بعد از ثبت موفق پاک می‌شوند؛ وگرنه خطای موقت (مثلاً 503 گیت‌هاب)
+      // کل آپلود را از بین می‌برد و باید همه‌ی تکته‌ها از نو فرستاده شوند.
+      await deleteChunks(env, body.uploadId, total);
       if (pending && waitUntil) waitUntil(translateLatestContent(env).catch(() => undefined));
       return json({ success: true, content, commitSha, translation });
     } catch (error) {
@@ -168,6 +170,7 @@ async function handle(request: Request, env: Env, waitUntil?: (promise: Promise<
     const path = `public/media/${folder}/${safeName}-${crypto.randomUUID()}.${extension}`;
     try {
       await putGitHubBinary(env, path, bytes, `media: add ${safeName}`);
+      await deleteChunks(env, body.uploadId, total);
       return json({ success: true, publicUrl: `/${path.replace(/^public\//, '')}`, path });
     } catch (error) {
       return json(

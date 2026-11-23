@@ -54,8 +54,16 @@ function createServer(options = {}) {
     failChunkOnce = new Set(),
     failEveryNthChunk = 0,
     deadChunkCalls = 0,
+    completeFailures = 0,
   } = options;
-  const state = { inits: 0, completes: 0, chunkCalls: 0, stored: new Map(), assembled: null };
+  const state = {
+    inits: 0,
+    completes: 0,
+    chunkCalls: 0,
+    stored: new Map(),
+    assembled: null,
+    maxGetUrl: 0,
+  };
   const failedOnce = new Set();
 
   const fetchImpl = async (url, init = {}) => {
@@ -76,6 +84,7 @@ function createServer(options = {}) {
       if (failEveryNthChunk > 0 && state.chunkCalls % failEveryNthChunk === 0) {
         throw new TypeError('Failed to fetch');
       }
+      if (mode === 'get') state.maxGetUrl = Math.max(state.maxGetUrl, url.length);
       const parsed = new URL(url, 'https://example.com');
       const index =
         mode === 'get' ? Number(parsed.searchParams.get('index')) : payloadOf(url, init).index;
@@ -98,6 +107,9 @@ function createServer(options = {}) {
         if (!state.stored.has(index)) {
           return jsonResponse(409, { success: false, error: 'missing chunks' });
         }
+      }
+      if (state.completes <= completeFailures) {
+        return jsonResponse(503, { success: false, error: 'temporary' });
       }
       if (conflictOnce && state.completes === 1) {
         state.stored.delete(0);
@@ -128,6 +140,7 @@ const base64 = Buffer.from('x'.repeat(60_000), 'utf8').toString('base64');
   check('GET upload reassembles exact bytes', state.assembled === base64);
   check('GET upload sends each chunk once', state.chunkCalls === result.chunkCount);
   check('GET upload calls init once', state.inits === 1);
+  check('GET chunk URL stays under the 4.5KB cap', state.maxGetUrl > 0 && state.maxGetUrl < 4600);
   check('transport mode remembered as get', getTransportMode() === 'get');
 }
 
@@ -193,6 +206,17 @@ const base64 = Buffer.from('x'.repeat(60_000), 'utf8').toString('base64');
   const result = await sendChunked({ kind: 'media', base64, mimeType: 'image/webp', filename: 'f' });
   check('recovers after a short outage', result.success === true);
   check('outage recovery reassembles exact bytes', state.assembled === base64);
+}
+
+// ۸) ثبت نهایی خطای موقت ۵۰۳ می‌دهد: تکته‌ها سمت سرور می‌مانند و همان درخواست دوباره می‌شود.
+{
+  store.clear();
+  const { fetchImpl, state } = createServer({ completeFailures: 1 });
+  globalThis.fetch = fetchImpl;
+  const result = await sendChunked({ kind: 'content', base64, filename: 'g' });
+  check('retries a 503 from complete', result.success === true);
+  check('503 retry does not re-upload chunks', state.chunkCalls === result.chunkCount);
+  check('503 retry reassembles exact bytes', state.assembled === base64);
 }
 
 for (const [name, ok] of results) console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`);
