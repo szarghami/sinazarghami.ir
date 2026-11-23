@@ -132,14 +132,23 @@ export default function App() {
     if (currentPath.split('?')[0] === '/studio') setIsAdminOpen(true);
   }, [currentPath]);
 
-  // دریافت اطلاعات هماهنگ‌شده از سرور
+  // دریافت اطلاعات هماهنگ‌شده از سرور؛ بعد از اولین رنگ‌آمیزی اجرا می‌شود تا با
+  // بارگذاری تصویر شاخص و اسکریپت‌ها رقابت نکند. داده‌ی اولیه از قبل رندر شده است.
   useEffect(() => {
-    fetchRemoteSiteData().then((remoteData) => {
-      if (remoteData) {
-        setContent(remoteData);
-      }
-    });
-  }, [currentPath]);
+    let cancelled = false;
+    const refresh = () => {
+      void fetchRemoteSiteData().then((remoteData) => {
+        if (!cancelled && remoteData) setContent(remoteData);
+      });
+    };
+    const hasIdle = typeof window.requestIdleCallback === 'function';
+    const handle = hasIdle ? window.requestIdleCallback(refresh, { timeout: 2500 }) : window.setTimeout(refresh, 1200);
+    return () => {
+      cancelled = true;
+      if (hasIdle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, []);
 
   // اگر تغییر قبلی هرگز منتشر نشده بود (مثلاً شبکه قطع بود)، یک بار دیگر تلاش می‌شود.
   useEffect(() => {

@@ -86,8 +86,10 @@ export async function fetchRemoteSiteData(): Promise<SiteContent | null> {
   try {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 8000);
-    const res = await fetch(`/site-data.json?t=${Date.now()}`, {
-      cache: 'no-store',
+    // بدون پارامتر تازه‌سازی درخواست می‌شود تا مرورگر با ETag اعتبارسنجی کند و
+    // وقتی محتوا تغییر نکرده باشد فقط پاسخ ۳۰۴ سبک دریافت شود، نه کل فایل.
+    const res = await fetch('/site-data.json', {
+      cache: 'no-cache',
       signal: controller.signal,
     });
     window.clearTimeout(timeout);
