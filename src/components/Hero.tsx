@@ -61,7 +61,7 @@ export const Hero: React.FC<HeroProps> = ({
     if (slides.length < 2 || lightboxPhoto || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % slides.length), 3000);
     return () => window.clearInterval(timer);
-  }, [slides.length, activeFacet, lightboxPhoto]);
+  }, [slides.length, activeFacet, lightboxPhoto, slideIndex]);
   const currentSlide = slides[slideIndex % slides.length];
 
   const stepSlide = (direction: 1 | -1) => {
