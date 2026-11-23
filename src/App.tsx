@@ -17,19 +17,45 @@ import { Navbar } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { HomeCategoryCards } from './components/HomeCategoryCards';
 import { HomeFeaturedWorks } from './components/HomeFeaturedWorks';
-import { PhotographyGallery } from './components/PhotographyGallery';
-import { GearLockerSection } from './components/GearLockerSection';
-import { ExpeditionsSection } from './components/ExpeditionsSection';
 import { SoftwareShowcase } from './components/SoftwareShowcase';
-import { ProductionServices } from './components/ProductionServices';
-import { ResumeBooksSection } from './components/ResumeBooksSection';
-import { ArticlesSection } from './components/ArticlesSection';
-import { AboutPage } from './components/AboutPage';
-import { DynamicFilterArchive } from './components/DynamicFilterArchive';
-import { NotFoundPage } from './components/NotFoundPage';
-import { PrintShopModal } from './components/PrintShopModal';
-import { SeoDocumentationModal } from './components/SeoDocumentationModal';
 import { Footer } from './components/Footer';
+
+// صفحات غیر از صفحه‌ی اصلی فقط هنگام باز شدن مسیرشان دانلود می‌شوند تا حجم بارگذاری
+// اولیه کم بماند. روی شبکه‌ی ایران هر پاسخ بزرگ‌تر از حدود ۶۰ کیلوبایت قطع می‌شود،
+// پس کوچک نگه داشتن تک‌تک فایل‌ها برای بالا آمدن سایت حیاتی است.
+const PhotographyGallery = lazy(() =>
+  import('./components/PhotographyGallery').then((module) => ({ default: module.PhotographyGallery })),
+);
+const GearLockerSection = lazy(() =>
+  import('./components/GearLockerSection').then((module) => ({ default: module.GearLockerSection })),
+);
+const ExpeditionsSection = lazy(() =>
+  import('./components/ExpeditionsSection').then((module) => ({ default: module.ExpeditionsSection })),
+);
+const ProductionServices = lazy(() =>
+  import('./components/ProductionServices').then((module) => ({ default: module.ProductionServices })),
+);
+const ResumeBooksSection = lazy(() =>
+  import('./components/ResumeBooksSection').then((module) => ({ default: module.ResumeBooksSection })),
+);
+const ArticlesSection = lazy(() =>
+  import('./components/ArticlesSection').then((module) => ({ default: module.ArticlesSection })),
+);
+const AboutPage = lazy(() =>
+  import('./components/AboutPage').then((module) => ({ default: module.AboutPage })),
+);
+const DynamicFilterArchive = lazy(() =>
+  import('./components/DynamicFilterArchive').then((module) => ({ default: module.DynamicFilterArchive })),
+);
+const NotFoundPage = lazy(() =>
+  import('./components/NotFoundPage').then((module) => ({ default: module.NotFoundPage })),
+);
+const PrintShopModal = lazy(() =>
+  import('./components/PrintShopModal').then((module) => ({ default: module.PrintShopModal })),
+);
+const SeoDocumentationModal = lazy(() =>
+  import('./components/SeoDocumentationModal').then((module) => ({ default: module.SeoDocumentationModal })),
+);
 
 // پنل مدیریت فقط وقتی باز می‌شود دانلود می‌شود تا حجم بارگذاری اولیه‌ی سایت کم بماند.
 const AdminStudioModal = lazy(() =>
@@ -211,6 +237,13 @@ export default function App() {
 
       {/* Main Experience Router */}
       <main className="flex-1">
+        <Suspense
+          fallback={
+            <div className="py-24 text-center text-sm text-stone-500">
+              {language === 'fa' ? 'در حال بارگذاری…' : 'Loading…'}
+            </div>
+          }
+        >
         {/* ۱. صفحه اصلی (Home Page: /) */}
         {pathOnly === '/' && (
           <>
@@ -346,6 +379,7 @@ export default function App() {
         {!KNOWN_PATHS.has(pathOnly) && (
           <NotFoundPage language={language} onNavigate={navigateTo} />
         )}
+        </Suspense>
       </main>
 
       {/* Minimal Dynamic Footer */}
@@ -359,11 +393,15 @@ export default function App() {
       />
 
       {/* Modals */}
-      <PrintShopModal
-        photo={selectedPrintPhoto}
-        language={language}
-        onClose={() => setSelectedPrintPhoto(null)}
-      />
+      {selectedPrintPhoto && (
+        <Suspense fallback={null}>
+          <PrintShopModal
+            photo={selectedPrintPhoto}
+            language={language}
+            onClose={() => setSelectedPrintPhoto(null)}
+          />
+        </Suspense>
+      )}
 
       {isAdminOpen && (
         <Suspense
@@ -388,10 +426,12 @@ export default function App() {
       )}
 
       {isSeoOpen && (
-        <SeoDocumentationModal
-          language={language}
-          onClose={() => setIsSeoOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <SeoDocumentationModal
+            language={language}
+            onClose={() => setIsSeoOpen(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

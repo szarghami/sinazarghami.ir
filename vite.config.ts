@@ -18,8 +18,9 @@ export default defineConfig(() => {
           manualChunks(id: string) {
             if (!id.includes('node_modules')) return undefined;
             if (id.includes('hls.js')) return 'hls';
-            if (id.includes('motion') || id.includes('framer-motion')) return 'motion';
             if (id.includes('lucide-react')) return 'icons';
+            // react-dom جدا می‌شود تا هیچ فایلی از سقف ~۶۰ کیلوبایتی شبکه‌ی ایران رد نشود.
+            if (id.includes('react-dom') || id.includes('scheduler')) return 'react-dom';
             if (id.includes('react')) return 'react';
             return 'vendor';
           },
