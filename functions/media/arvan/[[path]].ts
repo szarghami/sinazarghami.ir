@@ -5,6 +5,7 @@ interface Context {
   request: Request;
   env: Env;
   params: { path?: string | string[] };
+  waitUntil?: (promise: Promise<unknown>) => void;
 }
 
 const CACHE_SECONDS = 60 * 60 * 24 * 30;
@@ -16,6 +17,16 @@ const PASSTHROUGH_HEADERS = [
   'etag',
   'last-modified',
 ];
+
+interface EdgeCache {
+  match: (request: Request) => Promise<Response | undefined>;
+  put: (request: Request, response: Response) => Promise<void>;
+}
+
+function edgeCache(): EdgeCache | null {
+  const storage = (globalThis as { caches?: { default?: EdgeCache } }).caches;
+  return storage?.default ?? null;
+}
 
 /**
  * سرو رسانه‌ی آروان از دامنه‌ی خود سایت.
@@ -42,6 +53,15 @@ async function handle(context: Context, method: 'GET' | 'HEAD'): Promise<Respons
 
   const signed = await presignObject(config, 'GET', key, {}, 900);
   const range = context.request.headers.get('Range');
+  const cache = range ? null : edgeCache();
+  const cacheUrl = new URL(context.request.url);
+  cacheUrl.search = '';
+  const cacheKey = new Request(cacheUrl.toString(), { method: 'GET' });
+
+  if (cache && method === 'GET') {
+    const cached = await cache.match(cacheKey);
+    if (cached) return cached;
+  }
 
   let upstream: Response;
   try {
@@ -74,10 +94,16 @@ async function handle(context: Context, method: 'GET' | 'HEAD'): Promise<Respons
   headers.set('Cache-Control', `public, max-age=${CACHE_SECONDS}, immutable`);
   headers.set('X-Content-Type-Options', 'nosniff');
 
-  return new Response(method === 'HEAD' ? null : upstream.body, {
+  const response = new Response(method === 'HEAD' ? null : upstream.body, {
     status: upstream.status,
     headers,
   });
+
+  if (cache && method === 'GET' && context.waitUntil) {
+    context.waitUntil(cache.put(cacheKey, response.clone()).catch(() => undefined));
+  }
+
+  return response;
 }
 
 export function onRequestGet(context: Context): Promise<Response> {

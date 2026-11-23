@@ -177,6 +177,8 @@ export const Hero: React.FC<HeroProps> = ({
                 alt={isFa ? currentSlide.titleFa : currentSlide.titleEn}
                 className="relative w-full h-full object-contain transition-opacity duration-700 z-10"
                 loading="eager"
+                fetchPriority="high"
+                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={(e) => {
                   const target = e.currentTarget as HTMLImageElement;

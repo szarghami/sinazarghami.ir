@@ -5,7 +5,7 @@
   Permissions-Policy: geolocation=(), microphone=(self), camera=(self)
 
 /assets/*
-  Cache-Control: public, max-age=300
+  Cache-Control: public, max-age=31536000, immutable
 
 /fonts/*
   Cache-Control: public, max-age=31536000, immutable
