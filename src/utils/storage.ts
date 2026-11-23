@@ -180,6 +180,7 @@ export function isSessionAuthenticated(): boolean {
  * ثبت ورود موفق در سشن
  */
 export function setSessionAuthenticated(auth: boolean): void {
+  verifyCacheAt = 0;
   try {
     if (auth) {
       sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
@@ -189,6 +190,39 @@ export function setSessionAuthenticated(auth: boolean): void {
   } catch {
     // Storage can be unavailable in private browsing.
   }
+}
+
+let verifyInFlight: Promise<boolean> | null = null;
+let verifyCacheAt = 0;
+let verifyCacheValue = false;
+
+/**
+ * بررسی نشست فعلی روی سرور.
+ * درخواست‌های هم‌زمان ادغام می‌شوند و نتیجه ۳۰ ثانیه معتبر می‌ماند تا باز و بسته
+ * کردن پنل یا رفرش‌های پشت‌سرهم، `/api/auth/verify` را چند بار صدا نزند.
+ */
+export function verifySession(): Promise<boolean> {
+  if (verifyInFlight) return verifyInFlight;
+  if (verifyCacheAt && Date.now() - verifyCacheAt < 30_000) {
+    return Promise.resolve(verifyCacheValue);
+  }
+  verifyInFlight = fetch('/api/auth/verify', {
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+    .then(async (response) => {
+      const data = (await response.json().catch(() => ({}))) as { authenticated?: boolean };
+      const authenticated = response.ok && data.authenticated === true;
+      setSessionAuthenticated(authenticated);
+      verifyCacheValue = authenticated;
+      verifyCacheAt = Date.now();
+      return authenticated;
+    })
+    .catch(() => false)
+    .finally(() => {
+      verifyInFlight = null;
+    });
+  return verifyInFlight;
 }
 
 /**

@@ -344,7 +344,20 @@ async function completeUpload(
   options: ChunkedUploadOptions,
   pending: Set<number>,
 ): Promise<Response> {
-  let response = await finishUpload(session, options);
+  let response: Response | null = null;
+  // اگر اتصال هنگام «ثبت نهایی» قطع شود، تکه‌ها روی سرور مانده‌اند؛ فقط همین
+  // درخواست را دوباره می‌فرستیم و کل آپلود را از اول شروع نمی‌کنیم.
+  for (let attempt = 0; attempt <= COMPLETE_ATTEMPTS; attempt += 1) {
+    try {
+      response = await finishUpload(session, options);
+      break;
+    } catch (error) {
+      if (attempt === COMPLETE_ATTEMPTS) throw error;
+      await sleep(1_000 * (attempt + 1));
+    }
+  }
+  if (!response) throw new NetworkError();
+
   for (let attempt = 0; attempt < COMPLETE_ATTEMPTS; attempt += 1) {
     if (response.status === 409) {
       for (let index = 0; index < session.total; index += 1) pending.add(index);

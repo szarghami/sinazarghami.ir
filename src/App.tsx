@@ -261,6 +261,8 @@ export default function App() {
               language={language}
               onOpenPrints={openFirstPrintPhoto}
               onOpenExpeditions={() => navigateTo('/trips')}
+              onNavigate={navigateTo}
+              onSelectPrint={(photo) => setSelectedPrintPhoto(photo)}
             />
 
             {/* کارت‌های ناوبری دسته‌بندی‌های اصلی */}

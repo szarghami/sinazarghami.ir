@@ -37,6 +37,7 @@ import {
   CompressedImageResult,
   isSessionAuthenticated,
   setSessionAuthenticated,
+  verifySession,
   saveSiteContent,
   rememberPublish,
 } from '../utils/storage';
@@ -178,17 +179,14 @@ export const AdminStudioModal: React.FC<AdminStudioModalProps> = ({
   const [newPin, setNewPin] = useState('');
 
   useEffect(() => {
-    fetch('/api/auth/verify', { credentials: 'same-origin' })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        const authenticated = response.ok && data.authenticated === true;
-        setIsAuthenticated(authenticated);
-        setSessionAuthenticated(authenticated);
-      })
-      .catch(() => {
-        setIsAuthenticated(false);
-        setSessionAuthenticated(false);
-      });
+    let cancelled = false;
+    void verifySession().then((authenticated) => {
+      if (cancelled) return;
+      setIsAuthenticated(authenticated);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // تب فعال در پنل استودیو

@@ -5,15 +5,29 @@
 // =====================================================================
 
 import React, { useEffect, useState } from 'react';
-import { Language, SiteContent } from '../types';
-import { Camera, Compass, Code2, GraduationCap, ArrowDown, Sparkles, Phone } from 'lucide-react';
+import { Language, PhotoItem, SiteContent } from '../types';
+import {
+  Camera,
+  Compass,
+  Code2,
+  GraduationCap,
+  ArrowDown,
+  Sparkles,
+  Phone,
+  ChevronLeft,
+  ChevronRight,
+  Maximize2,
+} from 'lucide-react';
 import { getPostCoverUrl, getReliableImageUrl } from '../utils/media';
+import { PhotoLightbox } from './PhotoLightbox';
 
 interface HeroProps {
   content: SiteContent;
   language: Language;
   onOpenPrints: () => void;
   onOpenExpeditions: () => void;
+  onNavigate?: (path: string) => void;
+  onSelectPrint?: (photo: PhotoItem) => void;
 }
 
 export const Hero: React.FC<HeroProps> = ({
@@ -21,6 +35,8 @@ export const Hero: React.FC<HeroProps> = ({
   language,
   onOpenPrints,
   onOpenExpeditions,
+  onNavigate,
+  onSelectPrint,
 }) => {
   const isFa = language === 'fa';
   const { profile } = content;
@@ -28,24 +44,45 @@ export const Hero: React.FC<HeroProps> = ({
   // تب فعال در انتخاب حوزه‌های فعالیت
   const [activeFacet, setActiveFacet] = useState<'all' | 'photo' | 'expeditions' | 'code' | 'educator'>('all');
   const [slideIndex, setSlideIndex] = useState(0);
+  const [lightboxPhoto, setLightboxPhoto] = useState<PhotoItem | null>(null);
   const choices = content.homeSlides || [];
   const slides = [
-    ...content.photos.map((item) => ({ id: item.id, collection: 'photos', facet: item.portfolioScope === 'travel' ? 'expeditions' : 'photo', image: getPostCoverUrl(item), titleFa: item.titleFa, titleEn: item.titleEn, legacy: !!item.showOnHome })),
-    ...content.expeditions.map((item) => ({ id: item.id, collection: 'expeditions', facet: 'expeditions', image: item.coverImage, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false })),
-    ...(content.articles || []).filter((item) => item.isPublished).map((item) => ({ id: item.id, collection: 'articles', facet: 'educator', image: item.coverImage || item.coverUrl, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false })),
-    ...content.books.map((item) => ({ id: item.id, collection: 'books', facet: 'educator', image: item.coverImage, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false })),
-    ...content.software.map((item) => ({ id: item.id, collection: 'software', facet: 'code', image: item.coverImage || '', titleFa: item.title, titleEn: item.title, legacy: false })),
+    ...content.photos.map((item) => ({ id: item.id, collection: 'photos', facet: item.portfolioScope === 'travel' ? 'expeditions' : 'photo', image: getPostCoverUrl(item), titleFa: item.titleFa, titleEn: item.titleEn, legacy: !!item.showOnHome, photo: item })),
+    ...content.expeditions.map((item) => ({ id: item.id, collection: 'expeditions', facet: 'expeditions', image: item.coverImage, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false, photo: undefined as PhotoItem | undefined })),
+    ...(content.articles || []).filter((item) => item.isPublished).map((item) => ({ id: item.id, collection: 'articles', facet: 'educator', image: item.coverImage || item.coverUrl, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false, photo: undefined as PhotoItem | undefined })),
+    ...content.books.map((item) => ({ id: item.id, collection: 'books', facet: 'educator', image: item.coverImage, titleFa: item.titleFa, titleEn: item.titleEn, legacy: false, photo: undefined as PhotoItem | undefined })),
+    ...content.software.map((item) => ({ id: item.id, collection: 'software', facet: 'code', image: item.coverImage || '', titleFa: item.title, titleEn: item.title, legacy: false, photo: undefined as PhotoItem | undefined })),
   ].filter((item) => {
     const choice = choices.find((entry) => entry.collection === item.collection && entry.id === item.id);
     return !!item.image && (activeFacet === 'all' ? (choice?.general ?? item.legacy) : item.facet === activeFacet && (choice?.facet ?? item.legacy));
   });
   useEffect(() => { setSlideIndex(0); }, [activeFacet]);
   useEffect(() => {
-    if (slides.length < 2 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (slides.length < 2 || lightboxPhoto || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const timer = window.setInterval(() => setSlideIndex((index) => (index + 1) % slides.length), 3000);
     return () => window.clearInterval(timer);
-  }, [slides.length, activeFacet]);
+  }, [slides.length, activeFacet, lightboxPhoto]);
   const currentSlide = slides[slideIndex % slides.length];
+
+  const stepSlide = (direction: 1 | -1) => {
+    if (slides.length < 2) return;
+    setSlideIndex((index) => (index + direction + slides.length) % slides.length);
+  };
+
+  const openSlide = () => {
+    if (!currentSlide) return;
+    if (currentSlide.photo) {
+      setLightboxPhoto(currentSlide.photo);
+      return;
+    }
+    const target =
+      currentSlide.collection === 'expeditions' ? '/trips'
+        : currentSlide.collection === 'articles' ? '/articles'
+        : currentSlide.collection === 'books' ? '/resume'
+        : currentSlide.collection === 'software' ? '/portfolio'
+        : '/';
+    onNavigate?.(target);
+  };
 
   const facets = [
     { id: 'all', labelFa: 'همه ابعاد', labelEn: 'Overview' },
@@ -171,27 +208,91 @@ export const Hero: React.FC<HeroProps> = ({
                 <Camera className="w-12 h-12 text-amber-500/70 mb-3" />
                 <span className="text-sm font-semibold">{isFa ? 'اثری برای این بخش انتخاب نشده است' : 'No featured items in this section'}</span>
               </div>
-              {currentSlide && <img
-                key={`${currentSlide.collection}:${currentSlide.id}`}
-                src={getReliableImageUrl(currentSlide.image)}
-                alt={isFa ? currentSlide.titleFa : currentSlide.titleEn}
-                className="relative w-full h-full object-contain transition-opacity duration-700 z-10"
-                loading="eager"
-                fetchPriority="high"
-                decoding="async"
-                referrerPolicy="no-referrer"
-                onError={(e) => {
-                  const target = e.currentTarget as HTMLImageElement;
-                  target.style.display = 'none';
-                }}
-              />}
+              {currentSlide && (
+                <img
+                  key={`${currentSlide.collection}:${currentSlide.id}`}
+                  src={getReliableImageUrl(currentSlide.image)}
+                  alt={isFa ? currentSlide.titleFa : currentSlide.titleEn}
+                  className="relative w-full h-full object-contain transition-opacity duration-700 z-10"
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              )}
+
+              {currentSlide && (
+                <button
+                  type="button"
+                  onClick={openSlide}
+                  className="absolute inset-0 z-20 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
+                  aria-label={isFa ? 'مشاهده جزئیات اثر' : 'View item details'}
+                  title={isFa ? 'مشاهده جزئیات اثر' : 'View item details'}
+                />
+              )}
+
+              {currentSlide && (
+                <span className="pointer-events-none absolute top-4 left-4 z-30 inline-flex items-center gap-1.5 rounded-full bg-stone-950/55 px-3 py-1.5 text-[11px] font-semibold text-white/90 backdrop-blur-sm opacity-70 transition-opacity group-hover:opacity-100">
+                  <Maximize2 className="w-3 h-3" />
+                  {currentSlide.photo
+                    ? (isFa ? 'مشاهده جزئیات عکس' : 'Photo details')
+                    : (isFa ? 'مشاهده بخش' : 'Open section')}
+                </span>
+              )}
+
+              {slides.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => stepSlide(-1)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-stone-950/55 text-white backdrop-blur-sm hover:bg-stone-900/80 transition-colors cursor-pointer"
+                    aria-label={isFa ? 'اسلاید قبلی' : 'Previous slide'}
+                    title={isFa ? 'اسلاید قبلی' : 'Previous slide'}
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stepSlide(1)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-30 p-2.5 rounded-full bg-stone-950/55 text-white backdrop-blur-sm hover:bg-stone-900/80 transition-colors cursor-pointer"
+                    aria-label={isFa ? 'اسلاید بعدی' : 'Next slide'}
+                    title={isFa ? 'اسلاید بعدی' : 'Next slide'}
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
               <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-stone-950/80 to-transparent pointer-events-none z-10" />
 
-              {currentSlide && <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1 z-20">
-                <h3 className="text-lg font-semibold tracking-tight text-white">
-                  {isFa ? currentSlide.titleFa : currentSlide.titleEn}
-                </h3>
-              </div>}
+              {currentSlide && (
+                <div className="absolute bottom-0 inset-x-0 p-6 text-white space-y-1 z-20 pointer-events-none">
+                  <h3 className="text-lg font-semibold tracking-tight text-white">
+                    {isFa ? currentSlide.titleFa : currentSlide.titleEn}
+                  </h3>
+                  {slides.length > 1 && (
+                    <div className="flex items-center gap-1.5 pt-1 pointer-events-auto">
+                      {slides.map((slide, index) => (
+                        <button
+                          key={`${slide.collection}:${slide.id}`}
+                          type="button"
+                          onClick={() => setSlideIndex(index)}
+                          className={`h-1.5 rounded-full transition-all cursor-pointer ${
+                            index === slideIndex % slides.length
+                              ? 'w-6 bg-amber-400'
+                              : 'w-1.5 bg-white/50 hover:bg-white/80'
+                          }`}
+                          aria-label={isFa ? `اسلاید ${index + 1}` : `Slide ${index + 1}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -210,6 +311,18 @@ export const Hero: React.FC<HeroProps> = ({
           ))}
         </div>
       </div>
+
+      {lightboxPhoto && (
+        <PhotoLightbox
+          photo={lightboxPhoto}
+          language={language}
+          equipment={content.equipment}
+          definedTechniques={content.definedTechniques}
+          onClose={() => setLightboxPhoto(null)}
+          onSelectPrint={onSelectPrint}
+          onNavigate={onNavigate}
+        />
+      )}
     </section>
   );
 };

@@ -97,6 +97,7 @@ function putBlob(
   blob: Blob,
   mimeType: string,
   onLoaded?: (loaded: number) => void,
+  readEtag = false,
 ): Promise<string | null> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -116,7 +117,9 @@ function putBlob(
     };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(xhr.getResponseHeader('ETag'));
+        // خواندن ETag فقط در آپلود چندتکه لازم است. برای آپلود تک‌تکه این هدر
+        // در CORS باکت اکسپوز نشده و خواندنش فقط خطای «unsafe header» در کنسول می‌سازد.
+        resolve(readEtag ? xhr.getResponseHeader('ETag') : null);
         return;
       }
       reject(new Error(`آپلود تکه به آروان ناموفق بود (${xhr.status}).`));
@@ -132,11 +135,12 @@ async function putWithRetry(
   blob: Blob,
   mimeType: string,
   onLoaded?: (loaded: number) => void,
+  readEtag = false,
 ): Promise<string | null> {
   let lastError: unknown = null;
   for (let attempt = 0; attempt < PUT_ATTEMPTS; attempt += 1) {
     try {
-      return await putBlob(url, blob, mimeType, onLoaded);
+      return await putBlob(url, blob, mimeType, onLoaded, readEtag);
     } catch (error) {
       lastError = error;
       if (attempt < PUT_ATTEMPTS - 1) await sleep(700 * (attempt + 1));
@@ -318,7 +322,7 @@ async function uploadMultipart(
 
       let etag: string | null;
       try {
-        etag = await putWithRetry(url, blob, options.mimeType, onLoaded);
+        etag = await putWithRetry(url, blob, options.mimeType, onLoaded, true);
       } catch {
         const refreshed = await callApi<{ urls: PartTicket[] }>({
           action: 'parts',
@@ -329,7 +333,7 @@ async function uploadMultipart(
         });
         url = refreshed.urls[0]?.url;
         if (!url) throw new Error(`نشانی تازه‌ی تکه‌ی ${partNumber} دریافت نشد.`);
-        etag = await putWithRetry(url, blob, options.mimeType, onLoaded);
+        etag = await putWithRetry(url, blob, options.mimeType, onLoaded, true);
       }
 
       if (!etag) {
