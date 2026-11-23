@@ -78,13 +78,16 @@ export const HomeCategoryCards: React.FC<HomeCategoryCardsProps> = ({
                 className="group relative flex-none w-[280px] sm:w-[320px] md:w-[350px] aspect-4/5 rounded-2xl overflow-hidden bg-stone-900 border border-stone-200/90 shadow-xs hover:shadow-xl transition-all duration-300 cursor-pointer snap-start flex flex-col justify-between p-6"
               >
                 {/* Background Image with Hover Zoom */}
-                <img
-                  src={getReliableImageUrl(card.coverUrl)}
-                  alt={title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-106"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
+                {card.coverUrl ? (
+                  <img
+                    src={getReliableImageUrl(card.coverUrl)}
+                    alt={title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-106"
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : null}
 
                 {/* Scrim Gradient */}
                 <div className="absolute inset-0 bg-gradient-to-t from-stone-950/90 via-stone-950/40 to-stone-950/20 group-hover:from-stone-950/95 transition-colors" />

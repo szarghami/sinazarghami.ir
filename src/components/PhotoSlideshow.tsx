@@ -11,5 +11,7 @@ export function PhotoSlideshow({ photo, alt, className = '' }: { photo: PhotoIte
     const timer = window.setInterval(() => setIndex((current) => (current + 1) % images.length), 3000);
     return () => window.clearInterval(timer);
   }, [photo.id, images.length]);
-  return <img src={getReliableImageUrl(images[index % images.length] || '')} alt={alt} className={className} loading="lazy" referrerPolicy="no-referrer" />;
+  const src = images.length ? getReliableImageUrl(images[index % images.length]) : '';
+  if (!src) return null;
+  return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" referrerPolicy="no-referrer" />;
 }
